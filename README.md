@@ -1,6 +1,6 @@
 # FoolbookEditor
 
-The editor. [Foolbook](https://github.com/squirelworks/Foolbook) is the reader. This repository writes the books that Foolbook opens.
+The editor. [Foolbook](https://github.com/squirelworks/Foolbook) is the reader and the core. This repository is the window. It does not keep its own copy of loading, saving, office files, or OpenScript. Those calls go through `foolbookeditor.core`, which calls `foolbook.core`.
 
 ```bash
 python3 -m foolbookeditor                         # new book, browser, port 6767

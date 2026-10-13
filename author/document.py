@@ -1,7 +1,7 @@
 """The book the editor holds.
 
-Reader and author are two modes over one dict. engine.loader reads it.
-author.formats writes it. This module only mutates it.
+The editor holds the same book dict Foolbook reads. foolbook.core writes it.
+This module only mutates the dict.
 
 A page is text, items (jumps), an optional script, an optional quiz,
 and widgets dropped on the slide. That is the scaffold. Groups,

@@ -124,7 +124,7 @@ class Editor:
             self._load(Path(p))
 
     def _load(self, path: Path):
-        from engine.office import is_office, to_book
+        from foolbookeditor.core import is_office, to_book
         self.book = to_book(path) if is_office(path) else load_book(path)
         self.path = path
         self.current = 0
@@ -157,7 +157,7 @@ class Editor:
         """Write a best-effort .tbk with compiled OpenScript handlers.
 
         The shell is what we know: JBO stub, one page record per page,
-        field text, and a buttonClick handler compiled by engine.openscript.
+        field text, and a buttonClick handler compiled by Foolbook.
         It is not a book the ToolBook 8.1 engine would open.
         """
         self._apply()
@@ -168,7 +168,7 @@ class Editor:
         )
         if not p:
             return
-        from engine.openscript import compile as compile_script
+        from foolbookeditor.core import compile_script
         from author.tbkexport import write_tbk
         dest = Path(p)
         write_tbk(dest, self.book, compile_script)

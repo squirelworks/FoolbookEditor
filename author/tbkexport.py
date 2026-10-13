@@ -6,7 +6,7 @@ What we know, from the course books and TB80CMP:
   signature       03 4A 42 4F, version 01 00 00 08
   page record     80 65 00 05 00 02 02, id, 32-byte name, 14 00 00 01
   field text      Text\0\0, 8 bytes, u16 length, string
-  handler         OpenScript bytecode from engine.openscript.compile
+  handler         OpenScript bytecode from Foolbook's compiler
 
 What we do not know yet, so this does not emit it:
 

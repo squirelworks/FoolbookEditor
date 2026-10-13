@@ -14,9 +14,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from author.document import blank_book
-from author.formats import load as load_book
-from author.formats import save_book
-from engine.office import is_office, to_book
+from foolbookeditor.core import is_office, load as load_book, save_book, to_book
 
 
 HTML = """<!DOCTYPE html>

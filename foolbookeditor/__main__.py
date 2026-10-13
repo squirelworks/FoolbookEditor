@@ -19,6 +19,8 @@ if str(_root) not in sys.path:
 
 
 def main() -> int:
+    from foolbookeditor.core import require
+    require()
     args = sys.argv[1:]
     if "--export-exe" in args:
         rest = [a for a in args if a != "--export-exe" and a != "--desktop"]

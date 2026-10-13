@@ -1,18 +1,10 @@
 """Book envelope.
 
-The format lives with the reader. This module re-exports it so the
-editor can load and save .fbk and .json without owning a second copy.
+The work lives in Foolbook. This module is a thin door so older
+imports inside the editor still resolve.
 """
 
-from engine.formats import (  # noqa: F401
-    FBK,
-    FLAG_COMPRESSED,
-    FORMAT_VERSION,
-    FSK,
-    MAGIC,
-    is_book,
-    is_system,
-    kind_of,
+from foolbookeditor.core import (  # noqa: F401
     load,
     pack,
     save_book,
