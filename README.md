@@ -10,5 +10,12 @@ python3 -m foolbookeditor --desktop path/to/book.fbk
 
 Save writes an `.fbk` and a sibling `.json`. The browser editor edits the title, subject, module, page text, jumps, page script, and quiz. Other jumps, such as Begin, stay. Open can take an office file and turn it into pages. Export writes `.docx`, `.pptx`, `.odt`, `.pdf`, or a `.tbk` shell. Pictures and styles are dropped.
 
+```bash
+python3 examples/welcome.py /path/to/Foolbook/foolbook/books
+```
+
+That writes the two books a new Foolbook install opens: Using Foolbook and First Light.
+
+
 Self-running export is scaffolded and not built. The Export menu and `--export-exe` name it and write nothing.
 
