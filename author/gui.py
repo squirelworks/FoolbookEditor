@@ -46,8 +46,7 @@ class Editor:
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
-        ttk.Button(bar, text="Export .tbk", command=self._export_tbk).pack(side="left", padx=2)
-        ttk.Button(bar, text="Export office", command=self._export_office).pack(side="left", padx=2)
+        ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("text", "Text"), ("box", "Box"), ("button", "Button")):
@@ -154,43 +153,33 @@ class Editor:
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
 
-    def _export_tbk(self):
-        """Write a best-effort .tbk with compiled OpenScript handlers.
-
-        The shell is what we know: JBO stub, one page record per page,
-        field text, and a buttonClick handler compiled by Foolbook.
-        It is not a book the ToolBook 8.1 engine would open.
-        """
+    def _export(self):
+        """Save as a book, a TBX folder, a ToolBook shell, or an office file."""
         self._apply()
         p = filedialog.asksaveasfilename(
-            title="Export .tbk",
-            defaultextension=".tbk",
-            filetypes=[("ToolBook shell", "*.tbk")],
-        )
-        if not p:
-            return
-        from foolbookeditor.core import compile_script
-        from author.tbkexport import write_tbk
-        dest = Path(p)
-        write_tbk(dest, self.book, compile_script)
-        self.status.config(text=f"Exported {dest.name} (shell, compiled handlers)")
-
-    def _export_office(self):
-        self._apply()
-        p = filedialog.asksaveasfilename(
-            title="Export office",
+            title="Export",
+            defaultextension=".fbk",
             filetypes=[
-                ("Word", "*.docx"),
-                ("PowerPoint", "*.pptx"),
-                ("OpenDocument", "*.odt"),
+                ("Foolbook book", "*.fbk"),
+                ("System book", "*.fsk"),
+                ("Course", "*.fsc"),
+                ("TBX folder", "*.tbx"),
+                ("ToolBook shell", "*.tbk"),
+                ("System shell", "*.sbk"),
                 ("PDF", "*.pdf"),
+                ("Word", "*.docx"),
+                ("Word (legacy)", "*.doc"),
+                ("PowerPoint", "*.pptx"),
+                ("PowerPoint (legacy)", "*.ppt"),
+                ("OpenDocument", "*.odt"),
             ],
         )
         if not p:
             return
-        from foolbookeditor.core import write_office
-        dest = write_office(p, self.book)
-        self.status.config(text=f"Exported {dest.name}")
+        from foolbookeditor.core import compile_script, export_book
+        dest = export_book(p, self.book, compile_script)
+        note = "folder" if dest.is_dir() else dest.name
+        self.status.config(text=f"Exported {note}")
 
     def _export_executable(self):
         """ToolBook-style self-running book. Scaffold only."""

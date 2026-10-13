@@ -13,9 +13,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from author.document import blank_book
-from author.tbkexport import write_tbk
 from foolbookeditor.core import (
     compile_script,
+    export_book,
     is_office,
     load as load_book,
     save_book,
@@ -25,8 +25,8 @@ from foolbookeditor.core import (
 
 
 _OFFICE = {".pdf", ".ppt", ".pptx", ".doc", ".docx", ".odt"}
-_OPEN = {".fbk", ".fsk", ".json"} | _OFFICE
-_EXPORT = {".docx", ".pptx", ".odt", ".pdf"}
+_OPEN = {".fbk", ".fsk", ".fsc", ".json", ".tbk", ".sbk", ".xml"} | _OFFICE
+_EXPORT = {".docx", ".doc", ".pptx", ".ppt", ".odt", ".pdf", ".fbk", ".fsk", ".fsc", ".tbk", ".sbk", ".tbx"}
 
 HTML = r"""<!DOCTYPE html>
 <html lang="en">
@@ -67,11 +67,18 @@ HTML = r"""<!DOCTYPE html>
     <label>Export
       <select id="export">
         <option value="">…</option>
+        <option value=".fbk">Foolbook .fbk</option>
+        <option value=".fsk">System .fsk</option>
+        <option value=".fsc">Course .fsc</option>
+        <option value=".tbx">TBX folder .tbx</option>
+        <option value=".tbk">ToolBook shell .tbk</option>
+        <option value=".sbk">System shell .sbk</option>
         <option value=".docx">Word .docx</option>
+        <option value=".doc">Word .doc</option>
         <option value=".pptx">PowerPoint .pptx</option>
+        <option value=".ppt">PowerPoint .ppt</option>
         <option value=".odt">OpenDocument .odt</option>
         <option value=".pdf">PDF</option>
-        <option value="tbk">ToolBook shell .tbk</option>
         <option value="exe">Self-running (not built)</option>
       </select>
     </label>
@@ -493,15 +500,14 @@ def serve(path: Path | None, port: int = 6767) -> None:
                 self._json(501, {"error": "Self-running export is scaffolded and not implemented."})
                 return
             try:
-                if kind == "tbk":
-                    dest = _dest_for(state, ".tbk")
-                    write_tbk(dest, book, compile_script)
-                elif kind in _EXPORT:
-                    dest = _dest_for(state, kind)
-                    write_office(dest, book)
-                else:
+                if kind == "exe":
+                    self._json(501, {"error": "Self-running export is scaffolded and not implemented."})
+                    return
+                if kind not in _EXPORT:
                     self._json(400, {"error": "unknown export"})
                     return
+                dest = _dest_for(state, kind)
+                export_book(dest, book, compile_script)
             except Exception as exc:
                 self._json(400, {"error": str(exc)})
                 return

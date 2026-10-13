@@ -55,5 +55,9 @@ def write_office(path: str | Path, book: dict) -> Path:
     return require().write_office(path, book)
 
 
+def export_book(path: str | Path, book: dict, compile_script=None) -> Path:
+    return require().export_book(path, book, compile_script)
+
+
 def compile_script(source: str, keywords: list[str] | None = None) -> bytes:
     return require().compile_script(source, keywords)

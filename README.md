@@ -8,7 +8,7 @@ python3 -m foolbookeditor path/to/book.fbk        # edit that book
 python3 -m foolbookeditor --desktop path/to/book.fbk
 ```
 
-Save writes an `.fbk` and a sibling `.json`. The browser editor edits the title, subject, module, page text, jumps, page script, and quiz. Other jumps, such as Begin, stay. Open can take an office file and turn it into pages. Export writes `.docx`, `.pptx`, `.odt`, `.pdf`, or a `.tbk` shell. Pictures and styles are dropped.
+Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder (`Book.xml` and one folder per page), a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash
 python3 examples/welcome.py /path/to/Foolbook/foolbook/books
