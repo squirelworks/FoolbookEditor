@@ -47,6 +47,7 @@ class Editor:
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
         ttk.Button(bar, text="Export .tbk", command=self._export_tbk).pack(side="left", padx=2)
+        ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("text", "Text"), ("box", "Box"), ("button", "Button")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
@@ -172,6 +173,14 @@ class Editor:
         dest = Path(p)
         write_tbk(dest, self.book, compile_script)
         self.status.config(text=f"Exported {dest.name} (shell, compiled handlers)")
+
+    def _export_executable(self):
+        """ToolBook-style self-running book. Scaffold only."""
+        from author.executable import export_executable
+        try:
+            export_executable(self.path)
+        except NotImplementedError as exc:
+            messagebox.showinfo("Foolbook Editor", str(exc))
 
     def _refresh_list(self):
         self.pages.delete(0, "end")
