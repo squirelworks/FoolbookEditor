@@ -47,6 +47,7 @@ class Editor:
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
         ttk.Button(bar, text="Export .tbk", command=self._export_tbk).pack(side="left", padx=2)
+        ttk.Button(bar, text="Export office", command=self._export_office).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("text", "Text"), ("box", "Box"), ("button", "Button")):
@@ -174,6 +175,23 @@ class Editor:
         write_tbk(dest, self.book, compile_script)
         self.status.config(text=f"Exported {dest.name} (shell, compiled handlers)")
 
+    def _export_office(self):
+        self._apply()
+        p = filedialog.asksaveasfilename(
+            title="Export office",
+            filetypes=[
+                ("Word", "*.docx"),
+                ("PowerPoint", "*.pptx"),
+                ("OpenDocument", "*.odt"),
+                ("PDF", "*.pdf"),
+            ],
+        )
+        if not p:
+            return
+        from foolbookeditor.core import write_office
+        dest = write_office(p, self.book)
+        self.status.config(text=f"Exported {dest.name}")
+
     def _export_executable(self):
         """ToolBook-style self-running book. Scaffold only."""
         from author.executable import export_executable
@@ -219,15 +237,10 @@ class Editor:
         if not (0 <= self.current < len(pages)):
             return
         p = pages[self.current]
-        p["id"] = self.pid.get().strip() or p.get("id") or "P0"
-        raw = self.text.get("1.0", "end").strip()
-        p["text"] = [b.strip() for b in raw.split("\n\n") if b.strip()]
-        items = []
-        if self.next.get().strip():
-            items.append({"label": "Next", "page": self.next.get().strip()})
-        if self.back.get().strip():
-            items.append({"label": "Back", "page": self.back.get().strip()})
-        p["items"] = items
+        from author.document import set_id, set_nav, set_text, text_from_editor
+        set_id(p, self.pid.get())
+        set_text(p, text_from_editor(self.text.get("1.0", "end")))
+        set_nav(p, self.next.get(), self.back.get())
         self.pages.delete(self.current)
         self.pages.insert(self.current, p["id"])
         self.pages.selection_set(self.current)
@@ -235,22 +248,13 @@ class Editor:
 
     def _add_page(self):
         self._apply()
-        n = len(self.book.get("pages") or [])
-        self.book.setdefault("pages", []).append({
-            "id": f"P{n * 100}",
-            "text": ["New slide"],
-            "items": [],
-            "widgets": [],
-        })
-        self.current = n
+        from author.document import add_page
+        self.current = add_page(self.book)
         self._refresh_list()
 
     def _del_page(self):
-        pages = self.book.get("pages") or []
-        if len(pages) <= 1:
-            return
-        del pages[self.current]
-        self.current = max(0, self.current - 1)
+        from author.document import delete_page
+        self.current = delete_page(self.book, self.current)
         self._refresh_list()
 
     def _preview(self):
