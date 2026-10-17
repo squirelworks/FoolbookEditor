@@ -8,7 +8,7 @@ python3 -m foolbookeditor path/to/book.fbk        # edit that book
 python3 -m foolbookeditor --desktop path/to/book.fbk
 ```
 
-Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder (`Book.xml` and one folder per page), a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
+Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash
 python3 examples/welcome.py /path/to/Foolbook/foolbook/books
