@@ -5,6 +5,7 @@ Foolbook opens a book. This writes one.
   python3 -m foolbookeditor
   python3 -m foolbookeditor path/to/book.fbk
   python3 -m foolbookeditor --desktop path/to/book.fbk
+  python3 -m foolbookeditor --fbk path/to/book.tbk       # write book.fbk; an .sbk writes an .fsk
   python3 -m foolbookeditor --export-exe path/to/book.fbk   # scaffold, writes nothing
 """
 
@@ -22,6 +23,10 @@ def main() -> int:
     from foolbookeditor.core import require
     require()
     args = sys.argv[1:]
+    if "--fbk" in args:
+        rest = [a for a in args if a != "--fbk"]
+        from author.convert import main as convert
+        return convert(rest)
     if "--export-exe" in args:
         rest = [a for a in args if a != "--export-exe" and a != "--desktop"]
         from author.executable import export_executable

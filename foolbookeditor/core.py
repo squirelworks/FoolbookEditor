@@ -27,6 +27,11 @@ def load(path: str | Path) -> dict:
     return require().load(path)
 
 
+def read(path: str | Path) -> dict:
+    """What Foolbook loaded, as a dict. The editor decides where to save it."""
+    return require().read(path)
+
+
 def save_book(path: str | Path, book: dict, compress: bool = True) -> Path:
     return require().save_book(path, book, compress=compress)
 
