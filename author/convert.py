@@ -41,8 +41,6 @@ def main(args: list[str]) -> int:
             try:
                 dest = convert(src)
                 print(dest)
-                if src.suffix.lower() in {".tbk", ".sbk"}:
-                    print("  bitmaps are not in the file. A script the reader did not decode is not either.")
             except Exception as exc:
                 failed += 1
                 print(f"{src.name}: {exc}")
