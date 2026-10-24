@@ -81,6 +81,7 @@ class Editor:
         self.canvas = tk.Canvas(center, bg="white", width=640, height=480, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
         self.canvas.bind("<ButtonPress-1>", self._on_press)
+        self.canvas.bind("<B1-Motion>", self._on_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_release)
         self.canvas.bind("<Configure>", self._on_canvas_resize)
 
@@ -99,6 +100,7 @@ class Editor:
         ttk.Button(objects, text="Apply script", command=self._apply_script).pack(anchor="e", pady=4)
         self._rows: list[dict] = []
         self._object = None
+        self._drag = None
 
         form = ttk.Frame(center)
         form.pack(fill="x")
@@ -329,6 +331,22 @@ class Editor:
             page = pages[self.current]
         from author.stage import paint
         paint(self.canvas, page or {})
+        self._draw_handles()
+
+    def _draw_handles(self):
+        if self.tool.get() != "select" or self._object is None:
+            return
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        from author.tools import corners, shape_at, window_point
+        shape = shape_at(pages[self.current], self._object)
+        view = getattr(self.canvas, "_author_view", None)
+        if shape is None or not view:
+            return
+        for x, y in corners(shape).values():
+            sx, sy = window_point(view, x, y)
+            self.canvas.create_rectangle(sx - 4, sy - 4, sx + 4, sy + 4, fill="#ffffff", outline="#000000")
 
     def _on_canvas_resize(self, event):
         if event.widget is not self.canvas or event.width < 20 or event.height < 20:
@@ -340,15 +358,63 @@ class Editor:
 
     def _on_press(self, evt):
         self._down = (evt.x, evt.y)
+        self._drag = None
         if self.tool.get() != "select":
             return
+        pages = self.book.get("pages") or []
+        page = pages[self.current] if 0 <= self.current < len(pages) else None
+        view = getattr(self.canvas, "_author_view", None)
+        if page is None or not view or not view.get("scale"):
+            return
+        from author.tools import handle_at, opposite, page_point, shape_at, snapshot
+        if self._object is not None:
+            current = shape_at(page, self._object)
+            corner = handle_at(view, current, evt.x, evt.y) if current else None
+            if corner and current is not None:
+                ax, ay = opposite(current, corner)
+                self._drag = {"mode": "size", "index": self._object, "ax": ax, "ay": ay, "snap": snapshot(current)}
+                return
         self._select_at(evt.x, evt.y)
+        if self._object is None:
+            return
+        current = shape_at(page, self._object)
+        if current is None:
+            return
+        px, py = page_point(view, evt.x, evt.y)
+        # A click on empty page must not drag the object that was already selected.
+        from author.stage import hit
+        if hit(view["shapes"], px, py) != self._object:
+            return
+        self._drag = {"mode": "move", "index": self._object, "px": px, "py": py, "snap": snapshot(current)}
+
+    def _on_drag(self, evt):
+        drag = self._drag
+        if not drag or self.tool.get() != "select":
+            return
+        view = getattr(self.canvas, "_author_view", None)
+        pages = self.book.get("pages") or []
+        if not view or not (0 <= self.current < len(pages)):
+            return
+        from author.tools import move_shape, page_point, resize_shape, shape_at
+        shape = shape_at(pages[self.current], drag["index"])
+        if shape is None:
+            return
+        px, py = page_point(view, evt.x, evt.y)
+        if drag["mode"] == "move":
+            move_shape(shape, drag["snap"], px - drag["px"], py - drag["py"])
+        else:
+            resize_shape(shape, drag["snap"], drag["ax"], drag["ay"], px, py)
+        self._preview()
 
     def _on_release(self, evt):
         tool = self.tool.get()
         down = getattr(self, "_down", None)
         self._down = None
-        if tool == "select" or down is None:
+        if tool == "select":
+            self._drag = None
+            return
+        self._drag = None
+        if down is None:
             return
         view = getattr(self.canvas, "_author_view", None)
         if not view or not view.get("scale"):

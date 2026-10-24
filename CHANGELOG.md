@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.5 — 2026-10-24
+
+- Select drags the object under the pointer. The four squares on a selected object pull its corners, and the opposite corner stays put.
+
 ## 0.3.4 — 2026-10-24
 
 - The Author window opens large enough for three panes. The picture is the middle one. The page list and the object list cannot push it off the screen.
