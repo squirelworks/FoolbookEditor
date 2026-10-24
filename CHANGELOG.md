@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 — 2026-10-24
+
+- The middle of Author is the page Foolbook draws. Pages stay on the left and the object script stays on the right. A click on the picture selects the object. Opening a `.tbk` reads it through Foolbook.
+
 ## 0.3.0 — 2026-10-24
 
 - Author lists the objects on the selected page, in book order. A field Reader hides is still in the list. The selected object's script can be edited. Save still writes an `.fbk`.

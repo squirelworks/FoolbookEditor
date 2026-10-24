@@ -8,7 +8,7 @@ python3 -m foolbookeditor --fbk path/to/book.sbk    # write book.fsk
 python3 -m foolbookeditor --fbk path/to/courses     # every book in the folder
 ```
 
-The Author window lists pages in book order and the objects Foolbook read on the selected page. A field the reader hides stays visible here. Selecting an object shows its script. Save writes an `.fbk`. The editor does not read the book itself.
+The Author window is the outside. Pages are on the left, the object and its script are on the right, and the middle is the page Foolbook draws. A click on that picture selects the object. Foolbook's own window still has its page list. That list is for development. It is not how Author is arranged.
 
 ```bash
 python3 -m foolbookeditor                         # new book, browser, port 6767

@@ -72,8 +72,16 @@ class Editor:
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
         ttk.Button(row, text="Delete", command=self._del_page).pack(side="left", padx=4)
 
+        # The page picture. Foolbook draws it. The editor only holds the panes.
+        center = ttk.Frame(body)
+        body.add(center, weight=3)
+        self.canvas = tk.Canvas(center, bg="white", highlightthickness=0)
+        self.canvas.pack(fill="both", expand=True)
+        self.canvas.bind("<Button-1>", self._on_canvas_click)
+        self.canvas.bind("<Configure>", self._on_canvas_resize)
+
         # objects on the selected page. Author shows them. Reader may hide some.
-        objects = ttk.Frame(body, width=220)
+        objects = ttk.Frame(body, width=260)
         body.add(objects, weight=0)
         ttk.Label(objects, text="Objects").pack(anchor="w")
         self.objects = tk.Listbox(objects, exportselection=False, width=28)
@@ -88,15 +96,6 @@ class Editor:
         self._rows: list[dict] = []
         self._object = None
 
-        # center: preview + editor
-        center = ttk.Frame(body)
-        body.add(center, weight=3)
-
-        ttk.Label(center, text="Preview").pack(anchor="w")
-        self.canvas = tk.Canvas(center, bg="white", height=280, highlightthickness=1, highlightbackground="#888")
-        self.canvas.pack(fill="x", pady=(0, 6))
-        self.canvas.bind("<Button-1>", self._on_canvas_click)
-
         form = ttk.Frame(center)
         form.pack(fill="x")
         ttk.Label(form, text="Page id").grid(row=0, column=0, sticky="w")
@@ -110,8 +109,8 @@ class Editor:
         self.back.grid(row=0, column=5, sticky="w", padx=4)
 
         ttk.Label(center, text="Text  (blank line = new paragraph; lines starting with - or * are a list)").pack(anchor="w", pady=(6, 0))
-        self.text = tk.Text(center, height=10, wrap="word")
-        self.text.pack(fill="both", expand=True)
+        self.text = tk.Text(center, height=4, wrap="word")
+        self.text.pack(fill="x")
         self.text.bind("<KeyRelease>", lambda e: self._preview())
 
         ttk.Button(center, text="Apply", command=self._apply).pack(anchor="e", pady=4)
@@ -131,7 +130,7 @@ class Editor:
         p = filedialog.askopenfilename(
             title="Open book",
             filetypes=[
-                ("Foolbook", "*.fbk *.json"),
+                ("Foolbook", "*.fbk *.json *.tbk *.sbk"),
                 ("Office", "*.pdf *.ppt *.pptx *.doc *.docx *.odt"),
                 ("All", "*.*"),
             ],
@@ -140,8 +139,14 @@ class Editor:
             self._load(Path(p))
 
     def _load(self, path: Path):
-        from foolbookeditor.core import is_office, to_book
-        self.book = to_book(path) if is_office(path) else load_book(path)
+        from foolbookeditor.core import is_office, read, to_book
+        suffix = path.suffix.lower()
+        if is_office(path):
+            self.book = to_book(path)
+        elif suffix in {".tbk", ".sbk"}:
+            self.book = read(path)
+        else:
+            self.book = load_book(path)
         self.path = path
         self.current = 0
         self._refresh_list()
@@ -301,54 +306,35 @@ class Editor:
         self._refresh_list()
 
     def _preview(self):
-        self.canvas.delete("all")
-        w = self.canvas.winfo_width() or 600
-        h = 280
-        self.canvas.create_rectangle(8, 8, w - 8, h - 8, outline="#ccc")
-        raw = self.text.get("1.0", "end").strip()
-        y = 24
-        for block in raw.split("\n\n"):
-            block = block.strip()
-            if not block:
-                continue
-            lines = block.split("\n")
-            is_list = all(ln.lstrip().startswith(("-", "*")) for ln in lines if ln.strip())
-            if is_list:
-                for ln in lines:
-                    ln = ln.lstrip().lstrip("-*").strip()
-                    self.canvas.create_text(28, y, anchor="w", text=f"• {ln}", font=("TkDefaultFont", 11))
-                    y += 18
-            else:
-                for ln in lines:
-                    self.canvas.create_text(24, y, anchor="w", text=ln, font=("TkDefaultFont", 11))
-                    y += 18
-            y += 8
-        # widgets
-        page = (self.book.get("pages") or [None])[self.current] if self.book.get("pages") else None
-        for wdg in (page or {}).get("widgets") or []:
-            x, y_, ww, hh = wdg.get("x", 20), wdg.get("y", 20), wdg.get("w", 80), wdg.get("h", 24)
-            kind = wdg.get("kind", "box")
-            if kind == "button":
-                self.canvas.create_rectangle(x, y_, x + ww, y_ + hh, fill="#c0c0c0", outline="#000")
-                self.canvas.create_text(x + ww // 2, y_ + hh // 2, text=wdg.get("label", "Button"))
-            else:
-                self.canvas.create_rectangle(x, y_, x + ww, y_ + hh, outline="#448")
+        page = None
+        pages = self.book.get("pages") or []
+        if 0 <= self.current < len(pages):
+            page = pages[self.current]
+        from author.stage import paint
+        paint(self.canvas, page or {})
+
+    def _on_canvas_resize(self, event):
+        if event.widget is not self.canvas or event.width < 20 or event.height < 20:
+            return
+        if getattr(self, "_fitted", None) == (event.width, event.height):
+            return
+        self._fitted = (event.width, event.height)
+        self._preview()
 
     def _on_canvas_click(self, evt):
-        tool = self.tool.get()
-        if tool == "select":
+        view = getattr(self.canvas, "_author_view", None)
+        if not view or not view.get("scale"):
             return
-        page = (self.book.get("pages") or [None])[self.current]
-        if page is None:
+        x = (evt.x - view["ox"]) / view["scale"] + view["x0"]
+        y = (evt.y - view["oy"]) / view["scale"] + view["y0"]
+        from author.stage import hit
+        found = hit(view["shapes"], x, y)
+        if found is None:
             return
-        page.setdefault("widgets", [])
-        if tool == "text":
-            page["widgets"].append({"kind": "text", "x": evt.x, "y": evt.y, "w": 160, "h": 24, "label": "Text"})
-        elif tool == "box":
-            page["widgets"].append({"kind": "box", "x": evt.x, "y": evt.y, "w": 100, "h": 60})
-        elif tool == "button":
-            page["widgets"].append({"kind": "button", "x": evt.x, "y": evt.y, "w": 80, "h": 24, "label": "Button"})
-        self._preview()
+        self.objects.selection_clear(0, "end")
+        self.objects.selection_set(found)
+        self.objects.see(found)
+        self._on_object()
 
     def _wrap(self, mark: str):
         try:
