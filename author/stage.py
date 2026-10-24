@@ -23,10 +23,15 @@ def shown(page: dict) -> list[dict]:
     return rows
 
 
-def hit(shapes: list[dict], x: float, y: float) -> int | None:
-    """The topmost object under a page coordinate. None is the page itself."""
+def hit(shapes: list[dict], x: float, y: float, layer: str | None = None) -> int | None:
+    """The topmost object under a page coordinate. None is the page itself.
+
+    When a layer is named, an object on the other layer cannot be selected.
+    """
     for index in range(len(shapes) - 1, -1, -1):
         shape = shapes[index]
+        if layer and (shape.get("layer") or "page") != layer:
+            continue
         left = float(shape.get("x") or 0)
         top = float(shape.get("y") or 0)
         if left <= x <= left + float(shape.get("w") or 0) and top <= y <= top + float(shape.get("h") or 0):

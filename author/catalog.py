@@ -13,11 +13,16 @@ def page_ids(book: dict) -> list[str]:
     return [str(page.get("id") or "") for page in book.get("pages") or []]
 
 
-def objects_of(page: dict) -> list[dict]:
-    """One row per shape. Hidden objects stay in the list."""
+def objects_of(page: dict, layer: str | None = None) -> list[dict]:
+    """One row per shape on that layer. Hidden objects stay in the list.
+
+    A shape with no layer is on the page. That is the older file.
+    """
     rows = []
     for index, shape in enumerate(page.get("shapes") or []):
         if not isinstance(shape, dict):
+            continue
+        if layer and (shape.get("layer") or "page") != layer:
             continue
         rows.append({
             "index": index,
@@ -27,8 +32,46 @@ def objects_of(page: dict) -> list[dict]:
             "script": shape.get("script") or "",
             "text": shape.get("text") or "",
             "hidden": shape.get("visible") is False,
+            "layer": shape.get("layer") or "page",
         })
     return rows
+
+
+def place_shape(page: dict, shape: dict) -> int:
+    """Put a shape on its own layer. Background stays under the page."""
+    shapes = page.setdefault("shapes", [])
+    layer = shape.get("layer") or "page"
+    shape["layer"] = layer
+    if layer == "page":
+        shapes.append(shape)
+        return len(shapes) - 1
+    for index, existing in enumerate(shapes):
+        if isinstance(existing, dict) and (existing.get("layer") or "page") == "page":
+            shapes.insert(index, shape)
+            return index
+    shapes.append(shape)
+    return len(shapes) - 1
+
+
+def restack(page: dict, index: int, direction: str) -> int:
+    """Move one object in front of or behind its neighbour on the same layer."""
+    shapes = page.get("shapes") or []
+    if not (0 <= index < len(shapes)) or not isinstance(shapes[index], dict):
+        return index
+    layer = shapes[index].get("layer") or "page"
+    same = [
+        at for at, shape in enumerate(shapes)
+        if isinstance(shape, dict) and (shape.get("layer") or "page") == layer
+    ]
+    pos = same.index(index)
+    if direction == "front" and pos + 1 < len(same):
+        other = same[pos + 1]
+    elif direction == "back" and pos > 0:
+        other = same[pos - 1]
+    else:
+        return index
+    shapes[index], shapes[other] = shapes[other], shapes[index]
+    return other
 
 
 def page_script(page: dict) -> str:

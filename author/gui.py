@@ -59,6 +59,26 @@ class Editor:
         self.status = ttk.Label(bar, text="")
         self.status.pack(side="right")
 
+        tools = ttk.Frame(self.root, padding=4)
+        tools.pack(fill="x")
+        self.layer = tk.StringVar(value="page")
+        for name, label in (
+            ("line", "Line"),
+            ("ellipse", "Ellipse"),
+            ("polygon", "Polygon"),
+            ("arc", "Arc"),
+            ("picture", "Picture"),
+        ):
+            ttk.Radiobutton(tools, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Radiobutton(tools, text="Page", value="page", variable=self.layer, command=self._relayer).pack(side="left")
+        ttk.Radiobutton(tools, text="Background", value="background", variable=self.layer, command=self._relayer).pack(side="left", padx=2)
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Button(tools, text="Fill", command=lambda: self._color("fill")).pack(side="left")
+        ttk.Button(tools, text="Line", command=lambda: self._color("outline")).pack(side="left", padx=2)
+        ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
+        ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
+
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=4, pady=4)
         self.body = body
@@ -265,7 +285,7 @@ class Editor:
 
     def _fill_objects(self, page: dict):
         from author.catalog import objects_of, page_script
-        self._rows = objects_of(page)
+        self._rows = objects_of(page, self.layer.get())
         self._object = None
         self.objects.delete(0, "end")
         for row in self._rows:
@@ -339,8 +359,8 @@ class Editor:
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
-        from author.tools import corners, shape_at, window_point
-        shape = shape_at(pages[self.current], self._object)
+        from author.tools import corners, window_point
+        shape, _index = self._selected()
         view = getattr(self.canvas, "_author_view", None)
         if shape is None or not view:
             return
@@ -366,26 +386,23 @@ class Editor:
         view = getattr(self.canvas, "_author_view", None)
         if page is None or not view or not view.get("scale"):
             return
-        from author.tools import handle_at, opposite, page_point, shape_at, snapshot
+        from author.tools import handle_at, opposite, page_point, snapshot
         if self._object is not None:
-            current = shape_at(page, self._object)
+            current, index = self._selected()
             corner = handle_at(view, current, evt.x, evt.y) if current else None
             if corner and current is not None:
                 ax, ay = opposite(current, corner)
-                self._drag = {"mode": "size", "index": self._object, "ax": ax, "ay": ay, "snap": snapshot(current)}
+                self._drag = {"mode": "size", "index": index, "ax": ax, "ay": ay, "snap": snapshot(current)}
                 return
         self._select_at(evt.x, evt.y)
-        if self._object is None:
-            return
-        current = shape_at(page, self._object)
+        current, index = self._selected()
         if current is None:
             return
         px, py = page_point(view, evt.x, evt.y)
-        # A click on empty page must not drag the object that was already selected.
         from author.stage import hit
-        if hit(view["shapes"], px, py) != self._object:
+        if hit(view["shapes"], px, py, self.layer.get()) != index:
             return
-        self._drag = {"mode": "move", "index": self._object, "px": px, "py": py, "snap": snapshot(current)}
+        self._drag = {"mode": "move", "index": index, "px": px, "py": py, "snap": snapshot(current)}
 
     def _on_drag(self, evt):
         drag = self._drag
@@ -395,10 +412,11 @@ class Editor:
         pages = self.book.get("pages") or []
         if not view or not (0 <= self.current < len(pages)):
             return
-        from author.tools import move_shape, page_point, resize_shape, shape_at
-        shape = shape_at(pages[self.current], drag["index"])
-        if shape is None:
+        from author.tools import move_shape, page_point, resize_shape
+        shapes = pages[self.current].get("shapes") or []
+        if not (0 <= drag["index"] < len(shapes)):
             return
+        shape = shapes[drag["index"]]
         px, py = page_point(view, evt.x, evt.y)
         if drag["mode"] == "move":
             move_shape(shape, drag["snap"], px - drag["px"], py - drag["py"])
@@ -419,6 +437,7 @@ class Editor:
         view = getattr(self.canvas, "_author_view", None)
         if not view or not view.get("scale"):
             return
+        from author.catalog import place_shape
         from author.tools import new_shape, page_point
         x0, y0 = page_point(view, down[0], down[1])
         x1, y1 = page_point(view, evt.x, evt.y)
@@ -427,16 +446,71 @@ class Editor:
             return
         page = pages[self.current]
         names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
-        shape = new_shape(tool, x0, y0, x1, y1, names)
-        page.setdefault("shapes", []).append(shape)
+        shape = new_shape(tool, x0, y0, x1, y1, names, self.layer.get())
+        if tool == "picture":
+            chosen = filedialog.askopenfilename(
+                title="Picture",
+                filetypes=[("Pictures", "*.png *.gif *.bmp *.jpg *.jpeg"), ("All", "*.*")],
+            )
+            if not chosen:
+                return
+            import base64
+            shape["data"] = base64.b64encode(Path(chosen).read_bytes()).decode("ascii")
+        placed = place_shape(page, shape)
         self._fill_objects(page)
-        last = len(self._rows) - 1
-        if last >= 0:
-            self.objects.selection_clear(0, "end")
-            self.objects.selection_set(last)
-            self.objects.see(last)
-            self._on_object()
+        for row, item in enumerate(self._rows):
+            if item["index"] == placed:
+                self.objects.selection_clear(0, "end")
+                self.objects.selection_set(row)
+                self.objects.see(row)
+                self._on_object()
+                break
         self._fitted = None
+        self._preview()
+
+    def _selected(self):
+        pages = self.book.get("pages") or []
+        if self._object is None or not self._rows or not (0 <= self.current < len(pages)):
+            return None, None
+        if not (0 <= self._object < len(self._rows)):
+            return None, None
+        index = self._rows[self._object]["index"]
+        shapes = pages[self.current].get("shapes") or []
+        if not (0 <= index < len(shapes)):
+            return None, None
+        return shapes[index], index
+
+    def _relayer(self):
+        pages = self.book.get("pages") or []
+        if 0 <= self.current < len(pages):
+            self._fill_objects(pages[self.current])
+        self._preview()
+
+    def _color(self, which: str):
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        from tkinter import colorchooser
+        _rgb, color = colorchooser.askcolor(color=shape.get(which) or None, parent=self.root)
+        if not color:
+            return
+        shape[which] = color
+        self._preview()
+
+    def _restack(self, direction: str):
+        _shape, index = self._selected()
+        pages = self.book.get("pages") or []
+        if index is None or not (0 <= self.current < len(pages)):
+            return
+        from author.catalog import restack
+        moved = restack(pages[self.current], index, direction)
+        self._fill_objects(pages[self.current])
+        for row, item in enumerate(self._rows):
+            if item["index"] == moved:
+                self.objects.selection_set(row)
+                self.objects.see(row)
+                self._on_object()
+                break
         self._preview()
 
     def _select_at(self, x: float, y: float):
@@ -446,13 +520,16 @@ class Editor:
         from author.stage import hit
         from author.tools import page_point
         px, py = page_point(view, x, y)
-        found = hit(view["shapes"], px, py)
+        found = hit(view["shapes"], px, py, self.layer.get())
         if found is None:
             return
-        self.objects.selection_clear(0, "end")
-        self.objects.selection_set(found)
-        self.objects.see(found)
-        self._on_object()
+        for row, item in enumerate(self._rows):
+            if item["index"] == found:
+                self.objects.selection_clear(0, "end")
+                self.objects.selection_set(row)
+                self.objects.see(row)
+                self._on_object()
+                return
 
     def _wrap(self, mark: str):
         try:

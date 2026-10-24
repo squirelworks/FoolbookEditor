@@ -12,10 +12,33 @@ _SIZE = {
     "button": (90, 28),
     "text": (160, 36),
     "box": (100, 60),
+    "line": (80, 8),
+    "ellipse": (80, 60),
+    "polygon": (80, 60),
+    "arc": (80, 60),
+    "picture": (120, 80),
 }
 
-_KIND = {"button": "button", "text": "text", "box": "rect"}
-_LABEL = {"button": "Button", "text": "Field", "box": "Rectangle"}
+_KIND = {
+    "button": "button",
+    "text": "text",
+    "box": "rect",
+    "line": "line",
+    "ellipse": "ellipse",
+    "polygon": "polygon",
+    "arc": "arc",
+    "picture": "image",
+}
+_LABEL = {
+    "button": "Button",
+    "text": "Field",
+    "box": "Rectangle",
+    "line": "Line",
+    "ellipse": "Ellipse",
+    "polygon": "Polygon",
+    "arc": "Arc",
+    "picture": "Picture",
+}
 
 
 def page_point(view: dict, x: float, y: float) -> tuple[float, float]:
@@ -36,8 +59,8 @@ def window_point(view: dict, x: float, y: float) -> tuple[float, float]:
     )
 
 
-def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[str]) -> dict:
-    """One new object. ``tool`` is button, text, or box."""
+def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[str], layer: str = "page") -> dict:
+    """One new object. ``tool`` is one Foolbook already draws."""
     if tool not in _KIND:
         raise ValueError(f"unknown tool {tool}")
     left, top = min(x0, x1), min(y0, y1)
@@ -53,19 +76,36 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
     while name in names:
         name = f"{label}{n}"
         n += 1
-    return {
+    shape = {
         "kind": _KIND[tool],
         "name": name,
         "x": int(left),
         "y": int(top),
         "w": int(width),
         "h": int(height),
-        "text": label if tool != "box" else "",
+        "text": label if tool in ("button", "text") else "",
         "script": "",
         "fill": "#c0c0c0" if tool == "button" else "",
         "outline": "#000000",
         "visible": True,
+        "layer": layer or "page",
     }
+    if tool == "line":
+        if abs(x1 - x0) < 8 and abs(y1 - y0) < 8:
+            shape["points"] = [[int(left), int(top)], [int(left + width), int(top + height)]]
+        else:
+            shape["points"] = [[int(x0), int(y0)], [int(x1), int(y1)]]
+    elif tool == "polygon":
+        shape["points"] = [
+            [int(left), int(top)],
+            [int(left + width), int(top)],
+            [int(left + width), int(top + height)],
+            [int(left), int(top + height)],
+        ]
+        shape["fill"] = "#c0c0c0"
+    elif tool == "arc":
+        shape["ends"] = [[int(left), int(top + height / 2)], [int(left + width), int(top + height / 2)]]
+    return shape
 
 
 def shape_at(page: dict, index: int) -> dict | None:

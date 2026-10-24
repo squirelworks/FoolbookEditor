@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 — 2026-10-24
+
+- Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.
+- Line, Ellipse, Polygon, Arc, and Picture place a shape Foolbook draws. Fill and Line set the colour of the selected object. Front and Back move it within its own layer.
+
 ## 0.3.5 — 2026-10-24
 
 - Select drags the object under the pointer. The four squares on a selected object pull its corners, and the opposite corner stays put.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from author.catalog import objects_of, page_ids, page_script, set_object_script
+from author.catalog import objects_of, page_ids, page_script, place_shape, restack, set_object_script
 
 
 class CatalogTests(unittest.TestCase):
@@ -33,6 +33,27 @@ class CatalogTests(unittest.TestCase):
     def test_page_script_comes_from_the_handlers(self):
         page = {"handlers": [{"name": "buttonClick", "source": "send next"}]}
         self.assertEqual(page_script(page), "send next\n")
+
+    def test_the_background_list_leaves_the_page_out(self):
+        page = {"shapes": [
+            {"kind": "rect", "name": "paper", "layer": "background"},
+            {"kind": "button", "name": "Next", "layer": "page"},
+        ]}
+        self.assertEqual([row["name"] for row in objects_of(page, "background")], ["paper"])
+        self.assertEqual([row["name"] for row in objects_of(page, "page")], ["Next"])
+
+    def test_a_background_object_is_stored_under_the_page(self):
+        page = {"shapes": [{"kind": "button", "name": "Next", "layer": "page"}]}
+        place_shape(page, {"kind": "rect", "name": "Box", "layer": "background"})
+        self.assertEqual([shape["name"] for shape in page["shapes"]], ["Box", "Next"])
+
+    def test_front_does_not_cross_onto_the_other_layer(self):
+        page = {"shapes": [
+            {"kind": "rect", "name": "paper", "layer": "background"},
+            {"kind": "button", "name": "Next", "layer": "page"},
+        ]}
+        self.assertEqual(restack(page, 0, "front"), 0)
+        self.assertEqual(page["shapes"][0]["name"], "paper")
 
 
 if __name__ == "__main__":
