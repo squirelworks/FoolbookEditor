@@ -3,8 +3,8 @@
 Foolbook opens a book. This writes one.
 
   python3 -m foolbookeditor
-  python3 -m foolbookeditor path/to/book.fbk
-  python3 -m foolbookeditor --desktop path/to/book.fbk
+  python3 -m foolbookeditor path/to/book.tbk
+  python3 -m foolbookeditor --browser path/to/book.fbk
   python3 -m foolbookeditor --fbk path/to/book.tbk       # write book.fbk; an .sbk writes an .fsk
   python3 -m foolbookeditor --export-exe path/to/book.fbk   # scaffold, writes nothing
 """
@@ -36,12 +36,13 @@ def main() -> int:
             print(exc)
             return 2
         return 0
-    if "--desktop" in args:
-        args = [a for a in args if a != "--desktop"]
-        from author.gui import main as desktop
-        return desktop(args)
-    from author.web import main as browser
-    return browser(args)
+    if "--browser" in args:
+        rest = [a for a in args if a != "--browser"]
+        from author.web import main as browser
+        return browser(rest)
+    args = [a for a in args if a != "--desktop"]
+    from author.gui import main as desktop
+    return desktop(args)
 
 
 if __name__ == "__main__":

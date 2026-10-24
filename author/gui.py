@@ -49,7 +49,7 @@ class Editor:
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
-        for name, label in (("select", "Select"), ("text", "Text"), ("box", "Box"), ("button", "Button")):
+        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(bar, text="Bold", command=lambda: self._wrap("**")).pack(side="left")
@@ -77,7 +77,8 @@ class Editor:
         body.add(center, weight=3)
         self.canvas = tk.Canvas(center, bg="white", highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
-        self.canvas.bind("<Button-1>", self._on_canvas_click)
+        self.canvas.bind("<ButtonPress-1>", self._on_press)
+        self.canvas.bind("<ButtonRelease-1>", self._on_release)
         self.canvas.bind("<Configure>", self._on_canvas_resize)
 
         # objects on the selected page. Author shows them. Reader may hide some.
@@ -321,14 +322,49 @@ class Editor:
         self._fitted = (event.width, event.height)
         self._preview()
 
-    def _on_canvas_click(self, evt):
+    def _on_press(self, evt):
+        self._down = (evt.x, evt.y)
+        if self.tool.get() != "select":
+            return
+        self._select_at(evt.x, evt.y)
+
+    def _on_release(self, evt):
+        tool = self.tool.get()
+        down = getattr(self, "_down", None)
+        self._down = None
+        if tool == "select" or down is None:
+            return
         view = getattr(self.canvas, "_author_view", None)
         if not view or not view.get("scale"):
             return
-        x = (evt.x - view["ox"]) / view["scale"] + view["x0"]
-        y = (evt.y - view["oy"]) / view["scale"] + view["y0"]
+        from author.tools import new_shape, page_point
+        x0, y0 = page_point(view, down[0], down[1])
+        x1, y1 = page_point(view, evt.x, evt.y)
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        page = pages[self.current]
+        names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
+        shape = new_shape(tool, x0, y0, x1, y1, names)
+        page.setdefault("shapes", []).append(shape)
+        self._fill_objects(page)
+        last = len(self._rows) - 1
+        if last >= 0:
+            self.objects.selection_clear(0, "end")
+            self.objects.selection_set(last)
+            self.objects.see(last)
+            self._on_object()
+        self._fitted = None
+        self._preview()
+
+    def _select_at(self, x: float, y: float):
+        view = getattr(self.canvas, "_author_view", None)
+        if not view or not view.get("scale"):
+            return
         from author.stage import hit
-        found = hit(view["shapes"], x, y)
+        from author.tools import page_point
+        px, py = page_point(view, x, y)
+        found = hit(view["shapes"], px, py)
         if found is None:
             return
         self.objects.selection_clear(0, "end")

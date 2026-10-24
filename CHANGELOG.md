@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.3 — 2026-10-24
+
+- The desktop window is what opens. `--browser` is the other one.
+- Button, Field, and Rectangle place an object where you drag on the picture. Select still picks the object under the pointer.
+
 ## 0.3.2 — 2026-10-24
 
 - The browser editor, which is what starts with no `--desktop` flag, now has the page in the middle. Pages stay on the left. Objects and the object script stay on the right. A `.tbk` is read through Foolbook, so the picture is the book's objects.
