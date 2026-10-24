@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 — 2026-10-24
+
+- The browser editor, which is what starts with no `--desktop` flag, now has the page in the middle. Pages stay on the left. Objects and the object script stay on the right. A `.tbk` is read through Foolbook, so the picture is the book's objects.
+
 ## 0.3.1 — 2026-10-24
 
 - The middle of Author is the page Foolbook draws. Pages stay on the left and the object script stays on the right. A click on the picture selects the object. Opening a `.tbk` reads it through Foolbook.

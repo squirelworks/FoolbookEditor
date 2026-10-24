@@ -18,6 +18,7 @@ from foolbookeditor.core import (
     export_book,
     is_office,
     load as load_book,
+    read as read_book,
     save_book,
     to_book,
     write_office,
@@ -41,13 +42,18 @@ HTML = r"""<!DOCTYPE html>
   #status { margin-left: auto; }
   #body { flex: 1; display: flex; min-height: 0; }
   #side { width: 160px; display: flex; flex-direction: column; border-right: 2px solid #808080; }
-  #side h1 { margin: 0; padding: 4px 6px; background: #000080; color: #fff; font-size: 12px; }
-  #pages { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
-  #pages li { padding: 2px 6px; cursor: pointer; border-bottom: 1px solid #dfdfdf; }
-  #pages li.active { background: #000080; color: #fff; }
+  #side h1, #rail h1 { margin: 0; padding: 4px 6px; background: #000080; color: #fff; font-size: 12px; }
+  #pages, #object-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
+  #pages li, #object-list li { padding: 2px 6px; cursor: pointer; border-bottom: 1px solid #dfdfdf; }
+  #pages li.active, #object-list li.active { background: #000080; color: #fff; }
   #work { flex: 1; display: flex; min-width: 0; }
-  #form { flex: 1; overflow: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
-  #preview { width: 280px; background: #fff; border-left: 2px solid #808080; padding: 8px; overflow: auto; }
+  #center { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #stage { flex: 1; background: #fff; min-height: 240px; overflow: hidden; }
+  #stage svg { width: 100%; height: 100%; display: block; }
+  #stage .empty { padding: 24px; color: #404040; }
+  #form { max-height: 220px; overflow: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; border-top: 2px solid #808080; }
+  #rail { width: 260px; display: flex; flex-direction: column; border-left: 2px solid #808080; }
+  #oscript { flex: 1; min-height: 120px; }
   label { display: block; }
   input[type="text"], textarea { font: inherit; width: 100%; box-sizing: border-box; }
   textarea { min-height: 80px; }
@@ -96,7 +102,9 @@ HTML = r"""<!DOCTYPE html>
       </div>
     </div>
     <div id="work">
-      <div id="form">
+      <div id="center">
+        <div id="stage"></div>
+        <div id="form">
         <div class="row">
           <label>Title <input id="title" type="text"></label>
           <label>Subject <input id="subject" type="text"></label>
@@ -119,8 +127,13 @@ HTML = r"""<!DOCTYPE html>
         </div>
         <div id="choices"></div>
         <button type="button" id="add-choice">Add choice</button>
+        </div>
       </div>
-      <div id="preview"></div>
+      <div id="rail">
+        <h1>Objects</h1>
+        <ul id="object-list"></ul>
+        <label>Object script <textarea id="oscript"></textarea></label>
+      </div>
     </div>
   </div>
 <script>
@@ -226,37 +239,90 @@ function fillQuiz(page) {
 }
 
 function preview() {
-  const box = field("preview");
-  box.innerHTML = "";
   const page = book.pages[index];
   if (!page) return;
-  const raw = field("text").value.trim();
-  const blocks = raw ? raw.split(/\n\n/).map(b => b.trim()).filter(Boolean) : (page.text || []);
-  blocks.forEach(text => {
-    const p = document.createElement("p");
-    p.textContent = text;
-    box.appendChild(p);
-  });
-  readJumps().forEach(item => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = item.label || item.page || "Go";
-    b.onclick = () => {
-      readForm();
-      const at = book.pages.findIndex(p => (p.id || "").toLowerCase() === (item.page || "").toLowerCase());
-      if (at >= 0) show(at, false);
-    };
-    box.appendChild(b);
-  });
-  if (field("quiz-on").checked) {
-    readChoices().forEach(choice => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = choice.label + (choice.correct ? " *" : "");
-      box.appendChild(b);
-    });
-  }
+  drawStage(page);
+  fillObjects(page);
 }
+
+function shapeBox(shape) {
+  const bounds = shape.bounds;
+  if (bounds && bounds.length >= 4) return bounds;
+  return [shape.x || 0, shape.y || 0, shape.w || 0, shape.h || 0];
+}
+
+function drawStage(page) {
+  const stage = field("stage");
+  const shapes = (page.shapes || []).filter(shape => shape && typeof shape === "object");
+  if (!shapes.length) {
+    stage.innerHTML = "<div class='empty'>This page has no objects to draw. Open the .tbk. An .fbk saved before the objects were stored has nothing to put here.</div>";
+    return;
+  }
+  let maxX = 640, maxY = 480;
+  shapes.forEach(shape => {
+    const [x, y, w, h] = shapeBox(shape);
+    maxX = Math.max(maxX, x + w, x);
+    maxY = Math.max(maxY, y + h, y);
+    (shape.points || []).forEach(pt => {
+      if (pt && pt.length >= 2) {
+        maxX = Math.max(maxX, pt[0]);
+        maxY = Math.max(maxY, pt[1]);
+      }
+    });
+  });
+  const body = shapes.map((shape, i) => {
+    const fill = shape.fill || "none";
+    const stroke = shape.outline || "#000";
+    const [x, y, w, h] = shapeBox(shape);
+    if ((shape.kind === "polygon" || shape.kind === "line") && (shape.points || []).length) {
+      const pts = shape.points.filter(pt => pt && pt.length >= 2).map(pt => pt[0] + "," + pt[1]).join(" ");
+      const tag = shape.kind === "line" ? "polyline" : "polygon";
+      return "<" + tag + " data-i='" + i + "' points='" + pts + "' fill='" + (shape.kind === "line" ? "none" : fill) + "' stroke='" + stroke + "'/>";
+    }
+    if (shape.kind === "image" && shape.data) {
+      return "<image data-i='" + i + "' href='data:image/png;base64," + shape.data + "' x='" + x + "' y='" + y + "' width='" + w + "' height='" + h + "'/>";
+    }
+    if (shape.kind === "text") {
+      const text = String(shape.text || "").replace(/&/g, "&").replace(/</g, "<").slice(0, 80);
+      return "<text data-i='" + i + "' x='" + x + "' y='" + (y + 14) + "' font-size='14'>" + text + "</text>";
+    }
+    return "<rect data-i='" + i + "' x='" + x + "' y='" + y + "' width='" + w + "' height='" + h + "' fill='" + fill + "' stroke='" + stroke + "'/>";
+  }).join("");
+  stage.innerHTML = "<svg viewBox='0 0 " + maxX + " " + maxY + "'>" + body + "</svg>";
+  stage.querySelectorAll("[data-i]").forEach(el => {
+    el.onclick = () => selectObject(Number(el.getAttribute("data-i")));
+  });
+}
+
+function fillObjects(page) {
+  const ul = field("object-list");
+  ul.innerHTML = "";
+  (page.shapes || []).forEach((shape, i) => {
+    if (!shape || typeof shape !== "object") return;
+    const li = document.createElement("li");
+    const hidden = shape.visible === false ? " hidden" : "";
+    li.textContent = (shape.kind || "object") + "  " + (shape.name || "(unnamed)") + hidden;
+    li.onclick = () => selectObject(i);
+    ul.appendChild(li);
+  });
+}
+
+function selectObject(i) {
+  const page = book.pages[index];
+  const shape = (page.shapes || [])[i];
+  if (!shape) return;
+  field("oscript").value = shape.script || "";
+  field("oscript").dataset.index = String(i);
+  field("object-list").querySelectorAll("li").forEach((li, n) => li.className = n === i ? "active" : "");
+}
+
+field("oscript").oninput = () => {
+  const page = book.pages[index];
+  const i = Number(field("oscript").dataset.index);
+  const shape = (page.shapes || [])[i];
+  if (!shape) return;
+  shape.script = field("oscript").value;
+};
 
 function show(i, flush) {
   if (flush && book.pages[index]) readForm();
@@ -378,7 +444,13 @@ openBook();
 
 
 def _prepare(path: Path) -> dict:
-    book = to_book(path) if is_office(path) else load_book(path)
+    suffix = path.suffix.lower()
+    if is_office(path):
+        book = to_book(path)
+    elif suffix in {".tbk", ".sbk"}:
+        book = read_book(path)
+    else:
+        book = load_book(path)
     pages = book.setdefault("pages", [])
     if not pages:
         pages.append(blank_book()["pages"][0])
