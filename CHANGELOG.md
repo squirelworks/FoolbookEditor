@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.4 — 2026-10-24
+
+- The Author window opens large enough for three panes. The picture is the middle one. The page list and the object list cannot push it off the screen.
+
 ## 0.3.3 — 2026-10-24
 
 - The desktop window is what opens. `--browser` is the other one.

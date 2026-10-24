@@ -26,7 +26,9 @@ class Editor:
     def __init__(self, path: Path | None = None):
         self.root = tk.Tk()
         self.root.title("Foolbook Author")
-        self.root.geometry("1100x720")
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        self.root.geometry(f"{max(1280, screen_w - 40)}x{max(800, screen_h - 80)}")
         self.book: dict = {"id": "new", "title": "New book", "pages": []}
         self.path: Path | None = path
         self.current = 0
@@ -59,6 +61,7 @@ class Editor:
 
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=4, pady=4)
+        self.body = body
 
         # page list
         left = ttk.Frame(body, width=160)
@@ -75,7 +78,7 @@ class Editor:
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
         body.add(center, weight=3)
-        self.canvas = tk.Canvas(center, bg="white", highlightthickness=0)
+        self.canvas = tk.Canvas(center, bg="white", width=640, height=480, highlightthickness=0)
         self.canvas.pack(fill="both", expand=True)
         self.canvas.bind("<ButtonPress-1>", self._on_press)
         self.canvas.bind("<ButtonRelease-1>", self._on_release)
@@ -100,13 +103,13 @@ class Editor:
         form = ttk.Frame(center)
         form.pack(fill="x")
         ttk.Label(form, text="Page id").grid(row=0, column=0, sticky="w")
-        self.pid = ttk.Entry(form, width=20)
+        self.pid = ttk.Entry(form, width=12)
         self.pid.grid(row=0, column=1, sticky="w", padx=4)
         ttk.Label(form, text="Next").grid(row=0, column=2, sticky="w")
-        self.next = ttk.Entry(form, width=16)
+        self.next = ttk.Entry(form, width=10)
         self.next.grid(row=0, column=3, sticky="w", padx=4)
         ttk.Label(form, text="Back").grid(row=0, column=4, sticky="w")
-        self.back = ttk.Entry(form, width=16)
+        self.back = ttk.Entry(form, width=10)
         self.back.grid(row=0, column=5, sticky="w", padx=4)
 
         ttk.Label(center, text="Text  (blank line = new paragraph; lines starting with - or * are a list)").pack(anchor="w", pady=(6, 0))
@@ -115,6 +118,19 @@ class Editor:
         self.text.bind("<KeyRelease>", lambda e: self._preview())
 
         ttk.Button(center, text="Apply", command=self._apply).pack(anchor="e", pady=4)
+        self.root.after_idle(self._split)
+
+    def _split(self):
+        """Keep the picture on screen. The side panes do not take the window."""
+        width = self.body.winfo_width()
+        if width < 400:
+            self.root.after(50, self._split)
+            return
+        try:
+            self.body.sashpos(0, 180)
+            self.body.sashpos(1, width - 280)
+        except tk.TclError:
+            return
 
     def _new(self):
         self.book = {
