@@ -8,7 +8,7 @@ python3 -m foolbookeditor --fbk path/to/book.sbk    # write book.fsk
 python3 -m foolbookeditor --fbk path/to/courses     # every book in the folder
 ```
 
-Foolbook reads the ToolBook file, including the object store in a `.tbk`: page order, field text, polygon outlines, the background colour, and button bitmaps. The editor writes the `.fbk` or `.fsk`. A script that lives in another book is not included.
+The Author window lists pages in book order and the objects Foolbook read on the selected page. A field the reader hides stays visible here. Selecting an object shows its script. Save writes an `.fbk`. The editor does not read the book itself.
 
 ```bash
 python3 -m foolbookeditor                         # new book, browser, port 6767

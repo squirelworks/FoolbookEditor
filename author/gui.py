@@ -63,7 +63,7 @@ class Editor:
         # page list
         left = ttk.Frame(body, width=160)
         body.add(left, weight=0)
-        ttk.Label(left, text="Slides").pack(anchor="w")
+        ttk.Label(left, text="Pages").pack(anchor="w")
         self.pages = tk.Listbox(left, exportselection=False, width=18)
         self.pages.pack(fill="both", expand=True)
         self.pages.bind("<<ListboxSelect>>", self._on_select)
@@ -71,6 +71,22 @@ class Editor:
         row.pack(fill="x", pady=4)
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
         ttk.Button(row, text="Delete", command=self._del_page).pack(side="left", padx=4)
+
+        # objects on the selected page. Author shows them. Reader may hide some.
+        objects = ttk.Frame(body, width=220)
+        body.add(objects, weight=0)
+        ttk.Label(objects, text="Objects").pack(anchor="w")
+        self.objects = tk.Listbox(objects, exportselection=False, width=28)
+        self.objects.pack(fill="both", expand=True)
+        self.objects.bind("<<ListboxSelect>>", self._on_object)
+        self.object_meta = ttk.Label(objects, text="", wraplength=200)
+        self.object_meta.pack(anchor="w", pady=4)
+        ttk.Label(objects, text="Object script").pack(anchor="w")
+        self.oscript = tk.Text(objects, height=12, wrap="word")
+        self.oscript.pack(fill="both", expand=True)
+        ttk.Button(objects, text="Apply script", command=self._apply_script).pack(anchor="e", pady=4)
+        self._rows: list[dict] = []
+        self._object = None
 
         # center: preview + editor
         center = ttk.Frame(body)
@@ -202,6 +218,7 @@ class Editor:
         if not sel:
             return
         self._apply()
+        self._apply_script()
         self.current = sel[0]
         self._show(self.current)
 
@@ -219,7 +236,44 @@ class Editor:
         self.back.insert(0, items.get("back") or "")
         self.text.delete("1.0", "end")
         self.text.insert("1.0", "\n\n".join(p.get("text") or []))
+        self._fill_objects(p)
         self._preview()
+
+    def _fill_objects(self, page: dict):
+        from author.catalog import objects_of, page_script
+        self._rows = objects_of(page)
+        self._object = None
+        self.objects.delete(0, "end")
+        for row in self._rows:
+            name = row["name"] or "(unnamed)"
+            mark = " hidden" if row["hidden"] else ""
+            self.objects.insert("end", f"{row['kind']}  {name}{mark}")
+        script = page_script(page)
+        self.oscript.delete("1.0", "end")
+        self.oscript.insert("1.0", script)
+        self.object_meta.config(text="Page script" if script else "No objects" if not self._rows else "")
+
+    def _on_object(self, _evt=None):
+        sel = self.objects.curselection()
+        if not sel or not self._rows:
+            return
+        self._apply_script()
+        self._object = sel[0]
+        row = self._rows[self._object]
+        left, top, right, bottom = row["bounds"]
+        self.object_meta.config(text=f"{row['kind']}  {row['name'] or '(unnamed)'}  {left}, {top}, {right}, {bottom}")
+        self.oscript.delete("1.0", "end")
+        self.oscript.insert("1.0", row["script"])
+
+    def _apply_script(self):
+        if self._object is None:
+            return
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        from author.catalog import set_object_script
+        set_object_script(pages[self.current], self._rows[self._object]["index"], self.oscript.get("1.0", "end"))
+        self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
 
     def _apply(self):
         pages = self.book.get("pages") or []
