@@ -51,7 +51,8 @@ class Editor:
         else:
             self._new(ask=False)
             if path is None:
-                self._start([])
+                from author import settings
+                self._start(settings.recent())
         from author.recovery import INTERVAL_MS
         self.root.after(INTERVAL_MS, self._recover)
         self.root.mainloop()
@@ -205,6 +206,11 @@ class Editor:
         ttk.Button(bar, text="New", command=self._new).pack(side="left")
         ttk.Button(bar, text="Template", command=self._template).pack(side="left", padx=(2, 0))
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
+        recent_button = ttk.Menubutton(bar, text="Recent")
+        self.recent_menu = tk.Menu(recent_button, tearoff=False)
+        recent_button["menu"] = self.recent_menu
+        recent_button.pack(side="left", padx=2)
+        self._fill_recent()
         ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
@@ -943,6 +949,27 @@ class Editor:
         if p and self._discard_ok():
             self._load(Path(p))
 
+    def _remember(self, path: Path):
+        from author import settings
+        settings.remember(path)
+        self._fill_recent()
+
+    def _fill_recent(self):
+        from author import settings
+        self.recent_menu.delete(0, "end")
+        for item in settings.recent():
+            self.recent_menu.add_command(label=item, command=lambda p=item: self._open_recent(p))
+
+    def _open_recent(self, item: str):
+        from author import settings
+        found, said = settings.pick(item)
+        self._fill_recent()
+        if found is None:
+            self.status.config(text=said)
+            return
+        if self._discard_ok():
+            self._load(found)
+
     def _load(self, path: Path):
         from author.files import save_path_for
         try:
@@ -962,6 +989,7 @@ class Editor:
         self.path = save_path_for(path)
         from author.files import is_compressed
         self.compress.set(is_compressed(path))
+        self._remember(path)
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
@@ -1008,6 +1036,7 @@ class Editor:
             return
         self._snapshot()
         self._saved()
+        self._remember(self.path)
         self.status.config(text=f"Saved {self.path.name}")
 
     def _save_as(self):
@@ -1027,6 +1056,7 @@ class Editor:
             return
         self._snapshot()
         self._saved()
+        self._remember(self.path)
         self.status.config(text=f"Saved {self.path.name}")
 
     def _saved(self):
