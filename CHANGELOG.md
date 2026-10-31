@@ -8,6 +8,7 @@
 - A new Field is `editable: true`, so the student can type into it in Foolbook and the typing is kept as `value`. A Label is `editable: false`. Needs the reader change in Foolbook#42.
 - Check and Radio place a checkbox and a radio button, off, with a caption. Radios share the group `choice`, so the reader turns the others off when one is clicked. Needs Foolbook#49.
 - List places a list box with three choices and none chosen. The reader picks a row into `value` and scrolls a long list. Needs Foolbook#50.
+- Combo places a one-row combo box with three choices. The reader opens it on a click and closes it on the row picked. Needs Foolbook#51.
 
 ## 0.4.0 — 2026-10-24
 

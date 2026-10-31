@@ -28,6 +28,7 @@ _SIZE = {
     "check": (120, 22),
     "radio": (120, 22),
     "list": (140, 72),
+    "combo": (140, 22),
     "box": (100, 60),
     "line": (80, 8),
     "ellipse": (80, 60),
@@ -43,6 +44,7 @@ _KIND = {
     "check": "check",
     "radio": "radio",
     "list": "list",
+    "combo": "combo",
     "box": "rect",
     "line": "line",
     "ellipse": "ellipse",
@@ -57,6 +59,7 @@ _LABEL = {
     "check": "Check",
     "radio": "Radio",
     "list": "List",
+    "combo": "Combo",
     "box": "Rectangle",
     "line": "Line",
     "ellipse": "Ellipse",
@@ -139,8 +142,8 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
         shape["outline"] = INK
         if tool == "radio":
             shape["group"] = RADIO_GROUP
-    elif tool == "list":
-        # The reader picks a row into value and scrolls a list longer than its box.
+    elif tool in ("list", "combo"):
+        # The reader picks a row into value. A list scrolls; a combo opens below its box.
         shape["choices"] = list(LIST_CHOICES)
         shape["fill"] = "#ffffff"
         shape["outline"] = INK
