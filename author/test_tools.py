@@ -88,6 +88,12 @@ class RectangleTests(unittest.TestCase):
     def test_a_field_is_not_a_label(self):
         self.assertNotIn("preset", new_shape("text", 0, 0, 160, 36, set()))
 
+    def test_a_field_is_one_the_student_types_into(self):
+        self.assertIs(new_shape("text", 0, 0, 160, 36, set())["editable"], True)
+
+    def test_a_label_is_not_typed_into(self):
+        self.assertIs(new_shape("label", 0, 0, 120, 24, set())["editable"], False)
+
 
 if __name__ == "__main__":
     unittest.main()
