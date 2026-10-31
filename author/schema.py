@@ -15,6 +15,15 @@ BOOK_FIELDS = ("id", "title", "pages")
 # strings. ``size`` is [w, h]; a page without it is the book's size.
 PAGE_FIELDS = ("id", "text", "items", "shapes", "script", "name", "size")
 
+# Shape fields that must survive a save and a load.
+SHAPE_FIELDS = (
+    "kind", "name", "text", "x", "y", "w", "h", "fill", "outline", "size",
+    "points", "item", "script", "src", "data", "visible", "layer",
+)
+
+# Fields one kind of shape adds. An arc keeps the two ends of its curve.
+SHAPE_EXTRA = {"arc": ("ends",)}
+
 # Editor state the web editor keeps on the book. The envelope already
 # says the magic, and the reader does not read this key, so it is not
 # written into the payload.
