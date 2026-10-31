@@ -91,6 +91,7 @@
 - A drag on empty page draws a box and selects every object whose bounds meet it. The object list can select more than one.
 - Arrow keys move the selected objects by 1, and Shift+arrow by 8. Dragging one of several selected objects moves them all.
 - A selected object has eight handles, and a line has its two ends. A side handle pulls one side. Nothing resizes below 4 by 4.
+- Shift while drawing makes a box square, and makes a line horizontal, vertical, or 45 degrees.
 
 ## 0.4.0 — 2026-10-24
 

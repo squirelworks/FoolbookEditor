@@ -188,3 +188,30 @@ def resize(shape: dict, before: dict, handle: str, px: float, py: float) -> None
                 [left + (float(pt[0]) - x) * nw / w, top + (float(pt[1]) - y) * nh / h] + list(pt[2:])
                 for pt in before[key]
             ]
+
+
+def constrain_box(x0: float, y0: float, x1: float, y1: float) -> tuple[float, float]:
+    """Shift while drawing a box: the far corner moves so the box is a square.
+
+    The side is the longer of the two drags. The drag direction is kept.
+    """
+    side = max(abs(x1 - x0), abs(y1 - y0))
+    return x0 + math.copysign(side, (x1 - x0) or 1), y0 + math.copysign(side, (y1 - y0) or 1)
+
+
+def constrain_line(x0: float, y0: float, x1: float, y1: float) -> tuple[float, float]:
+    """Shift while drawing a line: the end snaps to horizontal, vertical, or 45 degrees.
+
+    The nearest of the eight directions wins. The length along it is kept
+    for horizontal and vertical, and is the longer leg for a diagonal.
+    """
+    dx, dy = x1 - x0, y1 - y0
+    if not dx and not dy:
+        return x1, y1
+    angle = math.degrees(math.atan2(dy, dx)) % 180
+    if angle < 22.5 or angle >= 157.5:
+        return x1, y0
+    if 67.5 <= angle < 112.5:
+        return x0, y1
+    leg = max(abs(dx), abs(dy))
+    return x0 + math.copysign(leg, dx or 1), y0 + math.copysign(leg, dy or 1)
