@@ -1405,17 +1405,14 @@ class Editor:
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
-        if self._object is None:
-            from author.catalog import set_page_script
-            set_page_script(pages[self.current], self.oscript.get("1.0", "end"))
-            return
-        from author.catalog import set_object_script
+        from author.scripts import apply
         source = self.oscript.get("1.0", "end")
-        set_object_script(pages[self.current], self._rows[self._object]["index"], source)
-        from author.scripts import status
-        note = status(source)
+        index = None if self._object is None else self._rows[self._object]["index"]
+        note = apply(pages[self.current], index, source)
         if note:
             self.status.config(text=note)
+        if self._object is None:
+            return
         self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
         self._show_actions()
 
