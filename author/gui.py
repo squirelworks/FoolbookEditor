@@ -144,6 +144,12 @@ class Editor:
         ttk.Label(form, text="Back").grid(row=0, column=4, sticky="w")
         self.back = ttk.Entry(form, width=10)
         self.back.grid(row=0, column=5, sticky="w", padx=4)
+        ttk.Label(form, text="Size").grid(row=0, column=6, sticky="w")
+        self.page_w = ttk.Entry(form, width=5)
+        self.page_w.grid(row=0, column=7, sticky="w", padx=(4, 0))
+        ttk.Label(form, text="x").grid(row=0, column=8)
+        self.page_h = ttk.Entry(form, width=5)
+        self.page_h.grid(row=0, column=9, sticky="w")
 
         ttk.Label(center, text="Text  (blank line = new paragraph; lines starting with - or * are a list)").pack(anchor="w", pady=(6, 0))
         self.text = tk.Text(center, height=4, wrap="word")
@@ -289,6 +295,12 @@ class Editor:
         self.next.insert(0, items.get("next") or "")
         self.back.delete(0, "end")
         self.back.insert(0, items.get("back") or "")
+        from author.stage import page_size
+        width, height = page_size(p)
+        self.page_w.delete(0, "end")
+        self.page_w.insert(0, str(width))
+        self.page_h.delete(0, "end")
+        self.page_h.insert(0, str(height))
         self.text.delete("1.0", "end")
         self.text.insert("1.0", "\n\n".join(p.get("text") or []))
         self._fill_objects(p)
@@ -335,7 +347,16 @@ class Editor:
         if not (0 <= self.current < len(pages)):
             return
         p = pages[self.current]
-        from author.document import set_id, set_nav, set_text, text_from_editor
+        from author.document import set_id, set_nav, set_size, set_text, text_from_editor
+        from author.stage import page_size
+        if (self.page_w.get().strip(), self.page_h.get().strip()) != tuple(str(n) for n in page_size(p)):
+            if not set_size(p, self.page_w.get().strip(), self.page_h.get().strip()):
+                width, height = page_size(p)
+                self.page_w.delete(0, "end")
+                self.page_w.insert(0, str(width))
+                self.page_h.delete(0, "end")
+                self.page_h.insert(0, str(height))
+                self.status.config(text="Size is two whole numbers above zero")
         set_id(p, self.pid.get())
         set_text(p, text_from_editor(self.text.get("1.0", "end")))
         set_nav(p, self.next.get(), self.back.get())
