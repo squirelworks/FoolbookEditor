@@ -30,6 +30,7 @@ _SIZE = {
     "chord": (80, 60),
     "pie": (80, 60),
     "picture": (120, 80),
+    "hotspot": (80, 60),
 }
 
 _KIND = {
@@ -45,6 +46,7 @@ _KIND = {
     "chord": "chord",
     "pie": "pie",
     "picture": "image",
+    "hotspot": "hotspot",
 }
 _LABEL = {
     "button": "Button",
@@ -59,6 +61,7 @@ _LABEL = {
     "chord": "Chord",
     "pie": "Pie",
     "picture": "Picture",
+    "hotspot": "Hotspot",
 }
 
 
@@ -171,6 +174,9 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
         shape["fill"] = PAPER
         shape["outline"] = INK
         shape["radius"] = RADIUS
+    elif tool == "hotspot":
+        # Never filled. The outline is only for Author. Foolbook does not draw it.
+        shape["outline"] = INK
     elif tool == "polygon":
         shape["points"] = [
             [int(left), int(top)],

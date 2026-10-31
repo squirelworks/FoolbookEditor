@@ -25,5 +25,21 @@ class StageTests(unittest.TestCase):
         self.assertIsNone(hit(shapes, 200, 200))
 
 
+class HotspotStageTests(unittest.TestCase):
+    def test_a_hotspot_is_placed_with_no_fill(self):
+        from author.tools import new_shape
+        shape = new_shape("hotspot", 10, 10, 90, 70, set())
+        self.assertEqual((shape["kind"], shape["fill"]), ("hotspot", ""))
+
+    def test_author_draws_a_hotspot_as_an_outline(self):
+        page = {"shapes": [{"kind": "hotspot", "name": "Door", "x": 1, "y": 2, "w": 30, "h": 40, "fill": "",
+                            "outline": "#071428", "item": {"page": "P200"}}]}
+        row = shown(page)[0]
+        self.assertEqual(row["kind"], "rect")
+        self.assertEqual((row["fill"], row["outline"]), ("", "#071428"))
+        self.assertEqual(row["item"], {"page": "P200"})
+        self.assertEqual(page["shapes"][0]["kind"], "hotspot")
+
+
 if __name__ == "__main__":
     unittest.main()
