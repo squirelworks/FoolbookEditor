@@ -85,6 +85,12 @@ class Editor:
             var = tk.BooleanVar(value=False)
             self.viewer_buttons[name] = var
             ttk.Checkbutton(tools, text=label, variable=var, command=self._set_viewer).pack(side="left", padx=2)
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="System book").pack(side="left")
+        self.system = ttk.Entry(tools, width=16)
+        self.system.pack(side="left", padx=2)
+        self.system.bind("<Return>", self._set_system)
+        self.system.bind("<FocusOut>", self._set_system)
 
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=4, pady=4)
@@ -181,7 +187,7 @@ class Editor:
         p = filedialog.askopenfilename(
             title="Open book",
             filetypes=[
-                ("Foolbook", "*.fbk *.json *.tbk *.sbk"),
+                ("Foolbook", "*.fbk *.fsk *.json *.tbk *.sbk"),
                 ("Office", "*.pdf *.ppt *.pptx *.doc *.docx *.odt"),
                 ("All", "*.*"),
             ],
@@ -201,7 +207,10 @@ class Editor:
         self.path = path
         self.current = 0
         self._refresh_list()
-        self.status.config(text=str(path.name))
+        from author.document import handler_names
+        found = handler_names(self.book)
+        note = f"  {len(found)} handlers" if path.suffix.lower() == ".fsk" else ""
+        self.status.config(text=str(path.name) + note)
 
     def _save(self):
         self._apply()
@@ -267,8 +276,21 @@ class Editor:
         chosen = [name for name, var in self.viewer_buttons.items() if var.get()]
         set_viewer(self.book, current.get("name") or "Main", current.get("size") or [640, 480], chosen)
 
+    def _set_system(self, _evt=None):
+        from author.document import clear_system, set_system
+        name = self.system.get().strip()
+        if not name:
+            clear_system(self.book)
+            return
+        try:
+            set_system(self.book, name)
+        except ValueError as exc:
+            self.status.config(text=str(exc))
+
     def _show_viewer(self):
-        from author.document import viewer_of
+        from author.document import system_of, viewer_of
+        self.system.delete(0, "end")
+        self.system.insert(0, system_of(self.book) or "")
         asked = set((viewer_of(self.book) or {}).get("buttons") or [])
         for name, var in self.viewer_buttons.items():
             var.set(name in asked)
