@@ -754,7 +754,11 @@ class Editor:
         self._object = sel[0]
         row = self._rows[self._object]
         left, top, right, bottom = row["bounds"]
-        self.object_meta.config(text=f"{row['kind']}  {row['name'] or '(unnamed)'}  {left}, {top}, {right}, {bottom}")
+        size = ""
+        shape, _index = self._selected()
+        if shape and shape.get("pixels"):
+            size = f"  ({shape['pixels'][0]} x {shape['pixels'][1]} pixels)"
+        self.object_meta.config(text=f"{row['kind']}  {row['name'] or '(unnamed)'}  {left}, {top}, {right}, {bottom}{size}")
         self.oscript.delete("1.0", "end")
         self.oscript.insert("1.0", row["script"])
         self._show_properties()
@@ -1037,6 +1041,8 @@ class Editor:
             except PictureRefused as exc:
                 messagebox.showinfo("Picture", str(exc), parent=self.root)
                 return
+            if "pixels" in shape and abs(x1 - x0) < 8 and abs(y1 - y0) < 8:
+                shape["w"], shape["h"] = shape["pixels"]
         self._place(page, shape)
 
     def _place(self, page: dict, shape: dict):
