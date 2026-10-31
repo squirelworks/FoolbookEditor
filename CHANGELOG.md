@@ -14,6 +14,7 @@
 - The self test also opens the saved book and Using Foolbook through the reader, so an editor change that breaks the reader fails it.
 - Duplicate copies the current page, with its shapes and scripts, under a new id. The copy is the next page. Ctrl+Shift+D does the same.
 - Delete asks before it removes a page, and names the page and how many objects go with it. Ctrl+Shift+Delete does the same.
+- Up and Down beside the page list move the current page one place earlier or later. Ctrl+Shift+Up and Ctrl+Shift+Down do the same.
 
 ## 0.4.0 — 2026-10-24
 
