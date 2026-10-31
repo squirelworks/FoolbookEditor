@@ -52,7 +52,7 @@ class Editor:
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
-        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle")):
+        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle"), ("roundrect", "Rounded")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(bar, text="Bold", command=lambda: self._wrap("**")).pack(side="left")

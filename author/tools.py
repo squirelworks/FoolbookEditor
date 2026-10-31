@@ -14,11 +14,14 @@ DEFAULT_TOOL = "select"
 # A new rectangle is paper with an ink outline until the property pane says otherwise.
 PAPER = "#f7f4ee"
 INK = "#071428"
+# Corner radius of a new rounded rectangle, in page pixels.
+RADIUS = 8
 
 _SIZE = {
     "button": (90, 28),
     "text": (160, 36),
     "box": (100, 60),
+    "roundrect": (100, 60),
     "line": (80, 8),
     "ellipse": (80, 60),
     "polygon": (80, 60),
@@ -30,6 +33,7 @@ _KIND = {
     "button": "button",
     "text": "text",
     "box": "rect",
+    "roundrect": "roundrect",
     "line": "line",
     "ellipse": "ellipse",
     "polygon": "polygon",
@@ -40,6 +44,7 @@ _LABEL = {
     "button": "Button",
     "text": "Field",
     "box": "Rectangle",
+    "roundrect": "RoundedRectangle",
     "line": "Line",
     "ellipse": "Ellipse",
     "polygon": "Polygon",
@@ -110,6 +115,10 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
     elif tool == "box":
         shape["fill"] = PAPER
         shape["outline"] = INK
+    elif tool == "roundrect":
+        shape["fill"] = PAPER
+        shape["outline"] = INK
+        shape["radius"] = RADIUS
     elif tool == "polygon":
         shape["points"] = [
             [int(left), int(top)],

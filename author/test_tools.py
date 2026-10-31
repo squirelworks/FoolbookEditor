@@ -75,6 +75,14 @@ class RectangleTests(unittest.TestCase):
         self.assertEqual(shape["fill"], "#f7f4ee")
         self.assertEqual(shape["outline"], "#071428")
 
+class RoundRectTests(unittest.TestCase):
+    def test_a_rounded_rectangle_has_a_radius_of_8(self):
+        shape = new_shape("roundrect", 10, 10, 110, 70, set())
+        self.assertEqual(shape["kind"], "roundrect")
+        self.assertEqual(shape["radius"], 8)
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 10, 100, 60))
+        self.assertEqual((shape["fill"], shape["outline"]), ("#f7f4ee", "#071428"))
+
 
 if __name__ == "__main__":
     unittest.main()
