@@ -156,18 +156,27 @@ class Editor:
 
     def _build_properties(self, parent):
         """One row per property. Return or leaving the box applies it. Bad text puts the old value back."""
-        from author.properties import ROWS
+        from author.properties import CHOICES, ROWS
         self.props = ttk.LabelFrame(parent, text="Properties", padding=4)
         self.props.pack(fill="x", pady=4)
         self.props.columnconfigure(1, weight=1)
         self._prop_vars: dict[str, tk.StringVar] = {}
-        for row, (key, label, _kind) in enumerate(ROWS):
+        for row, (key, label, kind) in enumerate(ROWS):
             ttk.Label(self.props, text=label).grid(row=row, column=0, sticky="w")
             var = tk.StringVar()
-            entry = ttk.Entry(self.props, textvariable=var, width=18)
-            entry.grid(row=row, column=1, sticky="we", padx=4, pady=1)
-            entry.bind("<Return>", lambda _e, k=key: self._set_property(k))
-            entry.bind("<FocusOut>", lambda _e, k=key: self._set_property(k))
+            if kind == "flag":
+                box = ttk.Checkbutton(self.props, variable=var, onvalue="true", offvalue="false",
+                                      command=lambda k=key: self._set_property(k))
+                box.grid(row=row, column=1, sticky="w", padx=4, pady=1)
+            elif kind == "choice":
+                pick = ttk.Combobox(self.props, textvariable=var, values=CHOICES[key], state="readonly", width=16)
+                pick.grid(row=row, column=1, sticky="we", padx=4, pady=1)
+                pick.bind("<<ComboboxSelected>>", lambda _e, k=key: self._set_property(k))
+            else:
+                entry = ttk.Entry(self.props, textvariable=var, width=18)
+                entry.grid(row=row, column=1, sticky="we", padx=4, pady=1)
+                entry.bind("<Return>", lambda _e, k=key: self._set_property(k))
+                entry.bind("<FocusOut>", lambda _e, k=key: self._set_property(k))
             self._prop_vars[key] = var
 
     def _show_properties(self):
