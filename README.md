@@ -27,5 +27,18 @@ python3 examples/welcome.py /path/to/Foolbook/foolbook/books
 That writes the two books a new Foolbook install opens: Using Foolbook and First Light.
 
 
+## Scripts the reader runs
+
+Foolbook runs a small part of OpenScript. These are the lines a script in this editor can count on today. Anything else is kept in the file and shown in the script pane, but the reader does not act on it.
+
+| Script | What the reader does |
+|---|---|
+| `go to page "P2"` | Shows page P2. Page ids are compared without case. |
+| `go to page "P2" of book "other"` | Opens the book `other` beside this one and shows its page P2. |
+| `send next` | Shows the next page, or the page the current page's Next item names. |
+| `send previous` | Shows the previous page, or the page the Back item names. `send back` is the same. |
+
+A button's script is read as `to handle buttonClick`, then these lines, then `end`. A script with no `to handle buttonClick` line is not run by the reader yet.
+
 Self-running export is scaffolded and not built. The Export menu and `--export-exe` name it and write nothing.
 
