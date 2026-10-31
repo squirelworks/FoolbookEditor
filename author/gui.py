@@ -47,7 +47,7 @@ class Editor:
             setattr(self, name, self._committing(getattr(self, name)))
         self._build()
         from author.drop import install
-        install(self.root, self._load)
+        install(self.root, lambda path: self._discard_ok() and self._load(path))
         if path and path.exists():
             self._load(path)
         else:

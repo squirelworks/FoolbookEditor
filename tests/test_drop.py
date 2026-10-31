@@ -58,6 +58,32 @@ class DropTests(unittest.TestCase):
         handler(str(self.tmp / "gone.fbk"), str(book))
         self.assertEqual(opened, [book])
 
+    def test_a_macos_drop_asks_before_dropping_changes(self):
+        try:
+            import tkinter as tk
+            from unittest import mock
+            from author import drop, gui
+        except ImportError:
+            self.skipTest("no tkinter")
+        handed = []
+        with mock.patch.object(tk.Tk, "mainloop", lambda self: None), \
+                mock.patch.object(gui.Editor, "_start", lambda self, recent: None), \
+                mock.patch.object(drop, "install", lambda root, opener: handed.append(opener) or True):
+            try:
+                ed = gui.Editor(None)
+            except tk.TclError:
+                self.skipTest("no display")
+        try:
+            book = self.tmp / "a.fbk"
+            book.write_bytes(b"x")
+            with mock.patch.object(ed, "_discard_ok", return_value=False) as asked, \
+                    mock.patch.object(ed, "_load") as loaded:
+                handed[0](book)
+            asked.assert_called_once()
+            loaded.assert_not_called()
+        finally:
+            ed.root.destroy()
+
 
 if __name__ == "__main__":
     unittest.main()
