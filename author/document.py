@@ -77,7 +77,7 @@ def blank_book() -> dict:
 
 
 def blank_page(page_id: str) -> dict:
-    return {"id": page_id, "text": ["New slide"], "items": [], "widgets": []}
+    return {"id": page_id, "text": ["New slide"], "items": [], "shapes": []}
 
 
 def pages(book: dict) -> list:
