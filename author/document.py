@@ -11,6 +11,10 @@ are not in it yet.
 
 from __future__ import annotations
 
+import re
+
+import copy
+
 
 WIDGET_KINDS = ("text", "box", "button")
 
@@ -21,8 +25,51 @@ _WIDGET = {
 }
 
 
+# The book generation. Foolbook's save stamps the same key. A new book
+# carries it from the start, so the editor can refuse a newer one.
+BOOK_VERSION = 1
+
+PAGE_SIZE = (640, 480)
+PAGE_MIN = 64
+_HEX = "0123456789abcdef"
+
+
+def new_book(size: tuple[int, int] = PAGE_SIZE, color: str = "#ffffff") -> dict:
+    """A one-page book of that size on paper of that colour.
+
+    The paper is a page-sized rect on the background layer, the same
+    shape the reader already paints first and does not treat as a control.
+    The reader draws page text only when a page has no shapes, so the
+    new page carries no placeholder words.
+    """
+    w, h = int(size[0]), int(size[1])
+    if w < PAGE_MIN or h < PAGE_MIN:
+        raise ValueError(f"A page is at least {PAGE_MIN} by {PAGE_MIN}, not {w} by {h}.")
+    color = color.strip().lower()
+    if len(color) != 7 or color[0] != "#" or any(c not in _HEX for c in color[1:]):
+        raise ValueError(f"The background colour is #rrggbb, not {color!r}.")
+    book = blank_book()
+    book["fbk"] = BOOK_VERSION
+    page = book["pages"][0]
+    page["size"] = [w, h]
+    page["text"] = []
+    page["shapes"] = [{
+        "kind": "rect",
+        "name": "paper",
+        "x": 0,
+        "y": 0,
+        "w": w,
+        "h": h,
+        "fill": color,
+        "outline": "",
+        "layer": "background",
+    }]
+    return book
+
+
 def blank_book() -> dict:
     return {
+        "fbk": BOOK_VERSION,
         "id": "new",
         "title": "New book",
         "pages": [blank_page("P0")],
@@ -65,6 +112,21 @@ def add_page(book: dict, index: int | None = None) -> int:
     return at
 
 
+def duplicate_page(book: dict, index: int) -> int:
+    """Copy a page, shapes and scripts and all, to right after it.
+
+    The copy gets a fresh id. Nothing in it is shared with the original.
+    Returns where the copy landed, or ``index`` when there is no such page.
+    """
+    found = book.get("pages") or []
+    if not (0 <= index < len(found)):
+        return index
+    twin = copy.deepcopy(found[index])
+    twin["id"] = fresh_id(book)
+    found.insert(index + 1, twin)
+    return index + 1
+
+
 def delete_page(book: dict, index: int) -> int:
     """Drop a page. The last page stays. Returns the index to show."""
     found = book.get("pages") or []
@@ -81,6 +143,21 @@ def move_page(book: dict, index: int, delta: int) -> int:
         return index
     found[index], found[j] = found[j], found[index]
     return j
+
+
+def set_size(page: dict, width, height) -> bool:
+    """Store ``size`` as ``[w, h]``. Bad or non-positive numbers leave the old size.
+
+    Shapes are not moved or clipped. A shape past the edge stays in the file.
+    """
+    try:
+        w, h = int(width), int(height)
+    except (TypeError, ValueError):
+        return False
+    if w <= 0 or h <= 0:
+        return False
+    page["size"] = [w, h]
+    return True
 
 
 def set_id(page: dict, page_id: str) -> None:
@@ -109,6 +186,19 @@ def nav_of(page: dict) -> tuple[str, str]:
         elif label == "back":
             back = item.get("page") or ""
     return nxt, back
+
+
+def set_transition(page: dict, name: str) -> None:
+    """Store the page's transition. Foolbook ignores it: pages change with no animation.
+
+    It is kept so a later reader can honour it without a migration. "none"
+    or blank stores nothing.
+    """
+    name = (name or "").strip()
+    if name and name.lower() != "none":
+        page["transition"] = name
+    else:
+        page.pop("transition", None)
 
 
 def set_nav(page: dict, nxt: str, back: str) -> None:
@@ -246,16 +336,55 @@ def system_of(book: dict) -> str | None:
     return book.get("system") or None
 
 
+_ENTER_BOOK = re.compile(r"(?im)^[ \t]*to[ \t]+handle[ \t]+enterBook\b[^\n]*\n")
+_PUSH = re.compile(
+    r'(?im)^[ \t]*if "[^"\n]+" is not in sysBooks[ \t]*\n'
+    r'[ \t]*push "[^"\n]+" onto sysBooks[ \t]*\n'
+    r'[ \t]*end if[ \t]*\n'
+)
+
+
+def _push_lines(name: str) -> str:
+    return (f'    if "{name}" is not in sysBooks\n'
+            f'        push "{name}" onto sysBooks\n'
+            f'    end if\n')
+
+
+def _without_push(script: str) -> str:
+    """The book script with the system-book push taken out, and an enterBook left empty by it."""
+    script = _PUSH.sub("", script)
+    return re.sub(r"(?im)^[ \t]*to[ \t]+handle[ \t]+enterBook\b[^\n]*\n[ \t]*end(?:[ \t]+enterBook)?[ \t]*(?:\n|$)", "", script)
+
+
 def set_system(book: dict, name: str) -> None:
-    """Name the one system book. It is an .fsk file name."""
+    """Name the one system book. It is an .fsk file name.
+
+    The reader runs OpenScript and reads no key for this, so the book
+    script's enterBook pushes it onto sysBooks, as a ToolBook course does.
+    `system` is kept for the editor's own box.
+    """
     name = name.strip()
     if not name.lower().endswith(".fsk"):
         raise ValueError(f"{name or 'that'} is not an .fsk system book")
     book["system"] = name
+    script = _without_push(str(book.get("script") or ""))
+    found = _ENTER_BOOK.search(script)
+    if found:
+        script = script[:found.end()] + _push_lines(name) + script[found.end():]
+    else:
+        if script and not script.endswith("\n"):
+            script += "\n"
+        script += "to handle enterBook\n" + _push_lines(name) + "end\n"
+    book["script"] = script
 
 
 def clear_system(book: dict) -> None:
     book.pop("system", None)
+    script = _without_push(str(book.get("script") or ""))
+    if script.strip():
+        book["script"] = script
+    else:
+        book.pop("script", None)
 
 
 def handler_names(book: dict) -> list[str]:
