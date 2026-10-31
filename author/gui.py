@@ -240,6 +240,7 @@ class Editor:
         ttk.Radiobutton(tools, text="Background", value="background", variable=self.layer, command=self._relayer).pack(side="left", padx=2)
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(tools, text="Fill", command=lambda: self._color("fill")).pack(side="left")
+        ttk.Button(tools, text="Fit", command=self._fit).pack(side="left", padx=(2, 0))
         ttk.Button(tools, text="Line", command=lambda: self._color("outline")).pack(side="left", padx=2)
         ttk.Button(tools, text="Pattern", command=self._pattern).pack(side="left")
         self.grid = tk.BooleanVar(value=False)
@@ -1792,6 +1793,19 @@ class Editor:
             self.status.config(text="Only a rectangle takes a pattern")
             return
         self.status.config(text=f"Pattern: {name}")
+        self._preview()
+
+    def _fit(self):
+        """Fill, contain, none: how the selected picture sits in its frame."""
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        from author.tools import next_fit
+        fit = next_fit(shape)
+        if fit is None:
+            self.status.config(text="Fit is for pictures")
+            return
+        self.status.config(text=f"Fit {fit}")
         self._preview()
 
     def _restack(self, direction: str):

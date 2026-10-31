@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 from author.tools import (
+    next_fit,
     handle_at,
     move_shape,
     new_shape,
@@ -192,6 +193,19 @@ class ChordTests(unittest.TestCase):
         self.assertEqual((shape["kind"], shape["name"], shape["h"]), ("combo", "Combo", 22))
         self.assertEqual(shape["choices"], ["First", "Second", "Third"])
         self.assertNotIn("open", shape)
+
+    def test_fit_steps_from_fill_to_contain_to_none_and_back(self):
+        picture = new_shape("picture", 0, 0, 0, 0, set())
+        self.assertNotIn("fit", picture)
+        self.assertEqual(next_fit(picture), "contain")
+        self.assertEqual(next_fit(picture), "none")
+        self.assertEqual(next_fit(picture), "fill")
+        self.assertEqual(picture["fit"], "fill")
+
+    def test_fit_leaves_a_shape_that_is_not_a_picture(self):
+        box = new_shape("box", 0, 0, 0, 0, set())
+        self.assertIsNone(next_fit(box))
+        self.assertNotIn("fit", box)
 
 
 if __name__ == "__main__":
