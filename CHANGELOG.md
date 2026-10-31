@@ -2,6 +2,10 @@
 
 ## 2026-10-31
 
+- Save is not Export. Save writes `.fbk`, `.fsk`, or `.json`. A book opened from a `.tbk`, an `.sbk`, or an office file is saved beside it as `.fbk` (or `.fsk`), and the original is not written. Saving an `.fsk` keeps it a system book; it was written as an `.fbk`. The status line names the file written. Export stays its own button. The extension picks the kind whatever its case, no extension saves as `.fbk`, a system book saved as `.fbk` becomes a book, and an empty system book is still a valid `FSK1` file. Tests: `tests/test_save_target.py`, `tests/test_save_as_kind.py`.
+
+## 2026-10-31
+
 - Naming a system book writes OpenScript the reader runs: the book script's `enterBook` gets `if "shared.fsk" is not in sysBooks` / `push "shared.fsk" onto sysBooks` / `end if`, as a ToolBook course does. Before, only a `system` key was stored, and Foolbook does not read it, so the system book's handlers never ran. A new name replaces the push, and clearing it takes the push out and leaves the rest of the script. `system` stays as the editor's own record. Test: `author/test_system_book.py`.
 - Find lists every page text and shape text that holds a word or phrase, with how many times, and Replace all changes them and says how many. The search is plain text, never a regular expression. Match case is off unless ticked.
 
@@ -112,7 +116,6 @@
 - Undo and Redo, Ctrl+Z and Ctrl+Y, step through the last 50 changes. Typing in a box is one step when the box loses focus.
 - Cut, Copy and Paste work on the selected objects, or on the page when the page list has focus. A paste lands 8 right and 8 down, and a taken name or page id is renamed.
 - Right click on an object on the stage chooses it and opens Properties, Script, Forward, Backward, Cut, Copy, and Delete. Delete, or the Delete key, removes the chosen objects as one undo step. Properties and Script move to the panes that hold them.
-- Save is not Export. Save writes `.fbk`, `.fsk`, or `.json`. A book opened from a `.tbk`, an `.sbk`, or an office file is saved beside it as `.fbk` (or `.fsk`), and the original is not written. Saving an `.fsk` keeps it a system book; it was written as an `.fbk`. The status line names the file written. Export stays its own button.
 
 ## 0.4.0 — 2026-10-24
 
