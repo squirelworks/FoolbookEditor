@@ -54,6 +54,8 @@ Select picks the topmost object under the pointer. A line is picked within 3 pag
 
 A drag that starts on empty page draws a box and selects every object whose bounds meet it; a line counts by its points' bounds. Ctrl-click and Shift-click in the object list also select more than one. The first selected object is the one whose script and handles are shown.
 
+Arrow keys move the selection 1 page pixel; Shift+arrow moves it 8 (`geometry.NUDGE`, `geometry.NUDGE_BIG`). While a text box has the keyboard, arrows stay in the text. Dragging one of several selected objects moves them all.
+
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash

@@ -66,5 +66,31 @@ class MarqueeTests(unittest.TestCase):
         self.assertEqual(geometry.marquee(self.shapes, 300, 300, 400, 400), [])
 
 
+class NudgeTests(unittest.TestCase):
+    def test_the_steps_are_one_and_eight(self):
+        self.assertEqual((geometry.NUDGE, geometry.NUDGE_BIG), (1, 8))
+        self.assertEqual(geometry.arrow_step("Left", False), (-1, 0))
+        self.assertEqual(geometry.arrow_step("Down", False), (0, 1))
+        self.assertEqual(geometry.arrow_step("Right", True), (8, 0))
+        self.assertEqual(geometry.arrow_step("Up", True), (0, -8))
+
+    def test_every_selected_shape_moves_and_keeps_its_size(self):
+        shapes = [
+            {"kind": "rect", "x": 10, "y": 20, "w": 30, "h": 40},
+            {"kind": "line", "points": [[0, 0], [10, 10]]},
+            {"kind": "rect", "x": 0, "y": 0, "w": 5, "h": 5},
+        ]
+        geometry.nudge(shapes, [0, 1], *geometry.arrow_step("Right", True))
+        self.assertEqual((shapes[0]["x"], shapes[0]["y"], shapes[0]["w"], shapes[0]["h"]), (18, 20, 30, 40))
+        self.assertEqual(shapes[1]["points"], [[8, 0], [18, 10]])
+        self.assertNotIn("x", shapes[1])
+        self.assertEqual((shapes[2]["x"], shapes[2]["y"]), (0, 0))
+
+    def test_a_shape_named_twice_moves_once(self):
+        shapes = [{"x": 0, "y": 0, "w": 5, "h": 5}]
+        geometry.nudge(shapes, [0, 0], 1, 0)
+        self.assertEqual(shapes[0]["x"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()

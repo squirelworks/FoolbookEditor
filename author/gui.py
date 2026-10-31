@@ -168,6 +168,9 @@ class Editor:
         self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
         self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
         self.root.bind(SHORTCUTS["go_to_page"][1], lambda _e: (self.goto.focus_set(), self.goto.select_range(0, "end")))
+        for key in ("Left", "Right", "Up", "Down"):
+            self.root.bind(f"<{key}>", lambda e, k=key: self._nudge(e, k, False))
+            self.root.bind(f"<Shift-{key}>", lambda e, k=key: self._nudge(e, k, True))
         for command in ("first_page", "previous_page", "next_page", "last_page"):
             self.root.bind(SHORTCUTS[command][1], lambda _e, c=command: self._browse(c))
         self.root.bind(SHORTCUTS["page_up"][1], lambda _e: self._reorder("page_up"))
@@ -1185,7 +1188,15 @@ class Editor:
                 return
         px, py = page_point(view, evt.x, evt.y)
         from author.stage import hit
-        if hit(view["shapes"], px, py, self.layer.get()) is None:
+        self.canvas.focus_set()
+        under = hit(view["shapes"], px, py, self.layer.get())
+        if under is not None and under in self._chosen and len(self._chosen) > 1:
+            # Pressing on one of several selected objects drags them all.
+            shapes = page.get("shapes") or []
+            snaps = {i: snapshot(shapes[i]) for i in self._chosen if 0 <= i < len(shapes)}
+            self._drag = {"mode": "move-all", "px": px, "py": py, "snaps": snaps}
+            return
+        if under is None:
             # Empty page under the pointer: drag a box to choose.
             self._choose([])
             self._drag = {"mode": "marquee", "wx": evt.x, "wy": evt.y}
@@ -1196,6 +1207,7 @@ class Editor:
             return
         if hit(view["shapes"], px, py, self.layer.get()) != index:
             return
+        self.canvas.focus_set()
         self._drag = {"mode": "move", "index": index, "px": px, "py": py, "snap": snapshot(current)}
 
     def _on_drag(self, evt):
@@ -1212,6 +1224,12 @@ class Editor:
             return
         from author.tools import move_shape, page_point, resize_shape
         shapes = pages[self.current].get("shapes") or []
+        if drag["mode"] == "move-all":
+            px, py = page_point(view, evt.x, evt.y)
+            for index, snap in drag["snaps"].items():
+                move_shape(shapes[index], snap, px - drag["px"], py - drag["py"])
+            self._preview()
+            return
         if not (0 <= drag["index"] < len(shapes)):
             return
         shape = shapes[drag["index"]]
@@ -1389,6 +1407,20 @@ class Editor:
         for x, y in draft.points:
             sx, sy = window_point(view, x, y)
             self.canvas.create_rectangle(sx - 2, sy - 2, sx + 2, sy + 2, outline="#071428")
+
+    def _nudge(self, event, key: str, shift: bool):
+        """Arrow keys move the selection, unless a text box has the keys."""
+        if isinstance(event.widget, (tk.Entry, ttk.Entry, tk.Text, tk.Listbox)):
+            return None
+        pages = self.book.get("pages") or []
+        if not self._chosen or not (0 <= self.current < len(pages)):
+            return None
+        from author.geometry import arrow_step, nudge
+        dx, dy = arrow_step(key, shift)
+        nudge(pages[self.current].get("shapes") or [], self._chosen, dx, dy)
+        self._preview()
+        self._draw_thumbs()
+        return "break"
 
     def _choose(self, indices: list[int]):
         """Select these shapes in the object list. The first one is the one edited."""

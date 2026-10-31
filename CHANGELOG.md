@@ -89,6 +89,7 @@
 - Right click on a page in the list opens Add page, Duplicate page, Delete page, and Properties. They run the same commands as the buttons and keys, and show the key. Properties moves to the page id field.
 - A click selects the topmost shape under it. A line is picked near its stroke, a shape stored as points is picked inside its points' bounds, and background shapes are picked only while Background is chosen.
 - A drag on empty page draws a box and selects every object whose bounds meet it. The object list can select more than one.
+- Arrow keys move the selected objects by 1, and Shift+arrow by 8. Dragging one of several selected objects moves them all.
 
 ## 0.4.0 — 2026-10-24
 
