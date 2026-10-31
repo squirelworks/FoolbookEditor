@@ -46,12 +46,15 @@ class Editor:
         for name in self._CHANGES:
             setattr(self, name, self._committing(getattr(self, name)))
         self._build()
+        from author.drop import install
+        install(self.root, lambda path: self._discard_ok() and self._load(path))
         if path and path.exists():
             self._load(path)
         else:
             self._new(ask=False)
             if path is None:
-                self._start([])
+                from author import settings
+                self._start(settings.recent())
         from author.recovery import INTERVAL_MS
         self.root.after(INTERVAL_MS, self._recover)
         self.root.mainloop()
@@ -205,6 +208,11 @@ class Editor:
         ttk.Button(bar, text="New", command=self._new).pack(side="left")
         ttk.Button(bar, text="Template", command=self._template).pack(side="left", padx=(2, 0))
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
+        recent_button = ttk.Menubutton(bar, text="Recent")
+        self.recent_menu = tk.Menu(recent_button, tearoff=False)
+        recent_button["menu"] = self.recent_menu
+        recent_button.pack(side="left", padx=2)
+        self._fill_recent()
         ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
@@ -585,7 +593,7 @@ class Editor:
 
     def _menus(self):
         """File, Edit, Insert, Arrange, Book, Help, from author.menus."""
-        from author.menus import MENUS
+        from author.menus import ALREADY_BOUND, MENUS, tk_sequence
         bar = tk.Menu(self.root, tearoff=False)
         for name, entries in MENUS:
             menu = tk.Menu(bar, tearoff=False)
@@ -593,8 +601,15 @@ class Editor:
                 if entry is None:
                     menu.add_separator()
                     continue
-                label, command = entry
-                menu.add_command(label=label, command=lambda c=command: self._run(c))
+                label, command, key = entry
+                menu.add_command(
+                    label=label,
+                    command=lambda c=command: self._run(c),
+                    accelerator="" if key == "none" else key,
+                )
+                sequence = None if command in ALREADY_BOUND else tk_sequence(key)
+                if sequence:
+                    self.root.bind_all(sequence, lambda _e, c=command: (self._run(c), "break")[1])
             bar.add_cascade(label=name, menu=menu)
         self.root.config(menu=bar)
         self.menubar = bar
@@ -622,6 +637,16 @@ class Editor:
         box = tk.Text(win, width=72, height=12, wrap="word")
         box.pack(fill="both", expand=True)
         box.insert("1.0", tool_help(tool))
+        box.config(state="disabled")
+        self.help_text = box
+
+    def _help_keys(self):
+        from author.menus import keymap_text
+        win = tk.Toplevel(self.root)
+        win.title("Keyboard map")
+        box = tk.Text(win, width=60, height=34, wrap="none", font="TkFixedFont")
+        box.pack(fill="both", expand=True)
+        box.insert("1.0", keymap_text())
         box.config(state="disabled")
         self.help_text = box
 
@@ -943,6 +968,27 @@ class Editor:
         if p and self._discard_ok():
             self._load(Path(p))
 
+    def _remember(self, path: Path):
+        from author import settings
+        settings.remember(path)
+        self._fill_recent()
+
+    def _fill_recent(self):
+        from author import settings
+        self.recent_menu.delete(0, "end")
+        for item in settings.recent():
+            self.recent_menu.add_command(label=item, command=lambda p=item: self._open_recent(p))
+
+    def _open_recent(self, item: str):
+        from author import settings
+        found, said = settings.pick(item)
+        self._fill_recent()
+        if found is None:
+            self.status.config(text=said)
+            return
+        if self._discard_ok():
+            self._load(found)
+
     def _load(self, path: Path):
         from author.files import save_path_for
         try:
@@ -962,6 +1008,7 @@ class Editor:
         self.path = save_path_for(path)
         from author.files import is_compressed
         self.compress.set(is_compressed(path))
+        self._remember(path)
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
@@ -1008,6 +1055,7 @@ class Editor:
             return
         self._snapshot()
         self._saved()
+        self._remember(self.path)
         self.status.config(text=f"Saved {self.path.name}")
 
     def _save_as(self):
@@ -1027,6 +1075,7 @@ class Editor:
             return
         self._snapshot()
         self._saved()
+        self._remember(self.path)
         self.status.config(text=f"Saved {self.path.name}")
 
     def _saved(self):
@@ -1363,8 +1412,8 @@ class Editor:
         from author.catalog import set_object_script
         source = self.oscript.get("1.0", "end")
         set_object_script(pages[self.current], self._rows[self._object]["index"], source)
-        from author.scripts import warning
-        note = warning(source)
+        from author.scripts import status
+        note = status(source)
         if note:
             self.status.config(text=note)
         self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
@@ -1375,7 +1424,7 @@ class Editor:
         if not (0 <= self.current < len(pages)):
             return
         p = pages[self.current]
-        from author.document import set_id, set_nav, set_size, set_text, set_transition, text_from_editor
+        from author.document import DuplicateId, rename_page, set_nav, set_size, set_text, set_transition, text_from_editor
         from author.stage import page_size
         if (self.page_w.get().strip(), self.page_h.get().strip()) != tuple(str(n) for n in page_size(p)):
             if not set_size(p, self.page_w.get().strip(), self.page_h.get().strip()):
@@ -1385,7 +1434,12 @@ class Editor:
                 self.page_h.delete(0, "end")
                 self.page_h.insert(0, str(height))
                 self.status.config(text="Size is two whole numbers above zero")
-        set_id(p, self.pid.get())
+        try:
+            rename_page(self.book, self.current, self.pid.get())
+        except DuplicateId as exc:
+            self.status.config(text=str(exc))
+            self.pid.delete(0, "end")
+            self.pid.insert(0, p.get("id") or "")
         set_transition(p, self.transition.get())
         set_text(p, text_from_editor(self.text.get("1.0", "end")))
         set_nav(p, self.next.get(), self.back.get())
@@ -2120,7 +2174,9 @@ class Editor:
 
 def main(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
-    path = Path(argv[0]) if argv else None
+    from author.drop import paths_from
+    found = paths_from(argv)
+    path = found[0] if found else (Path(argv[0]) if argv else None)
     Editor(path)
     return 0
 
