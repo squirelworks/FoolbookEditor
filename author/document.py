@@ -293,3 +293,31 @@ def set_viewer(book: dict, name: str, size: list[int], buttons: list[str]) -> di
     else:
         found.insert(0, viewer)
     return viewer
+
+
+def system_of(book: dict) -> str | None:
+    """The system book this book names, or None."""
+    return book.get("system") or None
+
+
+def set_system(book: dict, name: str) -> None:
+    """Name the one system book. It is an .fsk file name."""
+    name = name.strip()
+    if not name.lower().endswith(".fsk"):
+        raise ValueError(f"{name or 'that'} is not an .fsk system book")
+    book["system"] = name
+
+
+def clear_system(book: dict) -> None:
+    book.pop("system", None)
+
+
+def handler_names(book: dict) -> list[str]:
+    """`to handle` and `to get` names in the book script and page scripts, in order."""
+    import re
+    header = re.compile(r"(?im)^[ \t]*to[ \t]+(?:handle|get)[ \t]+([A-Za-z_]\w*)")
+    scripts = [book.get("script") or ""]
+    scripts += [page.get("script") or "" for page in book.get("pages") or []]
+    names = [m.group(1) for script in scripts for m in header.finditer(str(script))]
+    names += [str(h.get("name")) for h in book.get("handlers") or [] if isinstance(h, dict) and h.get("name")]
+    return list(dict.fromkeys(names))
