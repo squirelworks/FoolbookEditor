@@ -27,6 +27,18 @@ ROWS = [
 # The values a choice row offers.
 CHOICES = {"align": ("left", "center", "right")}
 
+# The colour well: eight plain colours. Each is named by its hex value.
+WELL = (
+    "#000000",
+    "#ffffff",
+    "#808080",
+    "#c00000",
+    "#e0c000",
+    "#008000",
+    "#0040c0",
+    "#f7f4ee",
+)
+
 # What a shape with no stroke is drawn at.
 STROKE = 1
 

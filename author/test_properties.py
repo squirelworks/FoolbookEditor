@@ -81,6 +81,22 @@ class FontPropertyTests(unittest.TestCase):
         self.assertTrue(write(self.shape, "font", ""))
         self.assertNotIn("font", self.shape)
 
+class ColourWellTests(unittest.TestCase):
+    def test_the_well_is_eight_plain_hex_colours(self):
+        from author.properties import WELL
+        self.assertEqual(len(WELL), 8)
+        self.assertEqual(len(set(WELL)), 8)
+        for color in WELL:
+            self.assertRegex(color, r"^#[0-9a-f]{6}$")
+
+    def test_a_well_colour_and_a_typed_one_both_set_the_fill(self):
+        from author.properties import WELL
+        shape = {"kind": "rect"}
+        self.assertTrue(write(shape, "fill", WELL[3]))
+        self.assertEqual(shape["fill"], WELL[3])
+        self.assertTrue(write(shape, "fill", "#123abc"))
+        self.assertEqual(shape["fill"], "#123abc")
+
 
 if __name__ == "__main__":
     unittest.main()
