@@ -11,6 +11,7 @@
 - Pie places a filled slice (`kind: pie`, `start: 0`, `sweep: 90`). Foolbook draws it from Foolbook#29 on.
 - Chord places a filled chord (`kind: chord`, `start: 0`, `sweep: 180`). Foolbook draws it from Foolbook#30 on.
 - Type into a field on the page. A new Field opens for typing, and a double-click with Select reopens one. Several lines are kept as lines. Escape or a click away keeps them.
+- Picture embeds the file as base64 PNG by default, or links it beside the book as `src`. A file over 20 MB, or one that is not a picture, is refused with a sentence instead of a crash.
 
 ## 0.4.0 — 2026-10-24
 

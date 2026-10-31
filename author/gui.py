@@ -473,8 +473,17 @@ class Editor:
             )
             if not chosen:
                 return
-            import base64
-            shape["data"] = base64.b64encode(Path(chosen).read_bytes()).decode("ascii")
+            from author.picture import PictureRefused, picture_fields
+            embed = messagebox.askyesno(
+                "Picture",
+                "Keep the picture inside the book?\n\nNo links the file beside the book instead.",
+                parent=self.root,
+            )
+            try:
+                shape.update(picture_fields(chosen, embed=embed, book=self.path))
+            except PictureRefused as exc:
+                messagebox.showinfo("Picture", str(exc), parent=self.root)
+                return
         self._place(page, shape)
 
     def _place(self, page: dict, shape: dict):
