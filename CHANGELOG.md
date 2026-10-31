@@ -2,6 +2,10 @@
 
 ## 2026-10-31
 
+- Book sets the book's title, author, default page size (`pageSize`), and first page (`firstPage`). A bad size or a page that does not exist is refused and changes nothing. Foolbook opens the book at its first page.
+
+## 2026-10-31
+
 - Drag an action from the Actions pane onto an object on the page and it is added to that object's list. Goto, show, hide, set text, and play take their page or shape from the box beside the list, or ask.
 - Write script puts the script an action list stands for into the object script, so the author can see it and edit it. The action list stays. A play action has no script line and the script says so in a comment.
 - The Actions pane builds an action list on the selected object (go to page, next, previous, show, hide, set text, play), one `do` plus its arguments each. Foolbook runs them on a click. When the object also has a script, the pane says the script runs, not the actions.
