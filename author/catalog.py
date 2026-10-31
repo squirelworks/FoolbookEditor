@@ -54,7 +54,13 @@ def place_shape(page: dict, shape: dict) -> int:
 
 
 def restack(page: dict, index: int, direction: str) -> int:
-    """Move one object in front of or behind its neighbour on the same layer."""
+    """Change one object's place in paint order, within its own layer.
+
+    Array order is paint order, so later is in front. ``forward`` and
+    ``backward`` swap with the next object on the same layer; ``front`` and
+    ``back`` go past every object on that layer. Objects on the other layer
+    keep their places. Returns the object's new index.
+    """
     shapes = page.get("shapes") or []
     if not (0 <= index < len(shapes)) or not isinstance(shapes[index], dict):
         return index
@@ -64,14 +70,22 @@ def restack(page: dict, index: int, direction: str) -> int:
         if isinstance(shape, dict) and (shape.get("layer") or "page") == layer
     ]
     pos = same.index(index)
-    if direction == "front" and pos + 1 < len(same):
-        other = same[pos + 1]
-    elif direction == "back" and pos > 0:
-        other = same[pos - 1]
-    else:
+    target = {
+        "forward": min(pos + 1, len(same) - 1),
+        "backward": max(pos - 1, 0),
+        "front": len(same) - 1,
+        "back": 0,
+    }.get(direction)
+    if target is None:
+        raise ValueError(f"unknown direction {direction}")
+    if target == pos:
         return index
-    shapes[index], shapes[other] = shapes[other], shapes[index]
-    return other
+    # Take the layer's objects out in order, move one, and put them back in the same slots.
+    order = [shapes[at] for at in same]
+    order.insert(target, order.pop(pos))
+    for slot, shape in zip(same, order):
+        shapes[slot] = shape
+    return same[target]
 
 
 def page_script(page: dict) -> str:
@@ -89,6 +103,22 @@ def page_script(page: dict) -> str:
     return "".join(parts)
 
 
+def set_page_script(page: dict, source: str) -> bool:
+    """Write the page script when the pane changed it. Not compiled. True when it was written.
+
+    A page that came with handlers and no script keeps its handlers until
+    the author actually edits what the pane shows.
+    """
+    if source.strip() == page_script(page).strip():
+        return False
+    source = source.strip()
+    if source:
+        page["script"] = source + "\n"
+    else:
+        page.pop("script", None)
+    return True
+
+
 def set_object_script(page: dict, index: int, source: str) -> None:
     """Write the script back onto that shape. Author does not compile it."""
     shapes = page.get("shapes") or []
@@ -99,6 +129,16 @@ def set_object_script(page: dict, index: int, source: str) -> None:
         shapes[index]["script"] = source if source.endswith("\n") else source + "\n"
     else:
         shapes[index]["script"] = ""
+
+
+def set_object_text(page: dict, index: int, raw: str) -> None:
+    """The words typed into a field. Lines stay lines. Tk's own last newline is not the author's."""
+    shapes = page.get("shapes") or []
+    if not (0 <= index < len(shapes)) or not isinstance(shapes[index], dict):
+        return
+    if raw.endswith("\n"):
+        raw = raw[:-1]
+    shapes[index]["text"] = raw
 
 
 def _bounds(shape: dict) -> list[int]:
