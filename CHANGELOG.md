@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- `author.quiz.insert_quiz` puts a quiz on the page as shapes: the question, one button per choice with its `choice` index, and the right and wrong feedback hidden. Foolbook grades the saved page by that index. Tested in `author/test_quiz_insert.py`.
 - Apply script shows the first error Foolbook's check finds, with its line number, in the status line, ahead of any warning. The script is saved anyway. Tested in `author/test_script_check.py`.
 - Save from the window keeps a system book a system book again. The safe save, which writes beside the file and then replaces it, saved `.fsk` as `.fbk` and an `.sbk` import as `.fbk`; it now writes where `save_target` says, through `save_system` for `.fsk`. Test: `tests/test_safe_save_kind.py`.
 - A book dropped on the program's icon or shortcut opens: the first file among the arguments is opened, and flags, folders and missing paths are skipped. A packaged macOS app answers `::tk::mac::OpenDocument`. The README says that a drop on the open window does nothing on any platform, since stock Tk has no drop target. Test: `tests/test_drop.py`.

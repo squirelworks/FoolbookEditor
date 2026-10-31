@@ -155,5 +155,7 @@ Foolbook runs a small part of OpenScript. These are the lines a script in this e
 
 A button's script is read as `to handle buttonClick`, then these lines, then `end`. A script with no `to handle buttonClick` line is not run by the reader yet.
 
+`insert_quiz(page, quiz)` puts the quiz on the page as shapes: the question as text, one button per choice that stores its `choice` index, and two hidden feedback texts marked `feedback: "right"` and `"wrong"`. Foolbook grades the button by that index, not by its name.
+
 Self-running export is scaffolded and not built. The Export menu and `--export-exe` name it and write nothing.
 

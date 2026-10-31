@@ -75,3 +75,44 @@ def validate(quiz: dict) -> list[str]:
     if right != 1:
         problems.append(f"a quiz has exactly one right choice, not {right}")
     return problems
+
+
+QUESTION_SIZE = (560, 48)
+CHOICE_SIZE = (320, 28)
+FEEDBACK_SIZE = (560, 40)
+GAP = 12
+
+
+def insert_quiz(page: dict, quiz: dict, x: int = 40, y: int = 40) -> list[dict]:
+    """Put a quiz on the page as shapes, and store the quiz on the page.
+
+    The question is a text shape. Each choice is a button that stores its
+    ``choice`` index, which is what Foolbook grades. The two feedback text
+    shapes store ``feedback`` ("right" or "wrong") and start hidden.
+    Returns the shapes added, in paint order.
+    """
+    problems = validate(quiz)
+    if problems:
+        raise ValueError(problems[0])
+    page["quiz"] = quiz
+    shapes = page.setdefault("shapes", [])
+    added = [{
+        "kind": "text", "name": "Question", "text": quiz["question"],
+        "x": x, "y": y, "w": QUESTION_SIZE[0], "h": QUESTION_SIZE[1],
+    }]
+    top = y + QUESTION_SIZE[1] + GAP
+    for i, choice in enumerate(quiz["choices"]):
+        added.append({
+            "kind": "button", "name": f"Choice {i + 1}", "text": choice["label"], "choice": i,
+            "x": x, "y": top, "w": CHOICE_SIZE[0], "h": CHOICE_SIZE[1],
+            "fill": "#c0c0c0", "outline": "#000000",
+        })
+        top += CHOICE_SIZE[1] + GAP
+    for side in ("right", "wrong"):
+        added.append({
+            "kind": "text", "name": f"Feedback {side}", "text": quiz.get(f"feedback_{side}") or "",
+            "feedback": side, "visible": False,
+            "x": x, "y": top, "w": FEEDBACK_SIZE[0], "h": FEEDBACK_SIZE[1],
+        })
+    shapes.extend(added)
+    return added
