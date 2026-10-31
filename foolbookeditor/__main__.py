@@ -7,6 +7,7 @@ Foolbook opens a book. This writes one.
   python3 -m foolbookeditor --browser path/to/book.fbk
   python3 -m foolbookeditor --fbk path/to/book.tbk       # write book.fbk; an .sbk writes an .fsk
   python3 -m foolbookeditor --export-exe path/to/book.fbk   # scaffold, writes nothing
+  python3 -m foolbookeditor --selftest                     # save and load a book, no window
 """
 
 from __future__ import annotations
@@ -19,10 +20,13 @@ if str(_root) not in sys.path:
     sys.path.insert(0, str(_root))
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     from foolbookeditor.core import require
     require()
-    args = sys.argv[1:]
+    args = list(sys.argv[1:] if argv is None else argv)
+    if "--selftest" in args:
+        from foolbookeditor.selftest import run
+        return run()
     if "--fbk" in args:
         rest = [a for a in args if a != "--fbk"]
         from author.convert import main as convert
