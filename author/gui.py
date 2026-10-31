@@ -52,7 +52,7 @@ class Editor:
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
-        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("label", "Label"), ("check", "Check"), ("radio", "Radio"), ("list", "List"), ("combo", "Combo"), ("box", "Rectangle")):
+        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("label", "Label"), ("check", "Check"), ("radio", "Radio"), ("list", "List"), ("combo", "Combo"), ("media", "Media"), ("box", "Rectangle")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(bar, text="Bold", command=lambda: self._wrap("**")).pack(side="left")
@@ -460,6 +460,15 @@ class Editor:
                 return
             import base64
             shape["data"] = base64.b64encode(Path(chosen).read_bytes()).decode("ascii")
+        elif tool == "media":
+            chosen = filedialog.askopenfilename(
+                title="Media clip",
+                filetypes=[("Audio", "*.wav *.aif *.aiff *.mp3 *.ogg *.flac *.au"), ("All", "*.*")],
+            )
+            if not chosen:
+                return
+            from author.tools import media_src
+            shape["src"] = media_src(chosen, str(self.path) if self.path else None)
         placed = place_shape(page, shape)
         self._fill_objects(page)
         for row, item in enumerate(self._rows):

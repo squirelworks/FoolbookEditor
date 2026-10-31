@@ -29,6 +29,7 @@ _SIZE = {
     "radio": (120, 22),
     "list": (140, 72),
     "combo": (140, 22),
+    "media": (200, 44),
     "box": (100, 60),
     "line": (80, 8),
     "ellipse": (80, 60),
@@ -45,6 +46,7 @@ _KIND = {
     "radio": "radio",
     "list": "list",
     "combo": "combo",
+    "media": "media",
     "box": "rect",
     "line": "line",
     "ellipse": "ellipse",
@@ -60,6 +62,7 @@ _LABEL = {
     "radio": "Radio",
     "list": "List",
     "combo": "Combo",
+    "media": "Media",
     "box": "Rectangle",
     "line": "Line",
     "ellipse": "Ellipse",
@@ -147,6 +150,10 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
         shape["choices"] = list(LIST_CHOICES)
         shape["fill"] = "#ffffff"
         shape["outline"] = INK
+    elif tool == "media":
+        # The reader plays src with the platform's own player, or says on the page why not.
+        shape["src"] = ""
+        shape["outline"] = INK
     elif tool == "box":
         shape["fill"] = PAPER
         shape["outline"] = INK
@@ -161,6 +168,18 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
     elif tool == "arc":
         shape["ends"] = [[int(left), int(top + height / 2)], [int(left + width), int(top + height / 2)]]
     return shape
+
+
+def media_src(chosen: str, book_path: str | None) -> str:
+    """A clip in the book's folder is stored relative, so the folder can move."""
+    from pathlib import Path
+    clip = Path(chosen)
+    if book_path:
+        try:
+            return clip.relative_to(Path(book_path).parent).as_posix()
+        except ValueError:
+            pass
+    return str(clip)
 
 
 # How a picture sits in its frame, in the order the Fit button steps through them.

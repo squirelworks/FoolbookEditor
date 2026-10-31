@@ -11,6 +11,7 @@
 - Combo places a one-row combo box with three choices. The reader opens it on a click and closes it on the row picked. Needs Foolbook#51.
 - Fit steps the selected picture through `fill`, `contain`, and `none`, which is how the reader sits it in its frame. A picture with no `fit` is `fill`. Needs Foolbook#52.
 - Record asks for field names and rows, then places one text field per name and Previous and Next buttons, and stores the rows on the page as `records`. The reader shows one row at a time. Needs Foolbook#53.
+- Media places a clip after you pick a sound file. A file in the book's folder is stored as a path relative to the book. The reader plays it, or says on the page why it cannot. Needs Foolbook#54 and #55.
 
 ## 0.4.0 — 2026-10-24
 

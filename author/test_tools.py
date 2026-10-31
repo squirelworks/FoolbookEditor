@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 from author.tools import (
+    media_src,
     next_fit,
     handle_at,
     move_shape,
@@ -132,6 +133,17 @@ class RectangleTests(unittest.TestCase):
         box = new_shape("box", 0, 0, 0, 0, set())
         self.assertIsNone(next_fit(box))
         self.assertNotIn("fit", box)
+
+    def test_a_media_clip_is_a_box_with_no_file_yet(self):
+        shape = new_shape("media", 0, 0, 0, 0, set())
+        self.assertEqual((shape["kind"], shape["name"], shape["src"]), ("media", "Media", ""))
+
+    def test_a_clip_beside_the_book_is_stored_relative(self):
+        self.assertEqual(media_src("/c/course/sounds/bell.wav", "/c/course/book.fbk"), "sounds/bell.wav")
+
+    def test_a_clip_elsewhere_or_in_an_unsaved_book_is_stored_whole(self):
+        self.assertEqual(media_src("/elsewhere/bell.wav", "/c/course/book.fbk"), "/elsewhere/bell.wav")
+        self.assertEqual(media_src("/elsewhere/bell.wav", None), "/elsewhere/bell.wav")
 
 
 if __name__ == "__main__":
