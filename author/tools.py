@@ -20,6 +20,7 @@ RADIUS = 8
 _SIZE = {
     "button": (90, 28),
     "text": (160, 36),
+    "label": (120, 24),
     "box": (100, 60),
     "roundrect": (100, 60),
     "line": (80, 8),
@@ -40,6 +41,7 @@ ICON = 32
 _KIND = {
     "button": "button",
     "text": "text",
+    "label": "text",
     "box": "rect",
     "roundrect": "roundrect",
     "line": "line",
@@ -56,6 +58,7 @@ _KIND = {
 _LABEL = {
     "button": "Button",
     "text": "Field",
+    "label": "Label",
     "box": "Rectangle",
     "roundrect": "RoundedRectangle",
     "line": "Line",
@@ -161,7 +164,7 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
         "y": int(top),
         "w": int(width),
         "h": int(height),
-        "text": label if tool in ("button", "text") else "",
+        "text": label if tool in ("button", "text", "label") else "",
         "script": "",
         "fill": "#c0c0c0" if tool == "button" else "",
         "outline": "#000000",
@@ -173,6 +176,14 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
             shape["points"] = [[int(left), int(top)], [int(left + width), int(top + height)]]
         else:
             shape["points"] = [[int(x0), int(y0)], [int(x1), int(y1)]]
+    elif tool == "text":
+        # The reader gives an editable field the keyboard and keeps the typing as value.
+        shape["editable"] = True
+    elif tool == "label":
+        # A label is a preset of the text shape, not a kind of its own.
+        shape["preset"] = "label"
+        shape["border"] = 1
+        shape["editable"] = False
     elif tool == "box":
         shape["fill"] = PAPER
         shape["outline"] = INK
