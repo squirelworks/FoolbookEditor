@@ -24,6 +24,8 @@ Every pull request runs the self test before it goes up.
 
 ## Use
 
+A book always has at least one page. Deleting the only page is refused, and the status line says so. The editor does not make a blank page in its place. The reader cannot show a book with no pages.
+
 ```bash
 python3 -m foolbookeditor --fbk path/to/book.tbk    # write book.fbk beside it
 python3 -m foolbookeditor --fbk path/to/book.sbk    # write book.fsk

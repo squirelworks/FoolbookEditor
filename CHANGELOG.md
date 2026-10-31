@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Deleting the only page is refused with a sentence, in the model (`LastPage`), not silently ignored. No blank page is made. The README says so.
 - Record lays its rows out as pages: the fields go on this page with the first row, and the page is copied once for each further row with that row in the fields. Previous record and Next record go to the page before and after; the first page has no Previous and the last no Next. Nothing is stored as `records`, so the reader needs no change (Foolbook#53 is closed). `author/test_records.py`.
 - Print writes the PNG proof pages and sends them to the printer when the machine has one call for it: `os.startfile(path, "print")` on Windows, one `lpr` on a Mac or Linux. Anywhere else the folder of pages is the print, and the status line says so.
 - Save is not Export. Save writes `.fbk`, `.fsk`, or `.json`. A book opened from a `.tbk`, an `.sbk`, or an office file is saved beside it as `.fbk` (or `.fsk`), and the original is not written. Saving an `.fsk` keeps it a system book; it was written as an `.fbk`. The status line names the file written. Export stays its own button. The extension picks the kind whatever its case, no extension saves as `.fbk`, a system book saved as `.fbk` becomes a book, and an empty system book is still a valid `FSK1` file. Tests: `tests/test_save_target.py`, `tests/test_save_as_kind.py`.
