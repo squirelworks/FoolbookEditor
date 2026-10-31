@@ -168,6 +168,18 @@ class ChordTests(unittest.TestCase):
     def test_a_label_is_not_typed_into(self):
         self.assertIs(new_shape("label", 0, 0, 120, 24, set())["editable"], False)
 
+    def test_a_checkbox_starts_off_with_a_caption(self):
+        shape = new_shape("check", 0, 0, 0, 0, set())
+        self.assertEqual((shape["kind"], shape["name"], shape["text"]), ("check", "Check", "Check"))
+        self.assertIs(shape["value"], False)
+
+    def test_radios_placed_one_after_another_share_a_group(self):
+        first = new_shape("radio", 0, 0, 0, 0, set())
+        second = new_shape("radio", 0, 30, 0, 30, {"Radio"})
+        self.assertEqual((first["kind"], second["name"]), ("radio", "Radio2"))
+        self.assertEqual(first["group"], second["group"])
+        self.assertIs(first["value"], False)
+
 
 if __name__ == "__main__":
     unittest.main()
