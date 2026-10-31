@@ -104,6 +104,22 @@ def page_script(page: dict) -> str:
     return "".join(parts)
 
 
+def set_page_script(page: dict, source: str) -> bool:
+    """Write the page script when the pane changed it. Not compiled. True when it was written.
+
+    A page that came with handlers and no script keeps its handlers until
+    the author actually edits what the pane shows.
+    """
+    if source.strip() == page_script(page).strip():
+        return False
+    source = source.strip()
+    if source:
+        page["script"] = source + "\n"
+    else:
+        page.pop("script", None)
+    return True
+
+
 def set_object_script(page: dict, index: int, source: str) -> None:
     """Write the script back onto that shape. Author does not compile it."""
     shapes = page.get("shapes") or []
@@ -114,6 +130,16 @@ def set_object_script(page: dict, index: int, source: str) -> None:
         shapes[index]["script"] = source if source.endswith("\n") else source + "\n"
     else:
         shapes[index]["script"] = ""
+
+
+def set_object_text(page: dict, index: int, raw: str) -> None:
+    """The words typed into a field. Lines stay lines. Tk's own last newline is not the author's."""
+    shapes = page.get("shapes") or []
+    if not (0 <= index < len(shapes)) or not isinstance(shapes[index], dict):
+        return
+    if raw.endswith("\n"):
+        raw = raw[:-1]
+    shapes[index]["text"] = raw
 
 
 def _bounds(shape: dict) -> list[int]:
