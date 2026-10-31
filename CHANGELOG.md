@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31
+
+- A picture is stored as PNG. GIF, BMP, and JPEG are converted when Pillow is installed. The picture's size in pixels shows when it comes in and when it is selected, and a click without a drag places it at that size. A file that is not a picture is refused.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.
