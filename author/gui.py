@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .formats import save_book, load as load_book
+from .files import open_book as load_book, save as save_book
 
 try:
     import tkinter as tk
@@ -32,7 +32,8 @@ class Editor:
         self.book: dict = {"id": "new", "title": "New book", "pages": []}
         self.path: Path | None = path
         self.current = 0
-        self.tool = tk.StringVar(value="select")
+        from author.tools import DEFAULT_TOOL
+        self.tool = tk.StringVar(value=DEFAULT_TOOL)
         self._build()
         if path and path.exists():
             self._load(path)
@@ -78,7 +79,7 @@ class Editor:
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
-        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle")):
+        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle"), ("roundrect", "Rounded")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(bar, text="Bold", command=lambda: self._wrap("**")).pack(side="left")
@@ -93,7 +94,10 @@ class Editor:
             ("line", "Line"),
             ("ellipse", "Ellipse"),
             ("polygon", "Polygon"),
+            ("curve", "Curve"),
             ("arc", "Arc"),
+            ("chord", "Chord"),
+            ("pie", "Pie"),
             ("picture", "Picture"),
         ):
             ttk.Radiobutton(tools, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
@@ -122,7 +126,16 @@ class Editor:
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
         from author.commands import SHORTCUTS
         self.root.bind(SHORTCUTS["add_page"][1], lambda _e: self._add_page())
-        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left", padx=4)
+        self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
+        self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
+        self.root.bind(SHORTCUTS["page_up"][1], lambda _e: self._reorder("page_up"))
+        self.root.bind(SHORTCUTS["page_down"][1], lambda _e: self._reorder("page_down"))
+        ttk.Button(row, text="Duplicate", command=self._duplicate_page).pack(side="left", padx=4)
+        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left")
+        order = ttk.Frame(left)
+        order.pack(fill="x")
+        ttk.Button(order, text="Up", command=lambda: self._reorder("page_up")).pack(side="left")
+        ttk.Button(order, text="Down", command=lambda: self._reorder("page_down")).pack(side="left", padx=4)
 
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
@@ -162,6 +175,10 @@ class Editor:
         ttk.Label(form, text="Back").grid(row=0, column=4, sticky="w")
         self.back = ttk.Entry(form, width=10)
         self.back.grid(row=0, column=5, sticky="w", padx=4)
+        ttk.Label(form, text="Background").grid(row=0, column=6, sticky="w")
+        self.uses = ttk.Combobox(form, width=14, state="readonly")
+        self.uses.grid(row=0, column=7, sticky="w", padx=4)
+        self.uses.bind("<<ComboboxSelected>>", self._on_uses)
 
         ttk.Label(center, text="Text  (blank line = new paragraph; lines starting with - or * are a list)").pack(anchor="w", pady=(6, 0))
         self.text = tk.Text(center, height=4, wrap="word")
@@ -169,6 +186,12 @@ class Editor:
         self.text.bind("<KeyRelease>", lambda e: self._preview())
 
         ttk.Button(center, text="Apply", command=self._apply).pack(anchor="e", pady=4)
+        self.root.bind("<Escape>", self._on_escape)
+        self.canvas.bind("<Double-Button-1>", self._finish_draft)
+        self.root.bind("<Return>", self._finish_draft)
+        self._draft = None
+        # Choosing another tool drops a polygon that was not closed.
+        self.tool.trace_add("write", lambda *_args: setattr(self, "_draft", None))
         self.root.after_idle(self._split)
 
     def _split(self):
@@ -382,7 +405,29 @@ class Editor:
         self.back.insert(0, items.get("back") or "")
         self.text.delete("1.0", "end")
         self.text.insert("1.0", "\n\n".join(p.get("text") or []))
+        self._fill_uses(p)
         self._fill_objects(p)
+        self._preview()
+
+    def _fill_uses(self, page: dict):
+        from author.document import background_of
+        names = [str(p.get("id") or "") for p in self.book.get("pages") or [] if p.get("background")]
+        self.uses.config(values=["(none)"] + names, state="disabled" if page.get("background") else "readonly")
+        found = background_of(self.book, page)
+        self.uses.set(found.get("id") if found else "(none)")
+
+    def _on_uses(self, _evt=None):
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        from author.document import clear_background, set_background
+        page = pages[self.current]
+        chosen = self.uses.get()
+        if chosen == "(none)":
+            clear_background(page)
+        else:
+            set_background(self.book, page, chosen)
+        self._fitted = None
         self._preview()
 
     def _fill_objects(self, page: dict):
@@ -441,19 +486,43 @@ class Editor:
         self.current = add_page(self.book, self.current)
         self._refresh_list()
 
+    def _duplicate_page(self):
+        self._apply()
+        self._apply_script()
+        from author.commands import duplicate_page
+        self.current = duplicate_page(self.book, self.current)
+        self._refresh_list()
+
+    def _reorder(self, command: str):
+        self._apply()
+        self._apply_script()
+        from author import commands
+        self.current = getattr(commands, command)(self.book, self.current)
+        self._refresh_list()
+
     def _del_page(self):
-        from author.document import delete_page
+        from author.commands import delete_page, delete_question
+        question = delete_question(self.book, self.current)
+        if question is None:
+            self.status.config(text="A book keeps its last page")
+            return
+        if not messagebox.askyesno("Delete page", question, parent=self.root):
+            return
         self.current = delete_page(self.book, self.current)
         self._refresh_list()
 
     def _preview(self):
+        if getattr(self, "_typing", None) is not None:
+            # A field is being typed into. Redrawing now would take the box away.
+            return
         page = None
         pages = self.book.get("pages") or []
         if 0 <= self.current < len(pages):
             page = pages[self.current]
         from author.stage import paint
-        paint(self.canvas, page or {})
+        paint(self.canvas, page or {}, self.book)
         self._draw_handles()
+        self._draw_draft()
 
     def _draw_handles(self):
         if self.tool.get() != "select" or self._object is None:
@@ -539,14 +608,19 @@ class Editor:
         view = getattr(self.canvas, "_author_view", None)
         if not view or not view.get("scale"):
             return
-        from author.catalog import place_shape
-        from author.tools import new_shape, page_point
+        from author.tools import POINT_TOOLS, PointDraft, new_shape, page_point
         x0, y0 = page_point(view, down[0], down[1])
         x1, y1 = page_point(view, evt.x, evt.y)
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
         page = pages[self.current]
+        if tool in POINT_TOOLS:
+            if self._draft is None or self._draft.tool != tool:
+                self._draft = PointDraft(tool)
+            self._draft.add(x1, y1)
+            self._preview()
+            return
         names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
         shape = new_shape(tool, x0, y0, x1, y1, names, self.layer.get())
         if tool == "picture":
@@ -558,6 +632,10 @@ class Editor:
                 return
             import base64
             shape["data"] = base64.b64encode(Path(chosen).read_bytes()).decode("ascii")
+        self._place(page, shape)
+
+    def _place(self, page: dict, shape: dict):
+        from author.catalog import place_shape
         placed = place_shape(page, shape)
         self._fill_objects(page)
         for row, item in enumerate(self._rows):
@@ -569,6 +647,97 @@ class Editor:
                 break
         self._fitted = None
         self._preview()
+        if (shape.get("kind") or "") == "text":
+            self._edit_text(placed)
+
+    def _on_escape(self, _evt=None):
+        from author.tools import after_escape
+        self.tool.set(after_escape(self.tool.get(), self._draft))
+        self._draft = None
+        self._preview()
+
+    def _finish_draft(self, _evt=None):
+        """Close the polygon or curve being clicked out. Too few points leaves nothing."""
+        draft = self._draft
+        if draft is None:
+            if _evt is not None and getattr(_evt, "widget", None) is self.canvas and self.tool.get() == "select":
+                self._type_into(_evt.x, _evt.y)
+            return None
+        self._draft = None
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return "break"
+        page = pages[self.current]
+        names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
+        shape = draft.finish(names, self.layer.get())
+        if shape is None:
+            self._preview()
+            return "break"
+        self._place(page, shape)
+        return "break"
+
+    def _type_into(self, wx: float, wy: float):
+        """Double-click a field with Select and type into it, on the page. Several lines are fine."""
+        view = getattr(self.canvas, "_author_view", None)
+        if not view or not view.get("scale"):
+            return
+        from author.stage import hit
+        from author.tools import page_point
+        px, py = page_point(view, wx, wy)
+        index = hit(view["shapes"], px, py, self.layer.get())
+        pages = self.book.get("pages") or []
+        if index is None or not (0 <= self.current < len(pages)):
+            return
+        shape = (pages[self.current].get("shapes") or [])[index]
+        if (shape.get("kind") or "") != "text":
+            return
+        self._edit_text(index)
+
+    def _edit_text(self, index: int):
+        view = getattr(self.canvas, "_author_view", None)
+        pages = self.book.get("pages") or []
+        if not view or not (0 <= self.current < len(pages)):
+            return
+        page = pages[self.current]
+        shape = page["shapes"][index]
+        from author.tools import bounds_of, window_point
+        x, y, w, h = bounds_of(shape)
+        left, top = window_point(view, x, y)
+        right, bottom = window_point(view, x + w, y + h)
+        box = tk.Text(self.canvas, wrap="word", undo=True, borderwidth=1, relief="solid")
+        box.insert("1.0", str(shape.get("text") or ""))
+        window = self.canvas.create_window(left, top, anchor="nw", window=box,
+                                           width=max(40, right - left), height=max(24, bottom - top))
+
+        def done(_evt=None):
+            if not box.winfo_exists():
+                return
+            from author.catalog import set_object_text
+            set_object_text(page, index, box.get("1.0", "end"))
+            self.canvas.delete(window)
+            box.destroy()
+            self._typing = None
+            self._preview()
+
+        box.bind("<FocusOut>", done)
+        box.bind("<Escape>", done)
+        box.focus_set()
+        self._typing = box
+
+    def _draw_draft(self):
+        draft = self._draft
+        view = getattr(self.canvas, "_author_view", None)
+        if draft is None or not draft.points or not view:
+            return
+        from author.tools import window_point
+        flat = []
+        for x, y in draft.points:
+            flat.extend(window_point(view, x, y))
+        if len(flat) >= 4:
+            self.canvas.create_line(*flat, fill="#071428", dash=(4, 2))
+        for x, y in draft.points:
+            sx, sy = window_point(view, x, y)
+            self.canvas.create_rectangle(sx - 2, sy - 2, sx + 2, sy + 2, outline="#071428")
 
     def _selected(self):
         pages = self.book.get("pages") or []
