@@ -48,7 +48,8 @@ class Editor:
         else:
             self._new(ask=False)
             if path is None:
-                self._start([])
+                from author import settings
+                self._start(settings.recent())
         self.root.mainloop()
 
     _CHANGES = (
@@ -199,6 +200,11 @@ class Editor:
         ttk.Button(bar, text="New", command=self._new).pack(side="left")
         ttk.Button(bar, text="Template", command=self._template).pack(side="left", padx=(2, 0))
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
+        recent_button = ttk.Menubutton(bar, text="Recent")
+        self.recent_menu = tk.Menu(recent_button, tearoff=False)
+        recent_button["menu"] = self.recent_menu
+        recent_button.pack(side="left", padx=2)
+        self._fill_recent()
         ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
@@ -842,6 +848,26 @@ class Editor:
         if p:
             self._load(Path(p))
 
+    def _remember(self, path: Path):
+        from author import settings
+        settings.remember(path)
+        self._fill_recent()
+
+    def _fill_recent(self):
+        from author import settings
+        self.recent_menu.delete(0, "end")
+        for item in settings.recent():
+            self.recent_menu.add_command(label=item, command=lambda p=item: self._open_recent(p))
+
+    def _open_recent(self, item: str):
+        from author import settings
+        found, said = settings.pick(item)
+        self._fill_recent()
+        if found is None:
+            self.status.config(text=said)
+            return
+        self._load(found)
+
     def _load(self, path: Path):
         from foolbookeditor.core import is_office, read, to_book
         suffix = path.suffix.lower()
@@ -852,6 +878,7 @@ class Editor:
         else:
             self.book = load_book(path)
         self.path = path
+        self._remember(path)
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
@@ -888,10 +915,11 @@ class Editor:
             self._save_as()
             return
         try:
-            save_book(self.path, self.book)
+            written = save_book(self.path, self.book)
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._remember(written)
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
     def _save_as(self):
@@ -905,10 +933,11 @@ class Editor:
             return
         self.path = Path(p)
         try:
-            save_book(self.path, self.book)
+            written = save_book(self.path, self.book)
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._remember(written)
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
 
