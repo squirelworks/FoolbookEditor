@@ -42,6 +42,8 @@
 
 - Author starts on Select, and Escape goes back to Select from any tool.
 - A new rectangle is filled `#f7f4ee` with a `#071428` outline. It had no fill and a black outline.
+- Label places a text shape with no border and no fill. It is the text kind with `preset: label`, not a new kind, so the reader draws it today.
+- A new Field is `editable: true`, so the student can type into it in Foolbook and the typing is kept as `value`. A Label is `editable: false`. Needs the reader change in Foolbook#42.
 - Rounded places a rounded rectangle (`kind: roundrect`, `radius: 8`). Foolbook draws it from Foolbook#23 on.
 - Polygon is clicked out: each click is a point, double-click or Enter closes it, and Escape drops it with nothing left on the page. It used to be a rectangle you dragged.
 - Curve is clicked out like Polygon and stays open. It stores `kind: curve` and its points. Foolbook draws it from Foolbook#26 on.
@@ -85,6 +87,7 @@
 - Each page has a small drawing of its shapes under the page list. A click on one shows that page.
 - Go to, or Ctrl+G, shows the page whose id you type. An unknown id stays put and the status line says so.
 - First, previous, next, and last buttons under the page list move the editor through the pages in book order. They do not follow the book's Next button.
+- Right click on a page in the list opens Add page, Duplicate page, Delete page, and Properties. They run the same commands as the buttons and keys, and show the key. Properties moves to the page id field.
 - A click selects the topmost shape under it. A line is picked near its stroke, a shape stored as points is picked inside its points' bounds, and background shapes are picked only while Background is chosen.
 - A drag on empty page draws a box and selects every object whose bounds meet it. The object list can select more than one.
 - Arrow keys move the selected objects by 1, and Shift+arrow by 8. Dragging one of several selected objects moves them all.
