@@ -289,6 +289,10 @@ class Editor:
         self.swatches = ttk.Frame(tools)
         self.swatches.pack(side="left")
 
+        self.status_line = ttk.Label(self.root, text="", anchor="w", padding=(6, 2))
+        self.status_line.pack(side="bottom", fill="x")
+        self.tool.trace_add("write", lambda *_: self._status_line())
+
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=4, pady=4)
         self.body = body
@@ -1123,6 +1127,7 @@ class Editor:
         self.oscript.insert("1.0", row["script"])
         self._show_properties()
         self._show_actions()
+        self._status_line()
 
     def _script_tab(self, _evt=None):
         from author.properties import SCRIPT_TAB
@@ -1344,6 +1349,7 @@ class Editor:
             self._draw_grid(page or {})
         self._draw_handles()
         self._draw_draft()
+        self._status_line()
 
     def _draw_grid(self, page: dict):
         """A dot at every grid crossing on the page, under the handles."""
@@ -1361,6 +1367,27 @@ class Editor:
             for gy in range(0, height + 1, step):
                 sx, sy = window_point(view, gx, gy)
                 self.canvas.create_line(sx, sy, sx + 1, sy, fill="#9a9a9a", tags=("grid",))
+
+    def _dirty(self) -> bool:
+        """Unsaved changes, once the dirty flag (item 22) is in. Until then, never."""
+        try:
+            from author.files import is_dirty
+        except ImportError:
+            return False
+        return is_dirty(getattr(self, "saved", None), self.book)
+
+    def _status_line(self):
+        from author.status import status_text
+        pages = self.book.get("pages") or []
+        page = pages[self.current] if 0 <= self.current < len(pages) else None
+        shape = None
+        if self._object is not None and 0 <= self._object < len(self._rows):
+            shape = self._rows[self._object].get("name") or ""
+        # The zoom shows once the stage has a zoom control.
+        zoom = self.zoom.get() if hasattr(self, "zoom") else None
+        self.status_line.config(text=status_text(
+            self.tool.get(), (page or {}).get("id"), shape, zoom, self._dirty()
+        ))
 
     def _draw_handles(self):
         if self.tool.get() != "select" or self._object is None:
