@@ -484,6 +484,9 @@ class Editor:
         self._refresh_list()
 
     def _preview(self):
+        if getattr(self, "_typing", None) is not None:
+            # A field is being typed into. Redrawing now would take the box away.
+            return
         page = None
         pages = self.book.get("pages") or []
         if 0 <= self.current < len(pages):
@@ -616,6 +619,8 @@ class Editor:
                 break
         self._fitted = None
         self._preview()
+        if (shape.get("kind") or "") == "text":
+            self._edit_text(placed)
 
     def _on_escape(self, _evt=None):
         from author.tools import after_escape
@@ -627,6 +632,8 @@ class Editor:
         """Close the polygon or curve being clicked out. Too few points leaves nothing."""
         draft = self._draft
         if draft is None:
+            if _evt is not None and getattr(_evt, "widget", None) is self.canvas and self.tool.get() == "select":
+                self._type_into(_evt.x, _evt.y)
             return None
         self._draft = None
         pages = self.book.get("pages") or []
@@ -640,6 +647,54 @@ class Editor:
             return "break"
         self._place(page, shape)
         return "break"
+
+    def _type_into(self, wx: float, wy: float):
+        """Double-click a field with Select and type into it, on the page. Several lines are fine."""
+        view = getattr(self.canvas, "_author_view", None)
+        if not view or not view.get("scale"):
+            return
+        from author.stage import hit
+        from author.tools import page_point
+        px, py = page_point(view, wx, wy)
+        index = hit(view["shapes"], px, py, self.layer.get())
+        pages = self.book.get("pages") or []
+        if index is None or not (0 <= self.current < len(pages)):
+            return
+        shape = (pages[self.current].get("shapes") or [])[index]
+        if (shape.get("kind") or "") != "text":
+            return
+        self._edit_text(index)
+
+    def _edit_text(self, index: int):
+        view = getattr(self.canvas, "_author_view", None)
+        pages = self.book.get("pages") or []
+        if not view or not (0 <= self.current < len(pages)):
+            return
+        page = pages[self.current]
+        shape = page["shapes"][index]
+        from author.tools import bounds_of, window_point
+        x, y, w, h = bounds_of(shape)
+        left, top = window_point(view, x, y)
+        right, bottom = window_point(view, x + w, y + h)
+        box = tk.Text(self.canvas, wrap="word", undo=True, borderwidth=1, relief="solid")
+        box.insert("1.0", str(shape.get("text") or ""))
+        window = self.canvas.create_window(left, top, anchor="nw", window=box,
+                                           width=max(40, right - left), height=max(24, bottom - top))
+
+        def done(_evt=None):
+            if not box.winfo_exists():
+                return
+            from author.catalog import set_object_text
+            set_object_text(page, index, box.get("1.0", "end"))
+            self.canvas.delete(window)
+            box.destroy()
+            self._typing = None
+            self._preview()
+
+        box.bind("<FocusOut>", done)
+        box.bind("<Escape>", done)
+        box.focus_set()
+        self._typing = box
 
     def _draw_draft(self):
         draft = self._draft
