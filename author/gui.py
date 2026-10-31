@@ -128,6 +128,10 @@ class Editor:
         self.system.pack(side="left", padx=2)
         self.system.bind("<Return>", self._set_system)
         self.system.bind("<FocusOut>", self._set_system)
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        # Colours the book already uses. Click for fill, right-click for line.
+        self.swatches = ttk.Frame(tools)
+        self.swatches.pack(side="left")
 
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=4, pady=4)
@@ -772,6 +776,7 @@ class Editor:
             page = pages[self.current]
         from author.stage import paint
         paint(self.canvas, page or {}, self.book)
+        self._palette()
         self._draw_handles()
         self._draw_draft()
 
@@ -1028,6 +1033,23 @@ class Editor:
         if not color:
             return
         shape[which] = color
+        self._preview()
+
+    def _palette(self):
+        from author.palette import used_colours
+        for old in self.swatches.winfo_children():
+            old.destroy()
+        for colour in used_colours(self.book):
+            swatch = tk.Label(self.swatches, bg=colour, width=2, relief="ridge", borderwidth=1)
+            swatch.pack(side="left", padx=1)
+            swatch.bind("<Button-1>", lambda _e, c=colour: self._use_colour("fill", c))
+            swatch.bind("<Button-3>", lambda _e, c=colour: self._use_colour("outline", c))
+
+    def _use_colour(self, which: str, colour: str):
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        shape[which] = colour
         self._preview()
 
     def _pattern(self):
