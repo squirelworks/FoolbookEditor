@@ -158,6 +158,7 @@ class Editor:
         self.objects.bind("<<ListboxSelect>>", self._on_object)
         self.object_meta = ttk.Label(objects, text="", wraplength=200)
         self.object_meta.pack(anchor="w", pady=4)
+        self._build_properties(objects)
         ttk.Label(objects, text="Object script").pack(anchor="w")
         self.oscript = tk.Text(objects, height=12, wrap="word")
         self.oscript.pack(fill="both", expand=True)
@@ -195,6 +196,47 @@ class Editor:
         # Choosing another tool drops a polygon that was not closed.
         self.tool.trace_add("write", lambda *_args: setattr(self, "_draft", None))
         self.root.after_idle(self._split)
+
+    def _build_properties(self, parent):
+        """One row per property. Return or leaving the box applies it. Bad text puts the old value back."""
+        from author.properties import ROWS
+        self.props = ttk.LabelFrame(parent, text="Properties", padding=4)
+        self.props.pack(fill="x", pady=4)
+        self.props.columnconfigure(1, weight=1)
+        self._prop_vars: dict[str, tk.StringVar] = {}
+        for row, (key, label, _kind) in enumerate(ROWS):
+            ttk.Label(self.props, text=label).grid(row=row, column=0, sticky="w")
+            var = tk.StringVar()
+            entry = ttk.Entry(self.props, textvariable=var, width=18)
+            entry.grid(row=row, column=1, sticky="we", padx=4, pady=1)
+            entry.bind("<Return>", lambda _e, k=key: self._set_property(k))
+            entry.bind("<FocusOut>", lambda _e, k=key: self._set_property(k))
+            self._prop_vars[key] = var
+
+    def _show_properties(self):
+        from author.properties import read
+        shape, _index = self._selected()
+        for key, var in self._prop_vars.items():
+            var.set(read(shape, key) if shape is not None else "")
+
+    def _set_property(self, key: str):
+        shape, index = self._selected()
+        if shape is None:
+            return
+        from author.properties import read, write
+        page = (self.book.get("pages") or [])[self.current]
+        changed = write(shape, key, self._prop_vars[key].get(), page)
+        self._prop_vars[key].set(read(shape, key))
+        if not changed:
+            self.status.config(text=f"{key} kept: that value cannot be used")
+            return
+        if key == "name" and self._object is not None:
+            row = self._rows[self._object]
+            row["name"] = shape.get("name") or ""
+            self.objects.delete(self._object)
+            self.objects.insert(self._object, f"{row['kind']}  {row['name']}{' hidden' if row['hidden'] else ''}")
+            self.objects.selection_set(self._object)
+        self._preview()
 
     def _split(self):
         """Keep the picture on screen. The side panes do not take the window."""
@@ -485,6 +527,7 @@ class Editor:
         self.object_meta.config(text=f"{row['kind']}  {row['name'] or '(unnamed)'}  {left}, {top}, {right}, {bottom}")
         self.oscript.delete("1.0", "end")
         self.oscript.insert("1.0", row["script"])
+        self._show_properties()
 
     def _apply_script(self):
         if self._object is None:
