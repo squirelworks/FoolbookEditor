@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Apply script on an object shows a warning in the status line when a line uses a word Foolbook does not run, with the line number. The script is still kept. The words come from Foolbook's `engine/subset.py` table through `foolbook.core.unknown_words`. Tested in `author/test_scripts.py`.
 - Foolbook comes from its main branch, not commit 031e8d8. The pin froze the editor on a reader main has moved past: at that commit the system-book test fails, and at the v1.0.8 tag eight tests fail. A release tag is the other allowed form. Test: `tests/test_pin.py`.
 
 ## 2026-10-31
