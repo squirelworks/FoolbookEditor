@@ -20,8 +20,14 @@ _WIDGET = {
 }
 
 
+# The book generation. Foolbook's save stamps the same key. A new book
+# carries it from the start, so the editor can refuse a newer one.
+BOOK_VERSION = 1
+
+
 def blank_book() -> dict:
     return {
+        "fbk": BOOK_VERSION,
         "id": "new",
         "title": "New book",
         "pages": [blank_page("P0")],
