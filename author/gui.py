@@ -562,11 +562,27 @@ class Editor:
         if width < 400:
             self.root.after(50, self._split)
             return
+        from author import settings
+        left, right = settings.sashes(settings.load().get("panes"), width)
         try:
-            self.body.sashpos(0, 180)
-            self.body.sashpos(1, width - 280)
+            self.body.sashpos(0, left)
+            self.body.sashpos(1, right)
         except tk.TclError:
             return
+        self.body.bind("<ButtonRelease-1>", self._keep_panes, add="+")
+        self.root.protocol("WM_DELETE_WINDOW", self._close)
+
+    def _keep_panes(self, _evt=None):
+        """The sashes are where the user left them, next time too."""
+        from author import settings
+        try:
+            settings.update(panes=[self.body.sashpos(0), self.body.sashpos(1)])
+        except tk.TclError:
+            pass
+
+    def _close(self):
+        self._keep_panes()
+        self.root.destroy()
 
     def _book_properties(self):
         from .bookprops import properties, set_properties
