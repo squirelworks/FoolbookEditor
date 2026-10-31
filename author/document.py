@@ -110,6 +110,19 @@ def nav_of(page: dict) -> tuple[str, str]:
     return nxt, back
 
 
+def set_transition(page: dict, name: str) -> None:
+    """Store the page's transition. Foolbook ignores it: pages change with no animation.
+
+    It is kept so a later reader can honour it without a migration. "none"
+    or blank stores nothing.
+    """
+    name = (name or "").strip()
+    if name and name.lower() != "none":
+        page["transition"] = name
+    else:
+        page.pop("transition", None)
+
+
 def set_nav(page: dict, nxt: str, back: str) -> None:
     """Replace only the Next and Back jumps. Other items stay."""
     kept = [
