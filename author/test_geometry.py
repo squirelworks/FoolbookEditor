@@ -227,5 +227,35 @@ class AlignTests(unittest.TestCase):
         self.assertEqual(shapes[1]["x"], 10)
 
 
+class DistributeTests(unittest.TestCase):
+    def test_equal_gaps_across(self):
+        shapes = [
+            {"x": 0, "y": 0, "w": 10, "h": 10},
+            {"x": 100, "y": 5, "w": 20, "h": 10},
+            {"x": 15, "y": 9, "w": 30, "h": 10},
+        ]
+        geometry.distribute(shapes, [0, 1, 2], "horizontal")
+        # span 0..120, filled 60, two gaps of 30: middle box starts at 40.
+        self.assertEqual(shapes[2]["x"], 40)
+        self.assertEqual((shapes[0]["x"], shapes[1]["x"]), (0, 100))
+        self.assertEqual(shapes[2]["y"], 9)
+
+    def test_equal_gaps_down(self):
+        shapes = [
+            {"x": 0, "y": 0, "w": 10, "h": 10},
+            {"x": 0, "y": 12, "w": 10, "h": 10},
+            {"x": 0, "y": 30, "w": 10, "h": 10},
+            {"x": 0, "y": 90, "w": 10, "h": 10},
+        ]
+        geometry.distribute(shapes, [3, 1, 0, 2], "vertical")
+        tops = [s["y"] for s in shapes]
+        self.assertEqual(tops, [0, 30, 60, 90])
+
+    def test_fewer_than_three_is_a_no_op(self):
+        shapes = [{"x": 0, "y": 0, "w": 10, "h": 10}, {"x": 50, "y": 0, "w": 10, "h": 10}]
+        geometry.distribute(shapes, [0, 1], "horizontal")
+        self.assertEqual([s["x"] for s in shapes], [0, 50])
+
+
 if __name__ == "__main__":
     unittest.main()

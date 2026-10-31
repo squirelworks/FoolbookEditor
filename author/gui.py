@@ -84,6 +84,9 @@ class Editor:
         from author.geometry import ALIGN
         for how in ALIGN:
             menu.add_command(label=how.capitalize(), command=lambda h=how: self._align(h))
+        menu.add_separator()
+        menu.add_command(label="Distribute across (3 or more)", command=lambda: self._distribute("horizontal"))
+        menu.add_command(label="Distribute down (3 or more)", command=lambda: self._distribute("vertical"))
         aligner["menu"] = menu
         aligner.pack(side="left", padx=(8, 0))
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
@@ -709,6 +712,16 @@ class Editor:
             return
         from author.geometry import align
         align(pages[self.current].get("shapes") or [], self._chosen, how)
+        self._preview()
+        self._draw_thumbs()
+
+    def _distribute(self, axis: str):
+        pages = self.book.get("pages") or []
+        if len(self._chosen) < 3 or not (0 <= self.current < len(pages)):
+            self.status.config(text="Distribute needs three or more selected objects")
+            return
+        from author.geometry import distribute
+        distribute(pages[self.current].get("shapes") or [], self._chosen, axis)
         self._preview()
         self._draw_thumbs()
 
