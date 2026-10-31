@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- A question bank is `name.bank.json` beside the book: `{"bank": 1, "questions": [...]}`, the quiz schema as an array. `author/bank.py` loads, checks, and saves it, refuses a newer bank version and names it, and `pick` puts one question on a page. Tested in `author/test_bank.py`, with questions written for the test.
 - `author.quiz.insert_quiz` puts a quiz on the page as shapes: the question, one button per choice with its `choice` index, and the right and wrong feedback hidden. Foolbook grades the saved page by that index. Tested in `author/test_quiz_insert.py`.
 - Apply script shows the first error Foolbook's check finds, with its line number, in the status line, ahead of any warning. The script is saved anyway. Tested in `author/test_script_check.py`.
 - Save from the window keeps a system book a system book again. The safe save, which writes beside the file and then replaces it, saved `.fsk` as `.fbk` and an `.sbk` import as `.fbk`; it now writes where `save_target` says, through `save_system` for `.fsk`. Test: `tests/test_safe_save_kind.py`.

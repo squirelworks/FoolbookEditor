@@ -157,5 +157,7 @@ A button's script is read as `to handle buttonClick`, then these lines, then `en
 
 `insert_quiz(page, quiz)` puts the quiz on the page as shapes: the question as text, one button per choice that stores its `choice` index, and two hidden feedback texts marked `feedback: "right"` and `"wrong"`. Foolbook grades the button by that index, not by its name.
 
+A question bank is a JSON file beside the book, `name.bank.json`: `{"bank": 1, "questions": [quiz, ...]}`, the quiz schema as an array. `author/bank.py` loads and saves it, refuses a bank version newer than it knows, and `pick(page, bank, i)` puts one question on a page. The bank is not copied into the book.
+
 Self-running export is scaffolded and not built. The Export menu and `--export-exe` name it and write nothing.
 
