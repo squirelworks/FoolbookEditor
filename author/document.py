@@ -184,3 +184,28 @@ def set_background(book: dict, page: dict, page_id: str) -> None:
 
 def clear_background(page: dict) -> None:
     page.pop("uses", None)
+
+
+def backgrounds(book: dict) -> list[dict]:
+    """The shared backgrounds, in book order."""
+    return [page for page in book.get("pages") or [] if page.get("background")]
+
+
+def add_background(book: dict) -> dict:
+    """A new, empty shared background at the end of the book."""
+    used = {str(p.get("id") or "").lower() for p in book.get("pages") or []}
+    n = 1
+    while True:
+        candidate = "Background" if n == 1 else f"Background {n}"
+        if candidate.lower() not in used:
+            break
+        n += 1
+    page = {"id": candidate, "background": True, "shapes": []}
+    pages(book).append(page)
+    return page
+
+
+def page_label(page: dict) -> str:
+    """How the page list names a page. A background says so."""
+    name = page.get("id") or "?"
+    return f"{name} (background)" if page.get("background") else name

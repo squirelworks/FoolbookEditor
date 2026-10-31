@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from author.document import background_of, clear_background, set_background
+from author.document import add_background, background_of, backgrounds, clear_background, page_label, set_background
 from author.stage import shown
 
 
@@ -53,6 +53,32 @@ class AssignBackground(unittest.TestCase):
         names = [s.get("name") for s in shown(book["pages"][1], book)]
         self.assertEqual(names, ["band", "hello"])
         self.assertEqual(shown(book["pages"][1], book)[0]["layer"], "background")
+
+
+class SeveralBackgrounds(unittest.TestCase):
+    def test_a_new_background_gets_a_fresh_id(self):
+        book = _book()
+        first = add_background(book)
+        second = add_background(book)
+        self.assertEqual([p["id"] for p in backgrounds(book)], ["Paper", first["id"], second["id"]])
+        self.assertNotEqual(first["id"], second["id"])
+        self.assertTrue(first["background"])
+        self.assertEqual(first["shapes"], [])
+
+    def test_pages_can_use_different_backgrounds(self):
+        book = _book()
+        other = add_background(book)
+        page = {"id": "P100", "shapes": []}
+        book["pages"].append(page)
+        set_background(book, book["pages"][1], "Paper")
+        set_background(book, page, other["id"])
+        self.assertIs(background_of(book, page), other)
+        self.assertEqual(background_of(book, book["pages"][1])["id"], "Paper")
+
+    def test_the_page_list_marks_a_background(self):
+        book = _book()
+        self.assertEqual(page_label(book["pages"][0]), "Paper (background)")
+        self.assertEqual(page_label(book["pages"][1]), "P0")
 
 
 if __name__ == "__main__":
