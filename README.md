@@ -48,7 +48,7 @@ Size under the stage sets the page's `size`. A page with none is 640 by 480. The
 A page's Transition is stored as `transition` and ignored. Foolbook changes pages with no animation. The field is there so a later reader can honour it without changing the format.
 Under the page list, each page has a small drawing of its shapes. A click on one shows that page.
 
-Go to (Ctrl+G) takes a page id. Case does not matter, as in the reader. An unknown id leaves the page where it is and the status line says it is unknown.
+Go to (Ctrl+G) takes a page id. Case does not matter, as in the reader. An unknown id leaves the page where it is and the status line says it is unknown. The |< < > >| buttons (Ctrl+Home, Ctrl+Page Up, Ctrl+Page Down, Ctrl+End) show the first, previous, next, and last page in book order. They move the editor, not the reader: the book's own Next button and scripts are not run.
 
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 

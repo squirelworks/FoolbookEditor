@@ -17,6 +17,10 @@ SHORTCUTS = {
     "page_up": ("Ctrl+Shift+Up", "<Control-Shift-Up>"),
     "page_down": ("Ctrl+Shift+Down", "<Control-Shift-Down>"),
     "go_to_page": ("Ctrl+G", "<Control-g>"),
+    "first_page": ("Ctrl+Home", "<Control-Home>"),
+    "previous_page": ("Ctrl+Page Up", "<Control-Prior>"),
+    "next_page": ("Ctrl+Page Down", "<Control-Next>"),
+    "last_page": ("Ctrl+End", "<Control-End>"),
 }
 
 
@@ -74,3 +78,24 @@ def go_to_page(book: dict, current: int, typed: str) -> tuple[int, str]:
         if str(page.get("id") or "").casefold() == wanted.casefold():
             return index, f"Page {page.get('id')}"
     return current, f"Unknown page {wanted}"
+
+
+# These move the page the editor shows. They are not the book's Next button
+# and they do not run any script.
+
+def first_page(book: dict, current: int) -> int:
+    return 0 if book.get("pages") else current
+
+
+def previous_page(book: dict, current: int) -> int:
+    return max(0, current - 1) if book.get("pages") else current
+
+
+def next_page(book: dict, current: int) -> int:
+    count = len(book.get("pages") or [])
+    return min(count - 1, current + 1) if count else current
+
+
+def last_page(book: dict, current: int) -> int:
+    count = len(book.get("pages") or [])
+    return count - 1 if count else current
