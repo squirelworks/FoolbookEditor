@@ -34,6 +34,7 @@ class Editor:
         self.book: dict = {"id": "new", "title": "New book", "pages": []}
         self.path: Path | None = path
         self.current = 0
+        self.saved: dict | None = None
         from author.tools import DEFAULT_TOOL
         self.tool = tk.StringVar(value=DEFAULT_TOOL)
         from author.history import History
@@ -209,6 +210,8 @@ class Editor:
         ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
+        self.compress = tk.BooleanVar(value=True)
+        ttk.Checkbutton(bar, text="Compress", variable=self.compress).pack(side="left", padx=2)
         ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Proof PNGs", command=self._proof).pack(side="left", padx=2)
@@ -649,8 +652,36 @@ class Editor:
             pass
 
     def _close(self):
+        if not self._discard_ok():
+            return
         self._keep_panes()
         self.root.destroy()
+
+    def _snapshot(self):
+        import copy
+        self.saved = copy.deepcopy(self.book)
+        self._mark()
+
+    def _mark(self):
+        """A star in the title bar while the book differs from the file."""
+        from author.files import is_dirty
+        name = self.path.name if self.path else (self.book.get("title") or "New book")
+        star = "*" if is_dirty(self.saved, self.book) else ""
+        self.root.title(f"{star}{name} - Foolbook Author")
+
+    def _discard_ok(self) -> bool:
+        """Ask before dropping unsaved changes. True means go on."""
+        from author.files import is_dirty
+        self._apply()
+        if not self.book.get("pages") or not is_dirty(self.saved, self.book):
+            return True
+        answer = messagebox.askyesnocancel("Foolbook Editor", "Save changes to this book first?")
+        if answer is None:
+            return False
+        if answer:
+            self._save()
+            return not is_dirty(self.saved, self.book)
+        return True
 
     def _book_properties(self):
         from .bookprops import properties, set_properties
@@ -786,6 +817,8 @@ class Editor:
         self._menubar_window = win
 
     def _new(self, ask: bool = True):
+        if self.saved is not None and not self._discard_ok():
+            return
         from author.document import new_book
         if not ask:
             self._open_new(new_book())
@@ -896,6 +929,7 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self._snapshot()
         self._kept = None
         self.status.config(text="New book")
 
@@ -908,18 +942,16 @@ class Editor:
                 ("All", "*.*"),
             ],
         )
-        if p:
+        if p and self._discard_ok():
             self._load(Path(p))
 
     def _load(self, path: Path):
-        from foolbookeditor.core import is_office, read, to_book
-        suffix = path.suffix.lower()
-        if is_office(path):
-            self.book = to_book(path)
-        elif suffix in {".tbk", ".sbk"}:
-            self.book = read(path)
-        else:
+        from author.files import save_path_for
+        try:
             self.book = load_book(path)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Foolbook Editor", f"{path.name}: {exc}")
+            return
         from author import recovery
         self._kept = recovery.snapshot(self.book)
         copy = recovery.newer(path)
@@ -929,10 +961,13 @@ class Editor:
             parent=self.root,
         ):
             self.book = load_book(copy)
-        self.path = path
+        self.path = save_path_for(path)
+        from author.files import is_compressed
+        self.compress.set(is_compressed(path))
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self._snapshot()
         from author.document import handler_names
         found = handler_names(self.book)
         note = f"  {len(found)} handlers" if path.suffix.lower() == ".fsk" else ""
@@ -951,6 +986,8 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self.saved = None
+        self._mark()
         self._kept = None
         self.status.config(text=f"Imported {src.name}. Save writes {self.path.name}")
         win = tk.Toplevel(self.root)
@@ -967,10 +1004,11 @@ class Editor:
             self._save_as()
             return
         try:
-            self.path = save_safely(self.path, self.book)
+            self.path = save_safely(self.path, self.book, compress=self.compress.get())
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._snapshot()
         self._saved()
         self.status.config(text=f"Saved {self.path.name}")
 
@@ -985,10 +1023,11 @@ class Editor:
             return
         self.path = Path(p)
         try:
-            self.path = save_safely(self.path, self.book)
+            self.path = save_safely(self.path, self.book, compress=self.compress.get())
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._snapshot()
         self._saved()
         self.status.config(text=f"Saved {self.path.name}")
 
@@ -1448,6 +1487,7 @@ class Editor:
         self._refresh_list()
 
     def _preview(self):
+        self._mark()
         if getattr(self, "_typing", None) is not None:
             # A field is being typed into. Redrawing now would take the box away.
             return
