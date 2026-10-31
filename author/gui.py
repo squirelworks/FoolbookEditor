@@ -37,6 +37,7 @@ class Editor:
         self.saved: dict | None = None
         self._build()
         self.root.protocol("WM_DELETE_WINDOW", self._close)
+        self._fill_recent()
         if path and path.exists():
             self._load(path)
         else:
@@ -49,6 +50,10 @@ class Editor:
         bar.pack(fill="x")
         ttk.Button(bar, text="New", command=self._new).pack(side="left")
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
+        recent_button = ttk.Menubutton(bar, text="Recent")
+        self.recent_menu = tk.Menu(recent_button, tearoff=False)
+        recent_button["menu"] = self.recent_menu
+        recent_button.pack(side="left", padx=2)
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
         ttk.Checkbutton(bar, text="Compress", variable=self.compress).pack(side="left", padx=2)
@@ -158,6 +163,30 @@ class Editor:
         except tk.TclError:
             return
 
+    def _remember(self, path: Path):
+        from author import recent
+        try:
+            recent.remember(recent.recent_file(), path)
+        except OSError:
+            pass
+        self._fill_recent()
+
+    def _fill_recent(self):
+        from author import recent
+        self.recent_menu.delete(0, "end")
+        for item in recent.load(recent.recent_file()):
+            self.recent_menu.add_command(label=item, command=lambda p=item: self._open_recent(p))
+
+    def _open_recent(self, item: str):
+        from author import recent
+        found, said = recent.pick(recent.recent_file(), item)
+        self._fill_recent()
+        if found is None:
+            self.status.config(text=said)
+            return
+        if self._discard_ok():
+            self._load(found)
+
     def _snapshot(self):
         import copy
         self.saved = copy.deepcopy(self.book)
@@ -224,6 +253,7 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self._snapshot()
+        self._remember(path)
         self.status.config(text=str(path.name))
 
     def _save(self):
@@ -237,6 +267,7 @@ class Editor:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
         self._snapshot()
+        self._remember(self.path)
         self.status.config(text=f"Saved {self.path.name}")
 
     def _save_as(self):
@@ -255,6 +286,7 @@ class Editor:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
         self._snapshot()
+        self._remember(self.path)
         self.status.config(text=f"Saved {self.path.name}")
 
 
