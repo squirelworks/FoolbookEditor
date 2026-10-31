@@ -16,7 +16,16 @@ ROWS = [
     ("fill", "Fill", "color"),
     ("outline", "Outline", "color"),
     ("stroke", "Line width", "width"),
+    ("font", "Font", "face"),
+    ("size", "Size", "points"),
+    ("bold", "Bold", "flag"),
+    ("italic", "Italic", "flag"),
+    ("underline", "Underline", "flag"),
+    ("align", "Align", "choice"),
 ]
+
+# The values a choice row offers.
+CHOICES = {"align": ("left", "center", "right")}
 
 # What a shape with no stroke is drawn at.
 STROKE = 1
@@ -28,6 +37,10 @@ def read(shape: dict, key: str) -> str:
     """The value as the pane shows it."""
     if key == "stroke":
         return str(shape.get("stroke", STROKE))
+    if _kind(key) == "flag":
+        return "true" if shape.get(key) else "false"
+    if key == "align":
+        return _align_name(shape.get("align"))
     value = shape.get(key)
     return "" if value is None else str(value)
 
@@ -54,9 +67,42 @@ def write(shape: dict, key: str, raw: str, page: dict | None = None) -> bool:
         if width < 0:
             return False
         shape["stroke"] = width
+    elif kind == "face":
+        # Empty means the reader's own face.
+        if raw:
+            shape["font"] = raw
+        else:
+            shape.pop("font", None)
+    elif kind == "points":
+        try:
+            size = int(raw)
+        except ValueError:
+            return False
+        if not 1 <= size <= 288:
+            return False
+        shape["size"] = size
+    elif kind == "flag":
+        if raw.lower() not in ("true", "false", "1", "0"):
+            return False
+        shape[key] = raw.lower() in ("true", "1")
+    elif kind == "choice":
+        if raw.lower() not in CHOICES[key]:
+            return False
+        shape[key] = raw.lower()
     else:
         return False
     return True
+
+
+def _align_name(value) -> str:
+    """A .tbk stores 0, 1, 2 for left, right, center. The pane shows the word."""
+    if isinstance(value, str) and value.lower() in CHOICES["align"]:
+        return value.lower()
+    try:
+        code = int(value or 0)
+    except (TypeError, ValueError):
+        code = 0
+    return {1: "right", 2: "center"}.get(code, "left")
 
 
 def _kind(key: str) -> str:

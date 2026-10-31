@@ -43,5 +43,44 @@ class BasicPropertyTests(unittest.TestCase):
         self.assertEqual(self.shape["text"], " two\nlines ")
 
 
+class FontPropertyTests(unittest.TestCase):
+    def setUp(self):
+        self.shape = {"kind": "text", "name": "Title", "text": "Hello"}
+
+    def test_face_size_and_styles_are_set(self):
+        self.assertTrue(write(self.shape, "font", "Georgia"))
+        self.assertTrue(write(self.shape, "size", "18"))
+        for key in ("bold", "italic", "underline"):
+            self.assertTrue(write(self.shape, key, "true"))
+        self.assertEqual(
+            {k: self.shape[k] for k in ("font", "size", "bold", "italic", "underline")},
+            {"font": "Georgia", "size": 18, "bold": True, "italic": True, "underline": True},
+        )
+        self.assertTrue(write(self.shape, "italic", "false"))
+        self.assertIs(self.shape["italic"], False)
+
+    def test_alignment_is_left_center_or_right(self):
+        self.assertEqual(read(self.shape, "align"), "left")
+        self.assertTrue(write(self.shape, "align", "center"))
+        self.assertEqual(self.shape["align"], "center")
+        self.assertFalse(write(self.shape, "align", "justify"))
+        self.assertEqual(self.shape["align"], "center")
+
+    def test_a_tbk_number_reads_as_its_word(self):
+        self.assertEqual(read({"align": 2}, "align"), "center")
+        self.assertEqual(read({"align": 1}, "align"), "right")
+
+    def test_a_bad_size_keeps_the_old_one(self):
+        write(self.shape, "size", "12")
+        self.assertFalse(write(self.shape, "size", "big"))
+        self.assertFalse(write(self.shape, "size", "0"))
+        self.assertEqual(self.shape["size"], 12)
+
+    def test_an_empty_face_falls_back_to_the_reader_face(self):
+        write(self.shape, "font", "Georgia")
+        self.assertTrue(write(self.shape, "font", ""))
+        self.assertNotIn("font", self.shape)
+
+
 if __name__ == "__main__":
     unittest.main()
