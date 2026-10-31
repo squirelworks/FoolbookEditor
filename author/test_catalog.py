@@ -87,5 +87,44 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(self._names(page), ["paper", "A", "B", "sky", "C", "D"])
 
 
+class TypedTextTests(unittest.TestCase):
+    def test_typed_lines_are_kept_as_lines(self):
+        from author.catalog import set_object_text
+        page = {"shapes": [{"kind": "text", "name": "Field", "text": "Field"}]}
+        set_object_text(page, 0, "First line\nSecond line\n")
+        self.assertEqual(page["shapes"][0]["text"], "First line\nSecond line")
+
+    def test_typing_nothing_leaves_an_empty_field(self):
+        from author.catalog import set_object_text
+        page = {"shapes": [{"kind": "text", "text": "Field"}]}
+        set_object_text(page, 0, "\n")
+        self.assertEqual(page["shapes"][0]["text"], "")
+
+class ScriptPaneTests(unittest.TestCase):
+    def test_tab_is_two_spaces(self):
+        from author.properties import SCRIPT_TAB
+        self.assertEqual(SCRIPT_TAB, "  ")
+
+    def test_the_page_script_is_stored_as_the_typed_string(self):
+        from author.catalog import set_page_script
+        page = {"id": "P0"}
+        source = 'to handle enterPage\n  go to page "P100"\nend'
+        self.assertTrue(set_page_script(page, source + "\n"))
+        self.assertEqual(page["script"], source + "\n")
+        self.assertIsInstance(page["script"], str)
+
+    def test_an_unchanged_pane_does_not_turn_handlers_into_a_script(self):
+        from author.catalog import page_script, set_page_script
+        page = {"id": "P0", "handlers": [{"source": "to handle enterPage\nend\n"}]}
+        self.assertFalse(set_page_script(page, page_script(page)))
+        self.assertNotIn("script", page)
+
+    def test_clearing_the_pane_clears_the_script(self):
+        from author.catalog import set_page_script
+        page = {"id": "P0", "script": "to handle enterPage\nend\n"}
+        self.assertTrue(set_page_script(page, "\n"))
+        self.assertNotIn("script", page)
+
+
 if __name__ == "__main__":
     unittest.main()
