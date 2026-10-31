@@ -32,6 +32,20 @@ def read(path: str | Path) -> dict:
     return require().read(path)
 
 
+def shipped_book(name: str) -> Path | None:
+    """A sample book that ships with Foolbook, such as ``using_foolbook``.
+
+    Found beside the installed reader. None when the install does not
+    carry the sample books.
+    """
+    import foolbook
+    where = getattr(foolbook, "__file__", None)
+    if not where:
+        return None
+    path = Path(where).resolve().parents[1] / "_books" / name / f"{name}.fbk"
+    return path if path.exists() else None
+
+
 def save_book(path: str | Path, book: dict, compress: bool = True) -> Path:
     return require().save_book(path, book, compress=compress)
 
