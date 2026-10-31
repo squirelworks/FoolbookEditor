@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Every five minutes, a book with unsaved changes gets a recovery copy in the user config directory (`foolbookeditor/recovery/`), never beside the book. Saving removes it. Opening a book whose recovery copy is newer than the file asks which one to open. Test: `author/test_recovery.py` checks the copy's contents.
 - Save writes the book to a temporary file beside it (`.name.saving.fbk`) and only then replaces the old file in one step. If the write or the replace fails, the temporary file is removed and the previous book is untouched. Test: `author/test_safesave.py`, which makes the replace step fail.
 - Every menu item has a keyboard shortcut, or `none` on purpose (Delete page, so a slip cannot drop a page, and the two layer items). The menus show the keys, and Help > Keyboard map prints the whole map. Ctrl+1 to Ctrl+8 pick the drawing tools. Test: `author/test_menus.py` `KeyboardMap`.
 - A menu bar: File, Edit, Insert, Arrange, Book, Help. It is built from `author/menus.py`, and every item runs a command the window already has. Help for this tool opens the tool's README section in a window, not a website. Test: `author/test_menus.py`.

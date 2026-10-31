@@ -39,6 +39,8 @@ class Editor:
             self._load(path)
         else:
             self._new()
+        from author.recovery import INTERVAL_MS
+        self.root.after(INTERVAL_MS, self._recover)
         self.root.mainloop()
 
     def _build(self):
@@ -277,6 +279,7 @@ class Editor:
         }
         self.path = None
         self.current = 0
+        self._kept = None
         self._refresh_list()
         self.status.config(text="New book")
 
@@ -301,6 +304,15 @@ class Editor:
             self.book = read(path)
         else:
             self.book = load_book(path)
+        from author import recovery
+        self._kept = recovery.snapshot(self.book)
+        copy = recovery.newer(path)
+        if copy is not None and messagebox.askyesno(
+            "Foolbook Editor",
+            f"There is a recovery copy of {path.name} newer than the file. Open the recovery copy?",
+            parent=self.root,
+        ):
+            self.book = load_book(copy)
         self.path = path
         self.current = 0
         self._refresh_list()
@@ -336,6 +348,7 @@ class Editor:
             self._save_as()
             return
         save_safely(self.path, self.book)
+        self._saved()
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
     def _save_as(self):
@@ -349,6 +362,7 @@ class Editor:
             return
         self.path = Path(p)
         save_safely(self.path, self.book)
+        self._saved()
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
 
@@ -596,6 +610,20 @@ class Editor:
         self.status_line.config(text=status_text(
             self.tool.get(), (page or {}).get("id"), shape, self.zoom.get(), self._dirty()
         ))
+
+    def _saved(self):
+        from author import recovery
+        recovery.clear(self.path)
+        self._kept = recovery.snapshot(self.book)
+
+    def _recover(self):
+        """Every five minutes: a recovery copy, if there are unsaved changes."""
+        from author import recovery
+        try:
+            recovery.tick(self.book, getattr(self, "_kept", None), self.path)
+        except Exception as exc:
+            self.status.config(text=f"Recovery copy not written: {exc}")
+        self.root.after(recovery.INTERVAL_MS, self._recover)
 
     def _scrolled(self, evt):
         evt.x = int(self.canvas.canvasx(evt.x))
