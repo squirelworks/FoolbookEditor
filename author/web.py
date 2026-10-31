@@ -353,14 +353,14 @@ function status(text) { field("status").textContent = text; }
 async function openBook() {
   const r = await fetch("/api/book");
   book = await r.json();
-  if (!book.pages || !book.pages.length) book.pages = [{id: "P0", text: ["New slide"], items: []}];
+  if (!book.pages || !book.pages.length) book.pages = [{id: "P0", text: ["New slide"], items: [], shapes: []}];
   show(0, false);
   status(book.path || "New book");
 }
 
 field("add").onclick = () => {
   readForm();
-  book.pages.push({id: freshId(), text: ["New slide"], items: [], widgets: []});
+  book.pages.push({id: freshId(), text: ["New slide"], items: [], shapes: []});
   show(book.pages.length - 1, false);
 };
 field("del").onclick = () => {
