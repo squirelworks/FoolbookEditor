@@ -20,6 +20,7 @@
 - A Visible check box in the Properties pane. An object with `visible: false` is drawn ghosted on the stage, its colours washed toward white, and Foolbook still skips it.
 - Left, Top, Width, and Height in the Properties pane move and size the object by number, points included. Bad input keeps the old value.
 - Points in the Properties pane lists a polygon, line, or curve as one `x, y` pair per line. Editing it reshapes the object. A line that is not two numbers, or too few points, keeps the old outline.
+- The script pane is monospace, and Tab puts in two spaces. With no object chosen it edits the page script, which is stored as typed. A page that came with handlers keeps them until its script is actually edited.
 
 ## 0.4.0 — 2026-10-24
 

@@ -120,9 +120,10 @@ class Editor:
         self.object_meta = ttk.Label(objects, text="", wraplength=200)
         self.object_meta.pack(anchor="w", pady=4)
         self._build_properties(objects)
-        ttk.Label(objects, text="Object script").pack(anchor="w")
-        self.oscript = tk.Text(objects, height=12, wrap="word")
+        ttk.Label(objects, text="Script (the object's, or the page's when no object is chosen)").pack(anchor="w")
+        self.oscript = tk.Text(objects, height=12, wrap="none", font="TkFixedFont", undo=True)
         self.oscript.pack(fill="both", expand=True)
+        self.oscript.bind("<Tab>", self._script_tab)
         ttk.Button(objects, text="Apply script", command=self._apply_script).pack(anchor="e", pady=4)
         self._rows: list[dict] = []
         self._object = None
@@ -407,11 +408,18 @@ class Editor:
         self.oscript.insert("1.0", row["script"])
         self._show_properties()
 
+    def _script_tab(self, _evt=None):
+        from author.properties import SCRIPT_TAB
+        self.oscript.insert("insert", SCRIPT_TAB)
+        return "break"
+
     def _apply_script(self):
-        if self._object is None:
-            return
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
+            return
+        if self._object is None:
+            from author.catalog import set_page_script
+            set_page_script(pages[self.current], self.oscript.get("1.0", "end"))
             return
         from author.catalog import set_object_script
         set_object_script(pages[self.current], self._rows[self._object]["index"], self.oscript.get("1.0", "end"))
