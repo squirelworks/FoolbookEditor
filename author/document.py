@@ -30,6 +30,8 @@ def new_book(size: tuple[int, int] = PAGE_SIZE, color: str = "#ffffff") -> dict:
 
     The paper is a page-sized rect on the background layer, the same
     shape the reader already paints first and does not treat as a control.
+    The reader draws page text only when a page has no shapes, so the
+    new page carries no placeholder words.
     """
     w, h = int(size[0]), int(size[1])
     if w < PAGE_MIN or h < PAGE_MIN:
@@ -40,6 +42,7 @@ def new_book(size: tuple[int, int] = PAGE_SIZE, color: str = "#ffffff") -> dict:
     book = blank_book()
     page = book["pages"][0]
     page["size"] = [w, h]
+    page["text"] = []
     page["shapes"] = [{
         "kind": "rect",
         "name": "paper",

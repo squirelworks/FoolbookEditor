@@ -25,6 +25,11 @@ class NewBookTests(unittest.TestCase):
         self.assertEqual(paper["fill"], "#f7f4ee")
         self.assertEqual(paper["outline"], "")
 
+    def test_the_new_page_has_no_placeholder_words(self):
+        # The reader draws page text only on a page with no shapes. The
+        # paper is a shape, so a placeholder would be saved and never shown.
+        self.assertEqual(new_book()["pages"][0]["text"], [])
+
     def test_a_colour_that_is_not_hex_is_refused(self):
         with self.assertRaises(ValueError):
             new_book(color="beige")
