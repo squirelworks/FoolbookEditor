@@ -203,6 +203,7 @@ class Editor:
         self.action_text.pack(side="left")
         ttk.Button(row, text="Add", width=4, command=self._add_action).pack(side="left", padx=2)
         ttk.Button(row, text="Remove", width=7, command=self._remove_action).pack(side="left")
+        ttk.Button(row, text="Write script", command=self._write_script).pack(side="left", padx=2)
         self.action_note = ttk.Label(objects, text="", wraplength=240)
         self.action_note.pack(anchor="w")
         self._rows: list[dict] = []
@@ -749,6 +750,18 @@ class Editor:
         if shape is None or not picked:
             return
         remove(shape, picked[0])
+        self._show_actions()
+
+    def _write_script(self):
+        from author.actions import write_script
+        shape, _index = self._selected()
+        if shape is None or not shape.get("actions"):
+            return
+        pages = self.book.get("pages") or []
+        script = write_script(shape, pages[self.current].get("shapes") or [])
+        self._rows[self._object]["script"] = script
+        self.oscript.delete("1.0", "end")
+        self.oscript.insert("1.0", script)
         self._show_actions()
 
     def _apply_script(self):
