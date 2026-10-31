@@ -101,6 +101,16 @@ def set_object_script(page: dict, index: int, source: str) -> None:
         shapes[index]["script"] = ""
 
 
+def set_object_text(page: dict, index: int, raw: str) -> None:
+    """The words typed into a field. Lines stay lines. Tk's own last newline is not the author's."""
+    shapes = page.get("shapes") or []
+    if not (0 <= index < len(shapes)) or not isinstance(shapes[index], dict):
+        return
+    if raw.endswith("\n"):
+        raw = raw[:-1]
+    shapes[index]["text"] = raw
+
+
 def _bounds(shape: dict) -> list[int]:
     bounds = shape.get("bounds")
     if isinstance(bounds, (list, tuple)) and len(bounds) >= 4:
