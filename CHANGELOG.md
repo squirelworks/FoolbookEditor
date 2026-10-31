@@ -10,6 +10,7 @@
 - A new arc stores `start: 0` and `sweep: 180`, the top half of its bounds, instead of two endpoints. Foolbook draws it from Foolbook#28 on. An arc read from a `.tbk` keeps its endpoints.
 - Pie places a filled slice (`kind: pie`, `start: 0`, `sweep: 90`). Foolbook draws it from Foolbook#29 on.
 - Chord places a filled chord (`kind: chord`, `start: 0`, `sweep: 180`). Foolbook draws it from Foolbook#30 on.
+- Type into a field on the page. A new Field opens for typing, and a double-click with Select reopens one. Several lines are kept as lines. Escape or a click away keeps them.
 
 ## 0.4.0 — 2026-10-24
 
