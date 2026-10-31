@@ -26,6 +26,41 @@ class StageTests(unittest.TestCase):
         self.assertIsNone(hit(shapes, 200, 200))
 
 
+class HotspotStageTests(unittest.TestCase):
+    def test_a_hotspot_is_placed_with_no_fill(self):
+        from author.tools import new_shape
+        shape = new_shape("hotspot", 10, 10, 90, 70, set())
+        self.assertEqual((shape["kind"], shape["fill"]), ("hotspot", ""))
+
+    def test_author_draws_a_hotspot_as_an_outline(self):
+        page = {"shapes": [{"kind": "hotspot", "name": "Door", "x": 1, "y": 2, "w": 30, "h": 40, "fill": "",
+                            "outline": "#071428", "item": {"page": "P200"}}]}
+        row = shown(page)[0]
+        self.assertEqual(row["kind"], "rect")
+        self.assertEqual((row["fill"], row["outline"]), ("", "#071428"))
+        self.assertEqual(row["item"], {"page": "P200"})
+        self.assertEqual(page["shapes"][0]["kind"], "hotspot")
+
+class GhostTests(unittest.TestCase):
+    def test_a_hidden_object_is_drawn_ghosted_and_the_book_keeps_it_hidden(self):
+        page = {"shapes": [{"kind": "rect", "name": "Answer", "visible": False, "fill": "#000000",
+                            "outline": "#071428", "x": 0, "y": 0, "w": 10, "h": 10}]}
+        row = shown(page)[0]
+        self.assertTrue(row["ghost"])
+        self.assertEqual(row["fill"], "#b2b2b2")
+        self.assertNotEqual(row["outline"], "#071428")
+        self.assertIs(page["shapes"][0]["visible"], False)
+        self.assertEqual(page["shapes"][0]["fill"], "#000000")
+
+    def test_the_visible_flag_reads_true_when_missing_and_hides_when_false(self):
+        from author.properties import read, write
+        shape = {"kind": "rect"}
+        self.assertEqual(read(shape, "visible"), "true")
+        self.assertTrue(write(shape, "visible", "false"))
+        self.assertIs(shape["visible"], False)
+        self.assertEqual(read(shape, "visible"), "false")
+
+
 class PageSizeTests(unittest.TestCase):
     def test_a_page_with_no_size_is_640_by_480(self):
         self.assertEqual(DEFAULT_SIZE, (640, 480))
