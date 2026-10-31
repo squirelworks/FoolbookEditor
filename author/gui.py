@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .formats import save_book, load as load_book
+from .files import open_book as load_book, save as save_book
 
 try:
     import tkinter as tk
