@@ -187,6 +187,24 @@ class Editor:
         self.oscript.pack(fill="both", expand=True)
         self.oscript.bind("<Tab>", self._script_tab)
         ttk.Button(objects, text="Apply script", command=self._apply_script).pack(anchor="e", pady=4)
+        # Actions run on a click when the object has no script.
+        ttk.Label(objects, text="Actions").pack(anchor="w")
+        self.action_list = tk.Listbox(objects, height=5, exportselection=False)
+        self.action_list.pack(fill="x")
+        row = ttk.Frame(objects)
+        row.pack(fill="x", pady=2)
+        from author.actions import DOS
+        self.action_do = ttk.Combobox(row, values=DOS, width=8, state="readonly")
+        self.action_do.set("goto")
+        self.action_do.pack(side="left")
+        self.action_target = ttk.Entry(row, width=10)
+        self.action_target.pack(side="left", padx=2)
+        self.action_text = ttk.Entry(row, width=10)
+        self.action_text.pack(side="left")
+        ttk.Button(row, text="Add", width=4, command=self._add_action).pack(side="left", padx=2)
+        ttk.Button(row, text="Remove", width=7, command=self._remove_action).pack(side="left")
+        self.action_note = ttk.Label(objects, text="", wraplength=240)
+        self.action_note.pack(anchor="w")
         self._rows: list[dict] = []
         self._object = None
         self._drag = None
@@ -696,11 +714,42 @@ class Editor:
         self.oscript.delete("1.0", "end")
         self.oscript.insert("1.0", row["script"])
         self._show_properties()
+        self._show_actions()
 
     def _script_tab(self, _evt=None):
         from author.properties import SCRIPT_TAB
         self.oscript.insert("insert", SCRIPT_TAB)
         return "break"
+
+    def _show_actions(self):
+        from author.actions import describe, note
+        shape, _index = self._selected()
+        self.action_list.delete(0, "end")
+        for action in (shape or {}).get("actions") or []:
+            self.action_list.insert("end", describe(action))
+        self.action_note.config(text=note(shape or {}))
+
+    def _add_action(self):
+        from author.actions import add, make
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        try:
+            action = make(self.action_do.get(), self.action_target.get(), self.action_text.get())
+        except ValueError as exc:
+            self.action_note.config(text=str(exc))
+            return
+        add(shape, action)
+        self._show_actions()
+
+    def _remove_action(self):
+        from author.actions import remove
+        shape, _index = self._selected()
+        picked = self.action_list.curselection()
+        if shape is None or not picked:
+            return
+        remove(shape, picked[0])
+        self._show_actions()
 
     def _apply_script(self):
         pages = self.book.get("pages") or []
@@ -713,6 +762,7 @@ class Editor:
         from author.catalog import set_object_script
         set_object_script(pages[self.current], self._rows[self._object]["index"], self.oscript.get("1.0", "end"))
         self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
+        self._show_actions()
 
     def _apply(self):
         pages = self.book.get("pages") or []

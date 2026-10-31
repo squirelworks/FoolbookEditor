@@ -2,6 +2,10 @@
 
 ## 2026-10-31
 
+- The Actions pane builds an action list on the selected object (go to page, next, previous, show, hide, set text, play), one `do` plus its arguments each. Foolbook runs them on a click. When the object also has a script, the pane says the script runs, not the actions.
+
+## 2026-10-31
+
 - The Icon tool places a picture at 32 by 32, whatever the drag or the picture's own size, and marks it `preset: "icon"`. The reader stretches the picture to fit.
 
 ## 2026-10-31
