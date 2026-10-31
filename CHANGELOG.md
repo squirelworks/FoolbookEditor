@@ -58,6 +58,7 @@
 
 ## 2026-10-31
 
+- Every menu item has a keyboard shortcut, or `none` on purpose (the two layer items). Add page and Delete page show the keys the window already had and are not bound twice. The menus show the keys, and Help > Keyboard map prints the whole map. Ctrl+1 to Ctrl+8 pick the drawing tools. Test: `author/test_menus.py` `KeyboardMap`.
 - The tool row shows the colours the book already uses, most used first. Click a swatch to fill the selected object with it, right-click to use it for the line.
 - The pages, stage, and properties panes reopen at the widths you left them. The sashes are kept in `settings.json` under the user config directory (`$XDG_CONFIG_HOME` or `~/.config/foolbookeditor`, `%APPDATA%` on Windows), not in the book. A smaller window still leaves the stage at least 300 pixels. Test: `author/test_settings.py`.
 - Proof PNGs writes one picture per page (`001_P0.png`, ...) into a folder, the shared background first, using Foolbook's `draw` as the stage does. It needs no window, and backgrounds are not pages. Text uses Pillow's built-in face. PDF was already in Export, through Foolbook. Test: `author/test_proof.py`.
