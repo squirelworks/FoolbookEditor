@@ -43,6 +43,8 @@ class Editor:
         for name in self._CHANGES:
             setattr(self, name, self._committing(getattr(self, name)))
         self._build()
+        from author.drop import install
+        install(self.root, self._load)
         if path and path.exists():
             self._load(path)
         else:
@@ -1936,7 +1938,9 @@ class Editor:
 
 def main(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
-    path = Path(argv[0]) if argv else None
+    from author.drop import paths_from
+    found = paths_from(argv)
+    path = found[0] if found else (Path(argv[0]) if argv else None)
     Editor(path)
     return 0
 
