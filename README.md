@@ -27,5 +27,9 @@ python3 examples/welcome.py /path/to/Foolbook/foolbook/books
 That writes the two books a new Foolbook install opens: Using Foolbook and First Light.
 
 
+## Quizzes
+
+A quiz is data on the page, `page["quiz"]`: `version` (1), `question`, `choices` (each `{"label", "correct"}`, exactly one right), `feedback_right`, `feedback_wrong`, and optional `next` and `again` pages. `author/quiz.py` makes and checks one. The `choices` list is the shape Foolbook already reads, so an older quiz still opens.
+
 Self-running export is scaffolded and not built. The Export menu and `--export-exe` name it and write nothing.
 
