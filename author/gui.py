@@ -11,7 +11,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .files import FutureBook, open_book as load_book, save as save_book
+from .files import FutureBook, open_book as load_book
+from .safesave import save_safely
 
 try:
     import tkinter as tk
@@ -888,7 +889,7 @@ class Editor:
             self._save_as()
             return
         try:
-            save_book(self.path, self.book)
+            save_safely(self.path, self.book)
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
@@ -905,7 +906,7 @@ class Editor:
             return
         self.path = Path(p)
         try:
-            save_book(self.path, self.book)
+            save_safely(self.path, self.book)
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return

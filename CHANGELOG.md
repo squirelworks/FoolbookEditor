@@ -26,6 +26,7 @@
 
 ## 2026-10-31
 
+- Save writes the book to a temporary file beside it (`.name.saving.fbk`) and only then replaces the old file in one step. If the write or the replace fails, the temporary file is removed and the previous book is untouched. Test: `author/test_safesave.py`, which makes the replace step fail. A book from a newer Foolbook is still refused, and an opened book still saves back to the same bytes.
 - The Icon tool places a picture at 32 by 32, whatever the drag or the picture's own size, and marks it `preset: "icon"`. The reader stretches the picture to fit.
 
 ## 2026-10-31
