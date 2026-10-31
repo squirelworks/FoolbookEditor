@@ -100,6 +100,10 @@ class Editor:
         self.system.bind("<Return>", self._set_system)
         self.system.bind("<FocusOut>", self._set_system)
 
+        self.status_line = ttk.Label(self.root, text="", anchor="w", padding=(6, 2))
+        self.status_line.pack(side="bottom", fill="x")
+        self.tool.trace_add("write", lambda *_: self._status_line())
+
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=4, pady=4)
         self.body = body
@@ -442,6 +446,7 @@ class Editor:
         self.object_meta.config(text=f"{row['kind']}  {row['name'] or '(unnamed)'}  {left}, {top}, {right}, {bottom}")
         self.oscript.delete("1.0", "end")
         self.oscript.insert("1.0", row["script"])
+        self._status_line()
 
     def _apply_script(self):
         if self._object is None:
@@ -495,6 +500,7 @@ class Editor:
         from author.view import ZOOMS
         paint(self.canvas, page or {}, self.book, ZOOMS.get(self.zoom.get()))
         self._draw_handles()
+        self._status_line()
 
     def _draw_handles(self):
         if self.tool.get() != "select" or self._object is None:
@@ -510,6 +516,25 @@ class Editor:
         for x, y in corners(shape).values():
             sx, sy = window_point(view, x, y)
             self.canvas.create_rectangle(sx - 4, sy - 4, sx + 4, sy + 4, fill="#ffffff", outline="#000000")
+
+    def _dirty(self) -> bool:
+        """Unsaved changes, once the dirty flag (item 22) is in. Until then, never."""
+        try:
+            from author.files import is_dirty
+        except ImportError:
+            return False
+        return is_dirty(getattr(self, "saved", None), self.book)
+
+    def _status_line(self):
+        from author.status import status_text
+        pages = self.book.get("pages") or []
+        page = pages[self.current] if 0 <= self.current < len(pages) else None
+        shape = None
+        if self._object is not None and 0 <= self._object < len(self._rows):
+            shape = self._rows[self._object].get("name") or ""
+        self.status_line.config(text=status_text(
+            self.tool.get(), (page or {}).get("id"), shape, self.zoom.get(), self._dirty()
+        ))
 
     def _scrolled(self, evt):
         evt.x = int(self.canvas.canvasx(evt.x))
