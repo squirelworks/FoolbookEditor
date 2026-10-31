@@ -166,5 +166,26 @@ class ConstrainTests(unittest.TestCase):
         self.assertEqual(geometry.constrain_line(3, 3, 3, 3), (3, 3))
 
 
+class GridTests(unittest.TestCase):
+    def test_five_snaps_to_eight_on_an_eight_grid(self):
+        self.assertEqual(geometry.GRID, 8)
+        self.assertEqual(geometry.snap(5, 8), 8)
+        self.assertEqual(geometry.snap(3, 8), 0)
+        self.assertEqual(geometry.snap(4, 8), 8)
+        self.assertEqual(geometry.snap(-5, 8), -8)
+        self.assertEqual(geometry.snap_point(5, 13), (8, 16))
+
+    def test_a_moved_selection_lands_on_the_grid_and_keeps_its_spacing(self):
+        shapes = [
+            {"x": 5, "y": 21, "w": 10, "h": 10},
+            {"x": 30, "y": 50, "w": 10, "h": 10},
+            {"kind": "line", "points": [[5, 5], [9, 9]]},
+        ]
+        geometry.snap_move(shapes, [0, 1])
+        self.assertEqual((shapes[0]["x"], shapes[0]["y"]), (8, 24))
+        self.assertEqual((shapes[1]["x"], shapes[1]["y"]), (33, 53))
+        self.assertEqual(shapes[2]["points"], [[5, 5], [9, 9]])
+
+
 if __name__ == "__main__":
     unittest.main()

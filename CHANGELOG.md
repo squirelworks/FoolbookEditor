@@ -92,6 +92,7 @@
 - Arrow keys move the selected objects by 1, and Shift+arrow by 8. Dragging one of several selected objects moves them all.
 - A selected object has eight handles, and a line has its two ends. A side handle pulls one side. Nothing resizes below 4 by 4.
 - Shift while drawing makes a box square, and makes a line horizontal, vertical, or 45 degrees.
+- Grid 8 snaps a drawn, moved, or resized object to an 8-pixel grid when the mouse button comes up. It is off by default.
 
 ## 0.4.0 — 2026-10-24
 
