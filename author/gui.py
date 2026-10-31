@@ -168,6 +168,10 @@ class Editor:
         ttk.Label(form, text="Back").grid(row=0, column=4, sticky="w")
         self.back = ttk.Entry(form, width=10)
         self.back.grid(row=0, column=5, sticky="w", padx=4)
+        ttk.Label(form, text="Background").grid(row=0, column=6, sticky="w")
+        self.uses = ttk.Combobox(form, width=14, state="readonly")
+        self.uses.grid(row=0, column=7, sticky="w", padx=4)
+        self.uses.bind("<<ComboboxSelected>>", self._on_uses)
 
         ttk.Label(center, text="Text  (blank line = new paragraph; lines starting with - or * are a list)").pack(anchor="w", pady=(6, 0))
         self.text = tk.Text(center, height=4, wrap="word")
@@ -315,7 +319,29 @@ class Editor:
         self.back.insert(0, items.get("back") or "")
         self.text.delete("1.0", "end")
         self.text.insert("1.0", "\n\n".join(p.get("text") or []))
+        self._fill_uses(p)
         self._fill_objects(p)
+        self._preview()
+
+    def _fill_uses(self, page: dict):
+        from author.document import background_of
+        names = [str(p.get("id") or "") for p in self.book.get("pages") or [] if p.get("background")]
+        self.uses.config(values=["(none)"] + names, state="disabled" if page.get("background") else "readonly")
+        found = background_of(self.book, page)
+        self.uses.set(found.get("id") if found else "(none)")
+
+    def _on_uses(self, _evt=None):
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        from author.document import clear_background, set_background
+        page = pages[self.current]
+        chosen = self.uses.get()
+        if chosen == "(none)":
+            clear_background(page)
+        else:
+            set_background(self.book, page, chosen)
+        self._fitted = None
         self._preview()
 
     def _fill_objects(self, page: dict):
@@ -405,7 +431,7 @@ class Editor:
         if 0 <= self.current < len(pages):
             page = pages[self.current]
         from author.stage import paint
-        paint(self.canvas, page or {})
+        paint(self.canvas, page or {}, self.book)
         self._draw_handles()
 
     def _draw_handles(self):
