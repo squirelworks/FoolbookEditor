@@ -26,6 +26,21 @@ SHORTCUTS = {
 }
 
 
+# Right click on a page in the list. Each row is the label, the command
+# above it runs, and the key shown beside it. Properties has no key; it
+# moves to the page id field of the form that already holds the page.
+PAGE_MENU = (
+    ("Add page", "add_page"),
+    ("Duplicate page", "duplicate_page"),
+    ("Delete page", "delete_page"),
+    ("Properties", "page_properties"),
+)
+
+
+def page_menu() -> list[tuple[str, str, str]]:
+    return [(label, command, SHORTCUTS.get(command, ("",))[0]) for label, command in PAGE_MENU]
+
+
 def add_page(book: dict, current: int) -> int:
     """A blank page right after the current one. Returns where it landed."""
     count = len(book.get("pages") or [])
