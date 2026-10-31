@@ -3,6 +3,7 @@
 ## Unreleased — 2026-10-31
 
 - Author starts on Select, and Escape goes back to Select from any tool.
+- A new rectangle is filled `#f7f4ee` with a `#071428` outline. It had no fill and a black outline.
 
 ## 0.4.0 — 2026-10-24
 
