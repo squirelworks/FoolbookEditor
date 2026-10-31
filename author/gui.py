@@ -131,6 +131,8 @@ class Editor:
         aligner["menu"] = menu
         aligner.pack(side="left", padx=(8, 0))
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
+        ttk.Button(tools, text="Forward", command=lambda: self._restack("forward")).pack(side="left")
+        ttk.Button(tools, text="Backward", command=lambda: self._restack("backward")).pack(side="left", padx=2)
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Label(tools, text="Viewer").pack(side="left")

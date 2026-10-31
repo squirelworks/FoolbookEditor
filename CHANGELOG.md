@@ -96,6 +96,7 @@
 - Grid 8 snaps a drawn, moved, or resized object to an 8-pixel grid when the mouse button comes up. It is off by default.
 - Align lines up the selection by left, right, top, bottom, or centre, against the first selected object.
 - Distribute spaces three or more selected objects with equal gaps, across or down.
+- Front and Back now go all the way on the object's layer. Forward and Backward move it one place.
 
 ## 0.4.0 — 2026-10-24
 
