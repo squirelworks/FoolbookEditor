@@ -95,6 +95,7 @@ class Editor:
             ("polygon", "Polygon"),
             ("curve", "Curve"),
             ("arc", "Arc"),
+            ("pie", "Pie"),
             ("picture", "Picture"),
         ):
             ttk.Radiobutton(tools, text=label, value=name, variable=self.tool).pack(side="left", padx=2)

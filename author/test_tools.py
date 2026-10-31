@@ -134,6 +134,14 @@ class ArcTests(unittest.TestCase):
         self.assertNotIn("ends", shape)
         self.assertEqual(shape["fill"], "")
 
+class PieTests(unittest.TestCase):
+    def test_a_pie_is_a_filled_quarter_by_its_angles(self):
+        shape = new_shape("pie", 0, 0, 80, 80, set())
+        self.assertEqual(shape["kind"], "pie")
+        self.assertEqual(shape["name"], "Pie")
+        self.assertEqual((shape["start"], shape["sweep"]), (0, 90))
+        self.assertEqual((shape["fill"], shape["outline"]), ("#f7f4ee", "#071428"))
+
 
 if __name__ == "__main__":
     unittest.main()
