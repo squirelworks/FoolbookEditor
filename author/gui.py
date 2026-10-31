@@ -50,6 +50,7 @@ class Editor:
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
+        ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
@@ -212,6 +213,21 @@ class Editor:
         save_book(self.path, self.book)
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
+
+    def _publish(self):
+        """A folder with the .fbk, its linked files, and a README. No installer."""
+        self._apply()
+        folder = filedialog.askdirectory(title="Publish into this folder")
+        if not folder:
+            return
+        from author.publish import publish
+        source = self.path.parent if self.path else None
+        name = self.path.with_suffix(".fbk").name if self.path else ""
+        written, missing = publish(self.book, folder, source=source, name=name)
+        note = f"Published {len(written)} files to {folder}"
+        if missing:
+            note += f". Not found: {', '.join(missing)}"
+        self.status.config(text=note)
 
     def _export(self):
         """Save as a book, a TBX folder, a ToolBook shell, or an office file."""

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31
+
+- Publish writes a folder: the book as `.fbk`, every picture or clip a shape links by a relative `src`, and a one-line `README.txt` that says to open it with Foolbook. A linked file that is not found is named in the status line. No installer.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.
