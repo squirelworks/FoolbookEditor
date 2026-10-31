@@ -81,6 +81,12 @@ class Editor:
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="Zoom").pack(side="left")
+        self.zoom = ttk.Combobox(tools, width=6, state="readonly", values=["Fit", "50%", "100%", "200%"])
+        self.zoom.set("Fit")
+        self.zoom.pack(side="left", padx=2)
+        self.zoom.bind("<<ComboboxSelected>>", lambda _e: self._preview())
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Label(tools, text="Viewer").pack(side="left")
         self.viewer_buttons = {}
         for name, label in (("previous", "Previous"), ("next", "Next"), ("page", "Page number")):
@@ -114,11 +120,19 @@ class Editor:
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
         body.add(center, weight=3)
-        self.canvas = tk.Canvas(center, bg="white", width=640, height=480, highlightthickness=0)
+        stage = ttk.Frame(center)
+        stage.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(stage, bg="white", width=640, height=480, highlightthickness=0)
+        across = ttk.Scrollbar(stage, orient="horizontal", command=self.canvas.xview)
+        down = ttk.Scrollbar(stage, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(xscrollcommand=across.set, yscrollcommand=down.set)
+        down.pack(side="right", fill="y")
+        across.pack(side="bottom", fill="x")
         self.canvas.pack(fill="both", expand=True)
-        self.canvas.bind("<ButtonPress-1>", self._on_press)
-        self.canvas.bind("<B1-Motion>", self._on_drag)
-        self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        # A pointer position is a window pixel. Scrolled, the drawing is somewhere else.
+        self.canvas.bind("<ButtonPress-1>", lambda e: self._on_press(self._scrolled(e)))
+        self.canvas.bind("<B1-Motion>", lambda e: self._on_drag(self._scrolled(e)))
+        self.canvas.bind("<ButtonRelease-1>", lambda e: self._on_release(self._scrolled(e)))
         self.canvas.bind("<Configure>", self._on_canvas_resize)
 
         # objects on the selected page. Author shows them. Reader may hide some.
@@ -478,7 +492,8 @@ class Editor:
         if 0 <= self.current < len(pages):
             page = pages[self.current]
         from author.stage import paint
-        paint(self.canvas, page or {}, self.book)
+        from author.view import ZOOMS
+        paint(self.canvas, page or {}, self.book, ZOOMS.get(self.zoom.get()))
         self._draw_handles()
 
     def _draw_handles(self):
@@ -495,6 +510,11 @@ class Editor:
         for x, y in corners(shape).values():
             sx, sy = window_point(view, x, y)
             self.canvas.create_rectangle(sx - 4, sy - 4, sx + 4, sy + 4, fill="#ffffff", outline="#000000")
+
+    def _scrolled(self, evt):
+        evt.x = int(self.canvas.canvasx(evt.x))
+        evt.y = int(self.canvas.canvasy(evt.y))
+        return evt
 
     def _on_canvas_resize(self, event):
         if event.widget is not self.canvas or event.width < 20 or event.height < 20:
