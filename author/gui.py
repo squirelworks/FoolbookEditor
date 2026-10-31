@@ -68,6 +68,7 @@ class Editor:
             ("polygon", "Polygon"),
             ("arc", "Arc"),
             ("picture", "Picture"),
+            ("icon", "Icon"),
         ):
             ttk.Radiobutton(tools, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
@@ -447,9 +448,9 @@ class Editor:
         page = pages[self.current]
         names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
         shape = new_shape(tool, x0, y0, x1, y1, names, self.layer.get())
-        if tool == "picture":
+        if tool in ("picture", "icon"):
             chosen = filedialog.askopenfilename(
-                title="Picture",
+                title=shape["name"],
                 filetypes=[("Pictures", "*.png *.gif *.bmp *.jpg *.jpeg"), ("All", "*.*")],
             )
             if not chosen:

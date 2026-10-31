@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31
+
+- The Icon tool places a picture at 32 by 32, whatever the drag or the picture's own size, and marks it `preset: "icon"`. The reader stretches the picture to fit.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.

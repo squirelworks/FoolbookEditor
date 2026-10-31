@@ -17,7 +17,11 @@ _SIZE = {
     "polygon": (80, 60),
     "arc": (80, 60),
     "picture": (120, 80),
+    "icon": (32, 32),
 }
+
+# An icon is always 32 by 32. A drag places it but does not size it.
+ICON = 32
 
 _KIND = {
     "button": "button",
@@ -28,6 +32,7 @@ _KIND = {
     "polygon": "polygon",
     "arc": "arc",
     "picture": "image",
+    "icon": "image",
 }
 _LABEL = {
     "button": "Button",
@@ -38,6 +43,7 @@ _LABEL = {
     "polygon": "Polygon",
     "arc": "Arc",
     "picture": "Picture",
+    "icon": "Icon",
 }
 
 
@@ -103,6 +109,9 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
             [int(left), int(top + height)],
         ]
         shape["fill"] = "#c0c0c0"
+    elif tool == "icon":
+        shape["w"] = shape["h"] = ICON
+        shape["preset"] = "icon"
     elif tool == "arc":
         shape["ends"] = [[int(left), int(top + height / 2)], [int(left + width), int(top + height / 2)]]
     return shape
