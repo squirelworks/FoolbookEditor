@@ -4,6 +4,7 @@
 
 - Author starts on Select, and Escape goes back to Select from any tool.
 - A new rectangle is filled `#f7f4ee` with a `#071428` outline. It had no fill and a black outline.
+- Label places a text shape with no border and no fill. It is the text kind with `preset: label`, not a new kind, so the reader draws it today.
 
 ## 0.4.0 — 2026-10-24
 
