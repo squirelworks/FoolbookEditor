@@ -75,6 +75,80 @@ class RectangleTests(unittest.TestCase):
         self.assertEqual(shape["fill"], "#f7f4ee")
         self.assertEqual(shape["outline"], "#071428")
 
+class RoundRectTests(unittest.TestCase):
+    def test_a_rounded_rectangle_has_a_radius_of_8(self):
+        shape = new_shape("roundrect", 10, 10, 110, 70, set())
+        self.assertEqual(shape["kind"], "roundrect")
+        self.assertEqual(shape["radius"], 8)
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 10, 100, 60))
+        self.assertEqual((shape["fill"], shape["outline"]), ("#f7f4ee", "#071428"))
+
+class PolygonTests(unittest.TestCase):
+    def test_clicks_add_points_and_finish_closes_the_polygon(self):
+        from author.tools import PointDraft
+        draft = PointDraft("polygon")
+        for x, y in ((10, 10), (90, 10), (50, 70)):
+            draft.add(x, y)
+        draft.add(50, 70)  # the second click of the double-click
+        shape = draft.finish(set())
+        self.assertEqual(shape["kind"], "polygon")
+        self.assertEqual(shape["points"], [[10, 10], [90, 10], [50, 70]])
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 10, 80, 60))
+
+    def test_two_points_are_not_a_polygon(self):
+        from author.tools import PointDraft
+        draft = PointDraft("polygon")
+        draft.add(0, 0)
+        draft.add(10, 10)
+        self.assertIsNone(draft.finish(set()))
+
+    def test_escape_drops_the_unfinished_polygon_and_keeps_the_tool(self):
+        from author.tools import PointDraft, after_escape
+        draft = PointDraft("polygon")
+        draft.add(0, 0)
+        self.assertEqual(after_escape("polygon", draft), "polygon")
+        self.assertEqual(after_escape("polygon", None), "select")
+
+class CurveTests(unittest.TestCase):
+    def test_a_curve_keeps_its_points_and_is_not_filled(self):
+        from author.tools import PointDraft
+        draft = PointDraft("curve")
+        for x, y in ((0, 40), (30, 0), (60, 40), (90, 0)):
+            draft.add(x, y)
+        shape = draft.finish(set())
+        self.assertEqual(shape["kind"], "curve")
+        self.assertEqual(shape["points"], [[0, 40], [30, 0], [60, 40], [90, 0]])
+        self.assertEqual(shape["fill"], "")
+
+    def test_one_point_is_not_a_curve(self):
+        from author.tools import PointDraft
+        draft = PointDraft("curve")
+        draft.add(5, 5)
+        self.assertIsNone(draft.finish(set()))
+
+class ArcTests(unittest.TestCase):
+    def test_an_arc_stores_its_start_angle_and_sweep(self):
+        shape = new_shape("arc", 0, 0, 80, 60, set())
+        self.assertEqual(shape["kind"], "arc")
+        self.assertEqual((shape["start"], shape["sweep"]), (0, 180))
+        self.assertNotIn("ends", shape)
+        self.assertEqual(shape["fill"], "")
+
+class PieTests(unittest.TestCase):
+    def test_a_pie_is_a_filled_quarter_by_its_angles(self):
+        shape = new_shape("pie", 0, 0, 80, 80, set())
+        self.assertEqual(shape["kind"], "pie")
+        self.assertEqual(shape["name"], "Pie")
+        self.assertEqual((shape["start"], shape["sweep"]), (0, 90))
+        self.assertEqual((shape["fill"], shape["outline"]), ("#f7f4ee", "#071428"))
+
+class ChordTests(unittest.TestCase):
+    def test_a_chord_is_a_filled_half_by_its_angles(self):
+        shape = new_shape("chord", 0, 0, 80, 80, set())
+        self.assertEqual(shape["kind"], "chord")
+        self.assertEqual((shape["start"], shape["sweep"]), (0, 180))
+        self.assertEqual(shape["fill"], "#f7f4ee")
+
     def test_a_label_is_a_text_shape_with_no_border(self):
         shape = new_shape("label", 10, 20, 10, 20, set())
         self.assertEqual(shape["kind"], "text")
