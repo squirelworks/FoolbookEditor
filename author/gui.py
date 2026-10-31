@@ -50,6 +50,7 @@ class Editor:
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
         ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
+        ttk.Button(bar, text="Proof PNGs", command=self._proof).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle")):
@@ -283,6 +284,17 @@ class Editor:
         dest = export_book(p, self.book, compile_script)
         note = "folder" if dest.is_dir() else dest.name
         self.status.config(text=f"Exported {note}")
+
+    def _proof(self):
+        """One PNG per page, drawn the way the stage draws it, into a folder."""
+        self._apply()
+        folder = filedialog.askdirectory(title="Folder for the page pictures")
+        if not folder:
+            return
+        from author.proof import export_pngs
+        base = self.path.parent if self.path else None
+        written = export_pngs(self.book, folder, base=base)
+        self.status.config(text=f"Wrote {len(written)} page pictures")
 
     def _export_executable(self):
         """ToolBook-style self-running book. Scaffold only."""
