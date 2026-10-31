@@ -967,7 +967,8 @@ class Editor:
         if found is None:
             self.status.config(text=said)
             return
-        self._load(found)
+        if self._discard_ok():
+            self._load(found)
 
     def _load(self, path: Path):
         from author.files import save_path_for

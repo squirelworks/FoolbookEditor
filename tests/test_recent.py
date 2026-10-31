@@ -90,6 +90,29 @@ class RecentTests(unittest.TestCase):
             gui.Editor(None).root.destroy()
         self.assertEqual([Path(p).name for p in offered[-1]], ["opened.fbk"])
 
+    def test_choosing_a_recent_book_asks_before_dropping_changes(self):
+        try:
+            import tkinter as tk
+            from author import gui
+        except ImportError:
+            self.skipTest("no tkinter")
+        other = self.book("other.fbk")
+        settings.remember(other)
+        with mock.patch.object(tk.Tk, "mainloop", lambda self: None), \
+                mock.patch.object(gui.Editor, "_start", lambda self, recent: None):
+            try:
+                ed = gui.Editor(None)
+            except tk.TclError:
+                self.skipTest("no display")
+        try:
+            ed.book["title"] = "Changed"
+            with mock.patch.object(ed, "_discard_ok", return_value=False) as asked:
+                ed._open_recent(str(other.resolve()))
+            asked.assert_called_once()
+            self.assertEqual(ed.book["title"], "Changed")
+        finally:
+            ed.root.destroy()
+
 
 if __name__ == "__main__":
     unittest.main()
