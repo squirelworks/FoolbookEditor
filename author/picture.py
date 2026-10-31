@@ -8,7 +8,6 @@ is refused with a sentence the window can show.
 from __future__ import annotations
 
 import base64
-import io
 import os
 from pathlib import Path
 
@@ -31,14 +30,12 @@ def picture_fields(path: str | Path, embed: bool = True, book: str | Path | None
         )
     if not embed:
         return {"src": _beside(path, book)}
+    from author.bitmap import import_bitmap
     try:
-        from PIL import Image
-        with Image.open(path) as image:
-            out = io.BytesIO()
-            image.save(out, "PNG")
-    except Exception as exc:
-        raise PictureRefused(f"{path.name} is not a picture Author can read.") from exc
-    return {"data": base64.b64encode(out.getvalue()).decode("ascii")}
+        data, pixels = import_bitmap(path.read_bytes())
+    except ValueError as exc:
+        raise PictureRefused(f"{path.name} is not a picture Author can read. {exc}") from exc
+    return {"data": base64.b64encode(data).decode("ascii"), "pixels": list(pixels)}
 
 
 def _beside(path: Path, book: str | Path | None) -> str:
