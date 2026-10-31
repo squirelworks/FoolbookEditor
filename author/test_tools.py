@@ -149,6 +149,19 @@ class ChordTests(unittest.TestCase):
         self.assertEqual((shape["start"], shape["sweep"]), (0, 180))
         self.assertEqual(shape["fill"], "#f7f4ee")
 
+    def test_a_label_is_a_text_shape_with_no_border(self):
+        shape = new_shape("label", 10, 20, 10, 20, set())
+        self.assertEqual(shape["kind"], "text")
+        self.assertEqual(shape["preset"], "label")
+        self.assertEqual(shape["name"], "Label")
+        self.assertEqual(shape["text"], "Label")
+        self.assertEqual(shape["fill"], "")
+        # The reader draws no frame for border 1, the ToolBook "none" style.
+        self.assertEqual(shape["border"], 1)
+
+    def test_a_field_is_not_a_label(self):
+        self.assertNotIn("preset", new_shape("text", 0, 0, 160, 36, set()))
+
 
 if __name__ == "__main__":
     unittest.main()
