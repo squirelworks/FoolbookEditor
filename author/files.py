@@ -122,6 +122,21 @@ def save_path_for(opened: str | Path) -> Path | None:
     return opened
 
 
+def is_compressed(path: str | Path) -> bool:
+    """Whether Save should compress, to match the file that was opened.
+
+    An envelope says so in bit 0 of its flags byte. Plain JSON and a web
+    editor download are not compressed. Anything else (a ToolBook file,
+    an office file) gets the default, compressed, as Foolbook packs it.
+    """
+    blob = Path(path).read_bytes()[:5]
+    if blob[:4] in (b"FBK1", b"FSK1", b"FSC1") and len(blob) == 5:
+        return bool(blob[4] & 1)
+    if blob.lstrip()[:1] in (b"{", b"["):
+        return False
+    return True
+
+
 # What Save writes. Anything else is Export.
 SAVE_SUFFIXES = (".fbk", ".fsk", ".json")
 

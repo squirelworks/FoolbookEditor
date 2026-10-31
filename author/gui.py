@@ -207,6 +207,8 @@ class Editor:
         ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
+        self.compress = tk.BooleanVar(value=True)
+        ttk.Checkbutton(bar, text="Compress", variable=self.compress).pack(side="left", padx=2)
         ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Proof PNGs", command=self._proof).pack(side="left", padx=2)
@@ -926,6 +928,8 @@ class Editor:
         ):
             self.book = load_book(copy)
         self.path = save_path_for(path)
+        from author.files import is_compressed
+        self.compress.set(is_compressed(path))
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
@@ -963,7 +967,7 @@ class Editor:
             self._save_as()
             return
         try:
-            self.path = save_safely(self.path, self.book)
+            self.path = save_safely(self.path, self.book, compress=self.compress.get())
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
@@ -981,7 +985,7 @@ class Editor:
             return
         self.path = Path(p)
         try:
-            self.path = save_safely(self.path, self.book)
+            self.path = save_safely(self.path, self.book, compress=self.compress.get())
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
