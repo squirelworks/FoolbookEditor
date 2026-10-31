@@ -709,12 +709,12 @@ class Editor:
         self.oscript.delete("1.0", "end")
         self.oscript.insert("1.0", row["script"])
         self._show_properties()
+        self._show_actions()
 
     def _script_tab(self, _evt=None):
         from author.properties import SCRIPT_TAB
         self.oscript.insert("insert", SCRIPT_TAB)
         return "break"
-        self._show_actions()
 
     def _show_actions(self):
         from author.actions import describe, note

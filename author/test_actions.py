@@ -37,3 +37,30 @@ class ActionList(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ActionsPane(unittest.TestCase):
+    def test_choosing_an_object_lists_its_actions(self):
+        try:
+            import tkinter as tk
+            from unittest import mock
+            from author import gui
+        except ImportError:
+            self.skipTest("no tkinter")
+        with mock.patch.object(tk.Tk, "mainloop", lambda self: None), \
+                mock.patch.object(gui.Editor, "_start", lambda self, recent: None):
+            try:
+                ed = gui.Editor(None)
+            except tk.TclError:
+                self.skipTest("no display")
+        try:
+            page = ed.book["pages"][ed.current]
+            page.setdefault("shapes", []).append(
+                {"kind": "button", "name": "Go", "x": 10, "y": 10, "w": 60, "h": 20,
+                 "actions": [{"do": "next"}]})
+            ed._fill_objects(page)
+            ed.objects.selection_set(len(ed._rows) - 1)
+            ed._on_object()
+            self.assertEqual(ed.action_list.get(0, "end"), ("Go to next page",))
+        finally:
+            ed.root.destroy()
