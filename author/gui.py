@@ -34,7 +34,9 @@ class Editor:
         self.current = 0
         self.tool = tk.StringVar(value="select")
         from author.history import History
+        from author.clipboard import Clipboard
         self.history = History(self.book)
+        self.clipboard = Clipboard()
         # Every command that can change the book commits to the history after it
         # runs. A commit that changed nothing is not an undo step.
         for name in self._CHANGES:
@@ -49,7 +51,7 @@ class Editor:
     _CHANGES = (
         "_apply", "_apply_script", "_add_page", "_duplicate_page", "_del_page", "_reorder",
         "_on_release", "_nudge", "_align", "_distribute", "_group", "_ungroup",
-        "_lock", "_unlock_all", "_color", "_restack",
+        "_lock", "_unlock_all", "_color", "_restack", "_clip",
     )
 
     def _committing(self, command):
@@ -58,6 +60,51 @@ class Editor:
             self.history.commit(self.book)
             return result
         return run
+
+    def _clip(self, event, command: str):
+        """Cut, copy, or paste. The page list copies pages; the stage copies objects.
+
+        A text box keeps these keys for its own text.
+        """
+        if isinstance(event.widget, (tk.Entry, ttk.Entry, tk.Text)):
+            return None
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return "break"
+        page = pages[self.current]
+        if event.widget is self.pages:
+            if command == "paste":
+                at = self.clipboard.paste_page(self.book, self.current)
+                if at is None:
+                    self.status.config(text="The clipboard holds objects, not a page")
+                    return "break"
+                self.current = at
+                self._refresh_list()
+            elif command == "copy":
+                self.clipboard.copy_page(self.book, self.current)
+                self.status.config(text=f"Copied page {page.get('id')}")
+            else:
+                self.status.config(text="Delete removes a page; Cut is for objects")
+            return "break"
+        if command == "paste":
+            landed = self.clipboard.paste_shapes(page)
+            if not landed:
+                self.status.config(text="The clipboard holds a page, not objects" if self.clipboard.kind else "Nothing to paste")
+                return "break"
+            self._fill_objects(page)
+            self._choose(landed)
+        elif self._chosen:
+            self._apply_script()
+            chosen = list(self._chosen)
+            if command == "cut":
+                count = self.clipboard.cut_shapes(page, chosen)
+                self._fill_objects(page)
+                self._choose([])
+            else:
+                count = self.clipboard.copy_shapes(page, chosen)
+            self.status.config(text=f"{'Cut' if command == 'cut' else 'Copied'} {count} object{'s' if count != 1 else ''}")
+        self._draw_thumbs()
+        return "break"
 
     def _undo(self):
         self._apply()
@@ -169,6 +216,8 @@ class Editor:
             self.root.bind(key, lambda _e: self._undo())
         for key in SHORTCUTS["redo"][1:]:
             self.root.bind(key, lambda _e: self._redo())
+        for command in ("cut", "copy", "paste"):
+            self.root.bind(SHORTCUTS[command][1], lambda e, c=command: self._clip(e, c))
         self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
         self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
         self.root.bind(SHORTCUTS["go_to_page"][1], lambda _e: (self.goto.focus_set(), self.goto.select_range(0, "end")))

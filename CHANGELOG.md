@@ -23,6 +23,7 @@
 - Ungroup puts a group's objects back on the page where it was, in order. A group inside it stays a group.
 - Lock keeps an object from being picked on the stage. The object list can still select it, and the Lock menu unlocks it. locked: true is kept in the file.
 - Undo and Redo, Ctrl+Z and Ctrl+Y, step through the last 50 changes. Typing in a box is one step when the box loses focus.
+- Cut, Copy and Paste work on the selected objects, or on the page when the page list has focus. A paste lands 8 right and 8 down, and a taken name or page id is renamed.
 
 ## 0.4.0 — 2026-10-24
 
