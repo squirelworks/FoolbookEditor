@@ -78,6 +78,13 @@ class Editor:
         ttk.Button(tools, text="Line", command=lambda: self._color("outline")).pack(side="left", padx=2)
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="Viewer").pack(side="left")
+        self.viewer_buttons = {}
+        for name, label in (("previous", "Previous"), ("next", "Next"), ("page", "Page number")):
+            var = tk.BooleanVar(value=False)
+            self.viewer_buttons[name] = var
+            ttk.Checkbutton(tools, text=label, variable=var, command=self._set_viewer).pack(side="left", padx=2)
 
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=4, pady=4)
@@ -254,7 +261,20 @@ class Editor:
         except NotImplementedError as exc:
             messagebox.showinfo("Foolbook Editor", str(exc))
 
+    def _set_viewer(self):
+        from author.document import set_viewer, viewer_of
+        current = viewer_of(self.book) or {}
+        chosen = [name for name, var in self.viewer_buttons.items() if var.get()]
+        set_viewer(self.book, current.get("name") or "Main", current.get("size") or [640, 480], chosen)
+
+    def _show_viewer(self):
+        from author.document import viewer_of
+        asked = set((viewer_of(self.book) or {}).get("buttons") or [])
+        for name, var in self.viewer_buttons.items():
+            var.set(name in asked)
+
     def _refresh_list(self):
+        self._show_viewer()
         self.pages.delete(0, "end")
         from author.document import page_label
         for p in self.book.get("pages") or []:

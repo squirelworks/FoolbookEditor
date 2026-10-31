@@ -209,3 +209,33 @@ def page_label(page: dict) -> str:
     """How the page list names a page. A background says so."""
     name = page.get("id") or "?"
     return f"{name} (background)" if page.get("background") else name
+
+
+VIEWER_BUTTONS = ("previous", "next", "page")
+
+
+def viewer_of(book: dict) -> dict | None:
+    """The viewer the reader shows: the first one on the book."""
+    for viewer in book.get("viewers") or []:
+        if isinstance(viewer, dict):
+            return viewer
+    return None
+
+
+def set_viewer(book: dict, name: str, size: list[int], buttons: list[str]) -> dict:
+    """Store the first viewer. Buttons are previous, next, and page, in that order."""
+    asked = [str(b).lower() for b in buttons]
+    unknown = [b for b in asked if b not in VIEWER_BUTTONS]
+    if unknown:
+        raise ValueError(f"no viewer button called {unknown[0]}")
+    viewer = {
+        "name": name.strip() or "Main",
+        "size": [int(size[0]), int(size[1])],
+        "buttons": [b for b in VIEWER_BUTTONS if b in asked],
+    }
+    found = book.setdefault("viewers", [])
+    if found and isinstance(found[0], dict):
+        found[0] = viewer
+    else:
+        found.insert(0, viewer)
+    return viewer
