@@ -137,6 +137,21 @@ def move_page(book: dict, index: int, delta: int) -> int:
     return j
 
 
+def set_size(page: dict, width, height) -> bool:
+    """Store ``size`` as ``[w, h]``. Bad or non-positive numbers leave the old size.
+
+    Shapes are not moved or clipped. A shape past the edge stays in the file.
+    """
+    try:
+        w, h = int(width), int(height)
+    except (TypeError, ValueError):
+        return False
+    if w <= 0 or h <= 0:
+        return False
+    page["size"] = [w, h]
+    return True
+
+
 def set_id(page: dict, page_id: str) -> None:
     page["id"] = page_id.strip() or page.get("id") or "P0"
 

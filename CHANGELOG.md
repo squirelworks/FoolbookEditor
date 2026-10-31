@@ -81,6 +81,7 @@
 - Duplicate copies the current page, with its shapes and scripts, under a new id. The copy is the next page. Ctrl+Shift+D does the same.
 - Delete asks before it removes a page, and names the page and how many objects go with it. Ctrl+Shift+Delete does the same.
 - Up and Down beside the page list move the current page one place earlier or later. Ctrl+Shift+Up and Ctrl+Shift+Down do the same.
+- Size under the stage sets the page size, 640 by 480 when the book does not say. The stage shows the whole page with a dashed edge, and a shape past the edge is kept and drawn past it.
 
 ## 0.4.0 — 2026-10-24
 

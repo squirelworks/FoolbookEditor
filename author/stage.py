@@ -7,6 +7,37 @@ A hotspot is drawn as its outline for the same reason.
 
 from __future__ import annotations
 
+# The page an author sees when the book does not say. The web editor uses it too.
+DEFAULT_SIZE = (640, 480)
+
+
+def page_size(page: dict | None) -> tuple[int, int]:
+    """The page's ``size`` as ``(w, h)``, or the default when it is missing or bad."""
+    size = (page or {}).get("size")
+    if isinstance(size, (list, tuple)) and len(size) >= 2:
+        try:
+            w, h = int(size[0]), int(size[1])
+        except (TypeError, ValueError):
+            return DEFAULT_SIZE
+        if w > 0 and h > 0:
+            return w, h
+    return DEFAULT_SIZE
+
+
+def view_box(page: dict | None, shapes: list[dict]) -> tuple[float, float, float, float]:
+    """What the stage fits: the whole page, grown to take in shapes that hang off it."""
+    from author.tools import bounds_of
+
+    w, h = page_size(page)
+    left, top, right, bottom = 0.0, 0.0, float(w), float(h)
+    for shape in shapes:
+        x, y, sw, sh = bounds_of(shape)
+        if not (sw or sh or x or y):
+            continue
+        left, top = min(left, x), min(top, y)
+        right, bottom = max(right, x + sw), max(bottom, y + sh)
+    return left, top, right, bottom
+
 
 def shown(page: dict, book: dict | None = None) -> list[dict]:
     """Shapes in book order. A hidden one is drawn, not dropped.
@@ -76,7 +107,7 @@ def paint(canvas, page: dict, book: dict | None = None) -> None:
     Only the page's own shapes can be hit. A shared background is drawn under them.
     """
     from engine.graphics import draw
-    from engine.place import content_box, fit_view, place_window
+    from engine.place import fit_view, place_window
 
     canvas.delete("all")
     shapes = shown(page)
@@ -86,9 +117,14 @@ def paint(canvas, page: dict, book: dict | None = None) -> None:
         canvas.after(50, lambda: paint(canvas, page, book))
         return
     drawn = shown(page, book)
-    box = content_box(drawn) if drawn else (0.0, 0.0, 640.0, 480.0)
+    box = view_box(page, drawn)
     scale, dx, dy, ox, oy = fit_view(box, width, height)
     draw(canvas, place_window(drawn, scale, box[0], box[1], dx, dy))
+    # The page edge. A shape past it is kept in the file and drawn past the line.
+    pw, ph = page_size(page)
+    left = (0 - box[0]) * scale + ox
+    top = (0 - box[1]) * scale + oy
+    canvas.create_rectangle(left, top, left + pw * scale, top + ph * scale, outline="#7f7f7f", dash=(4, 3), tags=("page-edge",))
     canvas._author_view = {
         "scale": scale,
         "ox": ox,

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import unittest
 
-from author.stage import hit, shown
+from author.document import set_size
+from author.stage import DEFAULT_SIZE, hit, page_size, shown, view_box
 
 
 class StageTests(unittest.TestCase):
@@ -58,6 +59,31 @@ class GhostTests(unittest.TestCase):
         self.assertTrue(write(shape, "visible", "false"))
         self.assertIs(shape["visible"], False)
         self.assertEqual(read(shape, "visible"), "false")
+
+
+class PageSizeTests(unittest.TestCase):
+    def test_a_page_with_no_size_is_640_by_480(self):
+        self.assertEqual(DEFAULT_SIZE, (640, 480))
+        self.assertEqual(page_size({}), (640, 480))
+        self.assertEqual(page_size({"size": [0, 10]}), (640, 480))
+
+    def test_the_control_stores_the_size_and_rejects_bad_numbers(self):
+        page = {"id": "P0"}
+        self.assertTrue(set_size(page, "800", 600))
+        self.assertEqual(page["size"], [800, 600])
+        self.assertFalse(set_size(page, "wide", 600))
+        self.assertFalse(set_size(page, -1, 600))
+        self.assertEqual(page["size"], [800, 600])
+        self.assertEqual(page_size(page), (800, 600))
+
+    def test_the_stage_shows_the_whole_page_even_when_it_is_empty(self):
+        self.assertEqual(view_box({"size": [320, 200]}, []), (0, 0, 320, 200))
+
+    def test_a_shape_past_the_edge_is_kept_and_shown(self):
+        page = {"size": [320, 200], "shapes": [{"x": 300, "y": 10, "w": 100, "h": 20}]}
+        self.assertEqual(view_box(page, page["shapes"]), (0, 0, 400, 200))
+        set_size(page, 200, 100)
+        self.assertEqual(page["shapes"][0]["x"], 300)
 
 
 if __name__ == "__main__":
