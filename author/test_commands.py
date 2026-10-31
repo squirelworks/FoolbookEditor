@@ -74,5 +74,21 @@ class DuplicatePageTests(unittest.TestCase):
         self.assertEqual(len(book["pages"]), 3)
 
 
+class DeletePageTests(unittest.TestCase):
+    def test_the_window_asks_with_the_page_id_and_object_count(self):
+        book = {"pages": [{"id": "P0"}, {"id": "Quiz", "shapes": [{"kind": "rect"}, {"kind": "button"}]}]}
+        self.assertEqual(commands.delete_question(book, 1), "Delete page Quiz and its 2 objects?")
+        book["pages"][1]["shapes"].pop()
+        self.assertEqual(commands.delete_question(book, 1), "Delete page Quiz and its 1 object?")
+
+    def test_nothing_to_ask_about_the_last_page(self):
+        self.assertIsNone(commands.delete_question({"pages": [{"id": "P0"}]}, 0))
+
+    def test_the_command_deletes_without_asking(self):
+        book = {"pages": [{"id": "P0"}, {"id": "P100"}, {"id": "P200"}]}
+        self.assertEqual(commands.delete_page(book, 1), 1)
+        self.assertEqual([p["id"] for p in book["pages"]], ["P0", "P200"])
+
+
 if __name__ == "__main__":
     unittest.main()
