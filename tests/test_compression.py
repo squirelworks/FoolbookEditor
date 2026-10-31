@@ -41,5 +41,30 @@ class CompressionTests(unittest.TestCase):
         self.assertFalse(is_compressed(web))
 
 
+class CompressBoxTests(unittest.TestCase):
+    def test_the_window_saves_the_way_the_box_says(self):
+        try:
+            import tkinter as tk
+            from unittest import mock
+            from author import gui
+        except ImportError:
+            self.skipTest("no tkinter")
+        with mock.patch.object(tk.Tk, "mainloop", lambda self: None), \
+                mock.patch.object(gui.Editor, "_start", lambda self, recent: None):
+            try:
+                ed = gui.Editor(None)
+            except tk.TclError:
+                self.skipTest("no display")
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                for ticked, name in ((False, "plain.fbk"), (True, "packed.fbk")):
+                    ed.compress.set(ticked)
+                    with mock.patch.object(gui.filedialog, "asksaveasfilename", return_value=str(Path(tmp) / name)):
+                        ed._save_as()
+                    self.assertIs(is_compressed(Path(tmp) / name), ticked, name)
+        finally:
+            ed.root.destroy()
+
+
 if __name__ == "__main__":
     unittest.main()
