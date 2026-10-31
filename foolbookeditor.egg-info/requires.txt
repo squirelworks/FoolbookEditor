@@ -1,0 +1,1 @@
+foolbook @ git+https://github.com/squirelworks/Foolbook.git
