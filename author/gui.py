@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .formats import save_book, load as load_book
+from .files import open_book as load_book, save as save_book
 
 try:
     import tkinter as tk
@@ -32,27 +32,57 @@ class Editor:
         self.book: dict = {"id": "new", "title": "New book", "pages": []}
         self.path: Path | None = path
         self.current = 0
-        self.tool = tk.StringVar(value="select")
+        from author.tools import DEFAULT_TOOL
+        self.tool = tk.StringVar(value=DEFAULT_TOOL)
         self._build()
         if path and path.exists():
             self._load(path)
         else:
-            self._new()
+            self._new(ask=False)
+            if path is None:
+                self._start([])
         self.root.mainloop()
+
+    def _start(self, recent: list[str]):
+        """The start window. New book keeps the blank book already showing."""
+        from author.start import OPEN, start_choices
+        win = tk.Toplevel(self.root)
+        win.title("Foolbook Author")
+        win.transient(self.root)
+        frame = ttk.Frame(win, padding=16)
+        frame.pack(fill="both", expand=True)
+
+        def pick(label: str, chosen: Path | None):
+            win.destroy()
+            if chosen is not None:
+                self._load(chosen)
+            elif label == OPEN:
+                self._open()
+            else:
+                self._new()
+
+        for label, chosen in start_choices(recent):
+            text = label if chosen is None else f"{label}: {chosen.name}"
+            ttk.Button(frame, text=text, command=lambda l=label, c=chosen: pick(l, c)).pack(fill="x", pady=2)
+        win.bind("<Escape>", lambda _e: win.destroy())
+        win.grab_set()
 
     def _build(self):
         # toolbar
         bar = ttk.Frame(self.root, padding=4)
         bar.pack(fill="x")
         ttk.Button(bar, text="New", command=self._new).pack(side="left")
+        ttk.Button(bar, text="Template", command=self._template).pack(side="left", padx=(2, 0))
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
+        ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
         ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
+        ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
-        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle")):
+        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle"), ("roundrect", "Rounded")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(bar, text="Bold", command=lambda: self._wrap("**")).pack(side="left")
@@ -67,8 +97,12 @@ class Editor:
             ("line", "Line"),
             ("ellipse", "Ellipse"),
             ("polygon", "Polygon"),
+            ("curve", "Curve"),
             ("arc", "Arc"),
+            ("chord", "Chord"),
+            ("pie", "Pie"),
             ("picture", "Picture"),
+            ("hotspot", "Hotspot"),
         ):
             ttk.Radiobutton(tools, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
@@ -77,6 +111,7 @@ class Editor:
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(tools, text="Fill", command=lambda: self._color("fill")).pack(side="left")
         ttk.Button(tools, text="Line", command=lambda: self._color("outline")).pack(side="left", padx=2)
+        ttk.Button(tools, text="Pattern", command=self._pattern).pack(side="left")
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
@@ -107,7 +142,18 @@ class Editor:
         row = ttk.Frame(left)
         row.pack(fill="x", pady=4)
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
-        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left", padx=4)
+        from author.commands import SHORTCUTS
+        self.root.bind(SHORTCUTS["add_page"][1], lambda _e: self._add_page())
+        self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
+        self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
+        self.root.bind(SHORTCUTS["page_up"][1], lambda _e: self._reorder("page_up"))
+        self.root.bind(SHORTCUTS["page_down"][1], lambda _e: self._reorder("page_down"))
+        ttk.Button(row, text="Duplicate", command=self._duplicate_page).pack(side="left", padx=4)
+        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left")
+        order = ttk.Frame(left)
+        order.pack(fill="x")
+        ttk.Button(order, text="Up", command=lambda: self._reorder("page_up")).pack(side="left")
+        ttk.Button(order, text="Down", command=lambda: self._reorder("page_down")).pack(side="left", padx=4)
         ttk.Button(left, text="New background", command=self._add_background).pack(anchor="w")
 
         # The page picture. Foolbook draws it. The editor only holds the panes.
@@ -129,9 +175,11 @@ class Editor:
         self.objects.bind("<<ListboxSelect>>", self._on_object)
         self.object_meta = ttk.Label(objects, text="", wraplength=200)
         self.object_meta.pack(anchor="w", pady=4)
-        ttk.Label(objects, text="Object script").pack(anchor="w")
-        self.oscript = tk.Text(objects, height=12, wrap="word")
+        self._build_properties(objects)
+        ttk.Label(objects, text="Script (the object's, or the page's when no object is chosen)").pack(anchor="w")
+        self.oscript = tk.Text(objects, height=12, wrap="none", font="TkFixedFont", undo=True)
         self.oscript.pack(fill="both", expand=True)
+        self.oscript.bind("<Tab>", self._script_tab)
         ttk.Button(objects, text="Apply script", command=self._apply_script).pack(anchor="e", pady=4)
         self._rows: list[dict] = []
         self._object = None
@@ -159,7 +207,111 @@ class Editor:
         self.text.bind("<KeyRelease>", lambda e: self._preview())
 
         ttk.Button(center, text="Apply", command=self._apply).pack(anchor="e", pady=4)
+        self.root.bind("<Escape>", self._on_escape)
+        self.canvas.bind("<Double-Button-1>", self._finish_draft)
+        self.root.bind("<Return>", self._finish_draft)
+        self._draft = None
+        # Choosing another tool drops a polygon that was not closed.
+        self.tool.trace_add("write", lambda *_args: setattr(self, "_draft", None))
         self.root.after_idle(self._split)
+
+    def _build_properties(self, parent):
+        """One row per property. Return or leaving the box applies it. Bad text puts the old value back."""
+        from author.properties import CHOICES, ROWS
+        # A classic frame holds the pane so Undock can hand it to the window manager.
+        self.props_holder = tk.Frame(parent)
+        self.props_holder.pack(fill="x", pady=4)
+        self.props = ttk.LabelFrame(self.props_holder, text="Properties", padding=4)
+        self.props.pack(fill="both", expand=True)
+        ttk.Button(self.props_holder, text="Undock", command=self._toggle_properties).pack(anchor="e")
+        self.props.columnconfigure(1, weight=1)
+        self._prop_vars: dict[str, tk.StringVar] = {}
+        self._prop_texts: dict[str, tk.Text] = {}
+        for row, (key, label, kind) in enumerate(ROWS):
+            ttk.Label(self.props, text=label).grid(row=row, column=0, sticky="w")
+            var = tk.StringVar()
+            if kind == "flag":
+                box = ttk.Checkbutton(self.props, variable=var, onvalue="true", offvalue="false",
+                                      command=lambda k=key: self._set_property(k))
+                box.grid(row=row, column=1, sticky="w", padx=4, pady=1)
+            elif kind == "pointlist":
+                text = tk.Text(self.props, height=4, width=18, font="TkFixedFont", wrap="none")
+                text.grid(row=row, column=1, sticky="we", padx=4, pady=1)
+                text.bind("<FocusOut>", lambda _e, k=key: self._set_property(k))
+                self._prop_texts[key] = text
+            elif kind == "choice":
+                pick = ttk.Combobox(self.props, textvariable=var, values=CHOICES[key], state="readonly", width=16)
+                pick.grid(row=row, column=1, sticky="we", padx=4, pady=1)
+                pick.bind("<<ComboboxSelected>>", lambda _e, k=key: self._set_property(k))
+            else:
+                entry = ttk.Entry(self.props, textvariable=var, width=18)
+                entry.grid(row=row, column=1, sticky="we", padx=4, pady=1)
+                entry.bind("<Return>", lambda _e, k=key: self._set_property(k))
+                entry.bind("<FocusOut>", lambda _e, k=key: self._set_property(k))
+            self._prop_vars[key] = var
+        self._build_well(len(ROWS))
+        from author.sheet import Sheet
+        self.sheet = Sheet(self.root, self.props_holder, "Properties")
+
+    def _toggle_properties(self):
+        """The same Properties pane, in its own window or back in Author."""
+        docked = self.sheet.toggle()
+        for child in self.props_holder.winfo_children():
+            if isinstance(child, ttk.Button):
+                child.config(text="Undock" if docked else "Dock")
+
+    def _build_well(self, row: int):
+        """Eight plain colours. A click sets the fill, a right-click the outline."""
+        from author.properties import WELL
+        ttk.Label(self.props, text="Colours").grid(row=row, column=0, sticky="w")
+        well = ttk.Frame(self.props)
+        well.grid(row=row, column=1, sticky="w", padx=4, pady=2)
+        for at, color in enumerate(WELL):
+            swatch = tk.Label(well, bg=color, width=2, relief="solid", borderwidth=1, name=f"well{color[1:]}")
+            swatch.grid(row=0, column=at, padx=1)
+            swatch.bind("<Button-1>", lambda _e, c=color: self._pick_color("fill", c))
+            swatch.bind("<Button-3>", lambda _e, c=color: self._pick_color("outline", c))
+        ttk.Button(well, text="No fill", width=7, command=lambda: self._pick_color("fill", "")).grid(
+            row=0, column=len(WELL), padx=(4, 0)
+        )
+
+    def _pick_color(self, key: str, color: str):
+        self._prop_vars[key].set(color)
+        self._set_property(key)
+
+    def _show_properties(self):
+        from author.properties import read
+        shape, _index = self._selected()
+        for key, var in self._prop_vars.items():
+            var.set(read(shape, key) if shape is not None else "")
+        for key, text in self._prop_texts.items():
+            text.delete("1.0", "end")
+            text.insert("1.0", read(shape, key) if shape is not None else "")
+
+    def _set_property(self, key: str):
+        shape, index = self._selected()
+        if shape is None:
+            return
+        from author.properties import read, write
+        page = (self.book.get("pages") or [])[self.current]
+        if key in self._prop_texts:
+            text = self._prop_texts[key]
+            changed = write(shape, key, text.get("1.0", "end"), page)
+            text.delete("1.0", "end")
+            text.insert("1.0", read(shape, key))
+        else:
+            changed = write(shape, key, self._prop_vars[key].get(), page)
+            self._prop_vars[key].set(read(shape, key))
+        if not changed:
+            self.status.config(text=f"{key} kept: that value cannot be used")
+            return
+        if key == "name" and self._object is not None:
+            row = self._rows[self._object]
+            row["name"] = shape.get("name") or ""
+            self.objects.delete(self._object)
+            self.objects.insert(self._object, f"{row['kind']}  {row['name']}{' hidden' if row['hidden'] else ''}")
+            self.objects.selection_set(self._object)
+        self._preview()
 
     def _split(self):
         """Keep the picture on screen. The side panes do not take the window."""
@@ -173,12 +325,113 @@ class Editor:
         except tk.TclError:
             return
 
-    def _new(self):
-        self.book = {
-            "id": "new",
-            "title": "New book",
-            "pages": [{"id": "P0", "text": ["New slide"], "items": [], "widgets": []}],
-        }
+    def _new(self, ask: bool = True):
+        from author.document import new_book
+        if not ask:
+            self._open_new(new_book())
+            return
+        self._ask_new()
+
+    def _ask_new(self):
+        """Page size and background colour, then the stage."""
+        from author.document import PAGE_SIZE, new_book
+        win = tk.Toplevel(self.root)
+        win.title("New book")
+        win.transient(self.root)
+        form = ttk.Frame(win, padding=12)
+        form.pack(fill="both", expand=True)
+        fields = {}
+        for row, (label, value) in enumerate((
+            ("Width", PAGE_SIZE[0]),
+            ("Height", PAGE_SIZE[1]),
+            ("Background", "#ffffff"),
+        )):
+            ttk.Label(form, text=label).grid(row=row, column=0, sticky="w")
+            var = tk.StringVar(value=str(value))
+            ttk.Entry(form, textvariable=var, width=10).grid(row=row, column=1, sticky="w", pady=2)
+            fields[label] = var
+        error = ttk.Label(form, text="", foreground="#a00000", wraplength=240)
+        error.grid(row=3, column=0, columnspan=2, sticky="w")
+
+        def make():
+            try:
+                size = (int(fields["Width"].get()), int(fields["Height"].get()))
+            except ValueError:
+                error.config(text="Width and height are whole numbers.")
+                return
+            try:
+                book = new_book(size, fields["Background"].get())
+            except ValueError as exc:
+                error.config(text=str(exc))
+                return
+            win.destroy()
+            self._open_new(book)
+
+        buttons = ttk.Frame(form)
+        buttons.grid(row=4, column=0, columnspan=2, sticky="e", pady=(8, 0))
+        ttk.Button(buttons, text="Cancel", command=win.destroy).pack(side="right")
+        ttk.Button(buttons, text="Create", command=make).pack(side="right", padx=4)
+        win.bind("<Return>", lambda _e: make())
+        win.bind("<Escape>", lambda _e: win.destroy())
+        win.grab_set()
+
+    def _template(self):
+        """A new book copied from a template. The template file is not opened."""
+        from author.templates import from_template, names
+        win = tk.Toplevel(self.root)
+        win.title("New from template")
+        win.transient(self.root)
+        frame = ttk.Frame(win, padding=12)
+        frame.pack(fill="both", expand=True)
+        found = names()
+        listing = tk.Listbox(frame, height=max(3, len(found)), exportselection=False)
+        for name in found:
+            listing.insert("end", name)
+        listing.pack(fill="both", expand=True)
+
+        def make():
+            sel = listing.curselection()
+            if not sel:
+                return
+            book = from_template(found[sel[0]])
+            win.destroy()
+            self._open_new(book)
+
+        ttk.Button(frame, text="Create", command=make).pack(anchor="e", pady=(8, 0))
+        listing.bind("<Double-Button-1>", lambda _e: make())
+        win.bind("<Escape>", lambda _e: win.destroy())
+        win.grab_set()
+
+    def _catalog(self):
+        """The books in a folder. Double-click opens one."""
+        from author.shelf import list_books
+        folder = filedialog.askdirectory(title="Catalog folder")
+        if not folder:
+            return
+        rows = list_books(folder)
+        win = tk.Toplevel(self.root)
+        win.title(f"Catalog: {Path(folder).name}")
+        tree = ttk.Treeview(win, columns=("title", "pages", "file"), show="headings", height=min(20, max(4, len(rows))))
+        for column, label, width in (("title", "Title", 260), ("pages", "Pages", 60), ("file", "File", 200)):
+            tree.heading(column, text=label)
+            tree.column(column, width=width, anchor="e" if column == "pages" else "w")
+        for index, row in enumerate(rows):
+            title = row["error"] or row["title"]
+            tree.insert("", "end", iid=str(index), values=(title, row["pages"], row["file"]))
+        tree.pack(fill="both", expand=True, padx=8, pady=8)
+
+        def open_row(_evt=None):
+            sel = tree.selection()
+            if not sel or rows[int(sel[0])]["error"]:
+                return
+            win.destroy()
+            self._load(rows[int(sel[0])]["path"])
+
+        tree.bind("<Double-Button-1>", open_row)
+        tree.bind("<Return>", open_row)
+
+    def _open_new(self, book: dict):
+        self.book = book
         self.path = None
         self.current = 0
         self._refresh_list()
@@ -255,6 +508,21 @@ class Editor:
         save_book(self.path, self.book)
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
+
+    def _publish(self):
+        """A folder with the .fbk, its linked files, and a README. No installer."""
+        self._apply()
+        folder = filedialog.askdirectory(title="Publish into this folder")
+        if not folder:
+            return
+        from author.publish import publish
+        source = self.path.parent if self.path else None
+        name = self.path.with_suffix(".fbk").name if self.path else ""
+        written, missing = publish(self.book, folder, source=source, name=name)
+        note = f"Published {len(written)} files to {folder}"
+        if missing:
+            note += f". Not found: {', '.join(missing)}"
+        self.status.config(text=note)
 
     def _export(self):
         """Save as a book, a TBX folder, a ToolBook shell, or an office file."""
@@ -400,12 +668,20 @@ class Editor:
         self.object_meta.config(text=f"{row['kind']}  {row['name'] or '(unnamed)'}  {left}, {top}, {right}, {bottom}")
         self.oscript.delete("1.0", "end")
         self.oscript.insert("1.0", row["script"])
+        self._show_properties()
+
+    def _script_tab(self, _evt=None):
+        from author.properties import SCRIPT_TAB
+        self.oscript.insert("insert", SCRIPT_TAB)
+        return "break"
 
     def _apply_script(self):
-        if self._object is None:
-            return
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
+            return
+        if self._object is None:
+            from author.catalog import set_page_script
+            set_page_script(pages[self.current], self.oscript.get("1.0", "end"))
             return
         from author.catalog import set_object_script
         set_object_script(pages[self.current], self._rows[self._object]["index"], self.oscript.get("1.0", "end"))
@@ -428,8 +704,22 @@ class Editor:
 
     def _add_page(self):
         self._apply()
-        from author.document import add_page
-        self.current = add_page(self.book)
+        from author.commands import add_page
+        self.current = add_page(self.book, self.current)
+        self._refresh_list()
+
+    def _duplicate_page(self):
+        self._apply()
+        self._apply_script()
+        from author.commands import duplicate_page
+        self.current = duplicate_page(self.book, self.current)
+        self._refresh_list()
+
+    def _reorder(self, command: str):
+        self._apply()
+        self._apply_script()
+        from author import commands
+        self.current = getattr(commands, command)(self.book, self.current)
         self._refresh_list()
 
     def _add_background(self):
@@ -440,11 +730,20 @@ class Editor:
         self._refresh_list()
 
     def _del_page(self):
-        from author.document import delete_page
+        from author.commands import delete_page, delete_question
+        question = delete_question(self.book, self.current)
+        if question is None:
+            self.status.config(text="A book keeps its last page")
+            return
+        if not messagebox.askyesno("Delete page", question, parent=self.root):
+            return
         self.current = delete_page(self.book, self.current)
         self._refresh_list()
 
     def _preview(self):
+        if getattr(self, "_typing", None) is not None:
+            # A field is being typed into. Redrawing now would take the box away.
+            return
         page = None
         pages = self.book.get("pages") or []
         if 0 <= self.current < len(pages):
@@ -452,6 +751,7 @@ class Editor:
         from author.stage import paint
         paint(self.canvas, page or {}, self.book)
         self._draw_handles()
+        self._draw_draft()
 
     def _draw_handles(self):
         if self.tool.get() != "select" or self._object is None:
@@ -529,6 +829,8 @@ class Editor:
         down = getattr(self, "_down", None)
         self._down = None
         if tool == "select":
+            if self._drag:
+                self._show_properties()
             self._drag = None
             return
         self._drag = None
@@ -537,14 +839,19 @@ class Editor:
         view = getattr(self.canvas, "_author_view", None)
         if not view or not view.get("scale"):
             return
-        from author.catalog import place_shape
-        from author.tools import new_shape, page_point
+        from author.tools import POINT_TOOLS, PointDraft, new_shape, page_point
         x0, y0 = page_point(view, down[0], down[1])
         x1, y1 = page_point(view, evt.x, evt.y)
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
         page = pages[self.current]
+        if tool in POINT_TOOLS:
+            if self._draft is None or self._draft.tool != tool:
+                self._draft = PointDraft(tool)
+            self._draft.add(x1, y1)
+            self._preview()
+            return
         names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
         shape = new_shape(tool, x0, y0, x1, y1, names, self.layer.get())
         if tool == "picture":
@@ -554,8 +861,21 @@ class Editor:
             )
             if not chosen:
                 return
-            import base64
-            shape["data"] = base64.b64encode(Path(chosen).read_bytes()).decode("ascii")
+            from author.picture import PictureRefused, picture_fields
+            embed = messagebox.askyesno(
+                "Picture",
+                "Keep the picture inside the book?\n\nNo links the file beside the book instead.",
+                parent=self.root,
+            )
+            try:
+                shape.update(picture_fields(chosen, embed=embed, book=self.path))
+            except PictureRefused as exc:
+                messagebox.showinfo("Picture", str(exc), parent=self.root)
+                return
+        self._place(page, shape)
+
+    def _place(self, page: dict, shape: dict):
+        from author.catalog import place_shape
         placed = place_shape(page, shape)
         self._fill_objects(page)
         for row, item in enumerate(self._rows):
@@ -567,6 +887,97 @@ class Editor:
                 break
         self._fitted = None
         self._preview()
+        if (shape.get("kind") or "") == "text":
+            self._edit_text(placed)
+
+    def _on_escape(self, _evt=None):
+        from author.tools import after_escape
+        self.tool.set(after_escape(self.tool.get(), self._draft))
+        self._draft = None
+        self._preview()
+
+    def _finish_draft(self, _evt=None):
+        """Close the polygon or curve being clicked out. Too few points leaves nothing."""
+        draft = self._draft
+        if draft is None:
+            if _evt is not None and getattr(_evt, "widget", None) is self.canvas and self.tool.get() == "select":
+                self._type_into(_evt.x, _evt.y)
+            return None
+        self._draft = None
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return "break"
+        page = pages[self.current]
+        names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
+        shape = draft.finish(names, self.layer.get())
+        if shape is None:
+            self._preview()
+            return "break"
+        self._place(page, shape)
+        return "break"
+
+    def _type_into(self, wx: float, wy: float):
+        """Double-click a field with Select and type into it, on the page. Several lines are fine."""
+        view = getattr(self.canvas, "_author_view", None)
+        if not view or not view.get("scale"):
+            return
+        from author.stage import hit
+        from author.tools import page_point
+        px, py = page_point(view, wx, wy)
+        index = hit(view["shapes"], px, py, self.layer.get())
+        pages = self.book.get("pages") or []
+        if index is None or not (0 <= self.current < len(pages)):
+            return
+        shape = (pages[self.current].get("shapes") or [])[index]
+        if (shape.get("kind") or "") != "text":
+            return
+        self._edit_text(index)
+
+    def _edit_text(self, index: int):
+        view = getattr(self.canvas, "_author_view", None)
+        pages = self.book.get("pages") or []
+        if not view or not (0 <= self.current < len(pages)):
+            return
+        page = pages[self.current]
+        shape = page["shapes"][index]
+        from author.tools import bounds_of, window_point
+        x, y, w, h = bounds_of(shape)
+        left, top = window_point(view, x, y)
+        right, bottom = window_point(view, x + w, y + h)
+        box = tk.Text(self.canvas, wrap="word", undo=True, borderwidth=1, relief="solid")
+        box.insert("1.0", str(shape.get("text") or ""))
+        window = self.canvas.create_window(left, top, anchor="nw", window=box,
+                                           width=max(40, right - left), height=max(24, bottom - top))
+
+        def done(_evt=None):
+            if not box.winfo_exists():
+                return
+            from author.catalog import set_object_text
+            set_object_text(page, index, box.get("1.0", "end"))
+            self.canvas.delete(window)
+            box.destroy()
+            self._typing = None
+            self._preview()
+
+        box.bind("<FocusOut>", done)
+        box.bind("<Escape>", done)
+        box.focus_set()
+        self._typing = box
+
+    def _draw_draft(self):
+        draft = self._draft
+        view = getattr(self.canvas, "_author_view", None)
+        if draft is None or not draft.points or not view:
+            return
+        from author.tools import window_point
+        flat = []
+        for x, y in draft.points:
+            flat.extend(window_point(view, x, y))
+        if len(flat) >= 4:
+            self.canvas.create_line(*flat, fill="#071428", dash=(4, 2))
+        for x, y in draft.points:
+            sx, sy = window_point(view, x, y)
+            self.canvas.create_rectangle(sx - 2, sy - 2, sx + 2, sy + 2, outline="#071428")
 
     def _selected(self):
         pages = self.book.get("pages") or []
@@ -595,6 +1006,18 @@ class Editor:
         if not color:
             return
         shape[which] = color
+        self._preview()
+
+    def _pattern(self):
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        from author.patterns import next_pattern
+        name = next_pattern(shape)
+        if name is None:
+            self.status.config(text="Only a rectangle takes a pattern")
+            return
+        self.status.config(text=f"Pattern: {name}")
         self._preview()
 
     def _restack(self, direction: str):
