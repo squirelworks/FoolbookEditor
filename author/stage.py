@@ -7,9 +7,20 @@ An object Reader hides is still drawn, so Author can select it.
 from __future__ import annotations
 
 
-def shown(page: dict) -> list[dict]:
-    """Shapes in book order. A hidden one is drawn, not dropped."""
+def shown(page: dict, book: dict | None = None) -> list[dict]:
+    """Shapes in book order. A hidden one is drawn, not dropped.
+
+    Given the book, the shared background the page uses comes first. Those
+    shapes are copies. They are edited on the background page.
+    """
     rows = []
+    if book is not None:
+        from author.document import background_of
+        under = background_of(book, page)
+        for shape in shown(under) if under else []:
+            item = dict(shape)
+            item.setdefault("layer", "background")
+            rows.append(item)
     for shape in page.get("shapes") or []:
         if not isinstance(shape, dict):
             continue
@@ -39,8 +50,11 @@ def hit(shapes: list[dict], x: float, y: float, layer: str | None = None) -> int
     return None
 
 
-def paint(canvas, page: dict) -> None:
-    """Draw one page into the editor's canvas, fitted to that canvas."""
+def paint(canvas, page: dict, book: dict | None = None) -> None:
+    """Draw one page into the editor's canvas, fitted to that canvas.
+
+    Only the page's own shapes can be hit. A shared background is drawn under them.
+    """
     from engine.graphics import draw
     from engine.place import content_box, fit_view, place_window
 
@@ -49,11 +63,12 @@ def paint(canvas, page: dict) -> None:
     width = canvas.winfo_width()
     height = canvas.winfo_height()
     if width < 20 or height < 20:
-        canvas.after(50, lambda: paint(canvas, page))
+        canvas.after(50, lambda: paint(canvas, page, book))
         return
-    box = content_box(shapes) if shapes else (0.0, 0.0, 640.0, 480.0)
+    drawn = shown(page, book)
+    box = content_box(drawn) if drawn else (0.0, 0.0, 640.0, 480.0)
     scale, dx, dy, ox, oy = fit_view(box, width, height)
-    draw(canvas, place_window(shapes, scale, box[0], box[1], dx, dy))
+    draw(canvas, place_window(drawn, scale, box[0], box[1], dx, dy))
     canvas._author_view = {
         "scale": scale,
         "ox": ox,
