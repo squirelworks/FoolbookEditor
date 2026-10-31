@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from author import document
 
-# Command name to the key shown in the menu and the Tk event bound to it.
+# Command name to the key shown in the menu and the Tk events bound to it.
 SHORTCUTS = {
     "add_page": ("Ctrl+M", "<Control-m>"),
+    "undo": ("Ctrl+Z", "<Control-z>"),
+    "redo": ("Ctrl+Y or Ctrl+Shift+Z", "<Control-y>", "<Control-Z>"),
     "duplicate_page": ("Ctrl+Shift+D", "<Control-D>"),
     "delete_page": ("Ctrl+Shift+Delete", "<Control-Shift-Delete>"),
     "page_up": ("Ctrl+Shift+Up", "<Control-Shift-Up>"),

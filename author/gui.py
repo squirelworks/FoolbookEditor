@@ -34,6 +34,12 @@ class Editor:
         self.current = 0
         from author.tools import DEFAULT_TOOL
         self.tool = tk.StringVar(value=DEFAULT_TOOL)
+        from author.history import History
+        self.history = History(self.book)
+        # Every command that can change the book commits to the history after it
+        # runs. A commit that changed nothing is not an undo step.
+        for name in self._CHANGES:
+            setattr(self, name, self._committing(getattr(self, name)))
         self._build()
         if path and path.exists():
             self._load(path)
@@ -42,6 +48,37 @@ class Editor:
             if path is None:
                 self._start([])
         self.root.mainloop()
+
+    _CHANGES = (
+        "_apply", "_apply_script", "_add_page", "_duplicate_page", "_del_page", "_reorder",
+        "_on_release", "_nudge", "_align", "_distribute", "_group", "_ungroup",
+        "_lock", "_unlock_all", "_color", "_restack",
+    )
+
+    def _committing(self, command):
+        def run(*args, **kwargs):
+            result = command(*args, **kwargs)
+            self.history.commit(self.book)
+            return result
+        return run
+
+    def _undo(self):
+        self._apply()
+        self._apply_script()
+        self._restore(self.history.undo(), "Nothing to undo")
+        return "break"
+
+    def _redo(self):
+        self._restore(self.history.redo(), "Nothing to redo")
+        return "break"
+
+    def _restore(self, book: dict | None, nothing: str):
+        if book is None:
+            self.status.config(text=nothing)
+            return
+        self.book = book
+        self.current = max(0, min(self.current, len(book.get("pages") or []) - 1))
+        self._refresh_list()
 
     def _start(self, recent: list[str]):
         """The start window. New book keeps the blank book already showing."""
@@ -189,6 +226,10 @@ class Editor:
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
         from author.commands import SHORTCUTS
         self.root.bind(SHORTCUTS["add_page"][1], lambda _e: self._add_page())
+        for key in SHORTCUTS["undo"][1:]:
+            self.root.bind(key, lambda _e: self._undo())
+        for key in SHORTCUTS["redo"][1:]:
+            self.root.bind(key, lambda _e: self._redo())
         self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
         self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
         self.root.bind(SHORTCUTS["go_to_page"][1], lambda _e: (self.goto.focus_set(), self.goto.select_range(0, "end")))
@@ -308,6 +349,10 @@ class Editor:
         self.text.bind("<KeyRelease>", lambda e: self._preview())
 
         ttk.Button(center, text="Apply", command=self._apply).pack(anchor="e", pady=4)
+        # Typing becomes one undo step when the box loses focus, not one per key.
+        for box in (self.pid, self.next, self.back, self.page_w, self.page_h, self.text):
+            box.bind("<FocusOut>", lambda _e: self._apply(), add="+")
+        self.oscript.bind("<FocusOut>", lambda _e: self._apply_script(), add="+")
         self.root.bind("<Escape>", self._on_escape)
         self.canvas.bind("<Double-Button-1>", self._finish_draft)
         self.root.bind("<Return>", self._finish_draft)
@@ -669,6 +714,7 @@ class Editor:
         self.path = None
         self.current = 0
         self._refresh_list()
+        self.history.reset(self.book)
         self.status.config(text="New book")
 
     def _open(self):
@@ -695,6 +741,7 @@ class Editor:
         self.path = path
         self.current = 0
         self._refresh_list()
+        self.history.reset(self.book)
         from author.document import handler_names
         found = handler_names(self.book)
         note = f"  {len(found)} handlers" if path.suffix.lower() == ".fsk" else ""
@@ -712,6 +759,7 @@ class Editor:
         self.path = src.with_suffix(".fbk")
         self.current = 0
         self._refresh_list()
+        self.history.reset(self.book)
         self.status.config(text=f"Imported {src.name}. Save writes {self.path.name}")
         win = tk.Toplevel(self.root)
         win.title(f"Import report: {src.name}")
