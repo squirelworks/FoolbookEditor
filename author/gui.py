@@ -1405,7 +1405,7 @@ class Editor:
         if not (0 <= self.current < len(pages)):
             return
         p = pages[self.current]
-        from author.document import set_id, set_nav, set_size, set_text, set_transition, text_from_editor
+        from author.document import DuplicateId, rename_page, set_nav, set_size, set_text, set_transition, text_from_editor
         from author.stage import page_size
         if (self.page_w.get().strip(), self.page_h.get().strip()) != tuple(str(n) for n in page_size(p)):
             if not set_size(p, self.page_w.get().strip(), self.page_h.get().strip()):
@@ -1415,7 +1415,12 @@ class Editor:
                 self.page_h.delete(0, "end")
                 self.page_h.insert(0, str(height))
                 self.status.config(text="Size is two whole numbers above zero")
-        set_id(p, self.pid.get())
+        try:
+            rename_page(self.book, self.current, self.pid.get())
+        except DuplicateId as exc:
+            self.status.config(text=str(exc))
+            self.pid.delete(0, "end")
+            self.pid.insert(0, p.get("id") or "")
         set_transition(p, self.transition.get())
         set_text(p, text_from_editor(self.text.get("1.0", "end")))
         set_nav(p, self.next.get(), self.back.get())
