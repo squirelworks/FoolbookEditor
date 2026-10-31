@@ -18,6 +18,7 @@
 
 ## 2026-10-31
 
+- A status line at the bottom of the window shows the tool, page id, selected shape, and Saved or Unsaved changes, and the zoom once the stage has a zoom control. Unsaved changes reads the dirty flag from item 22 once that has landed, and says Saved until then. Test: `author/test_status.py`.
 - A page's Transition is stored as `transition` and ignored. Foolbook changes pages with no animation, and the README says so. "none" stores nothing.
 
 ## 2026-10-31
