@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Save writes a page's background shapes ahead of its page shapes. The reader paints in array order, so a background shape added after a page shape (a web editor book) was drawn on top of it. Backgrounds stay on the page, tagged `layer: background`; `schema.md` says why.
 - Deleting the only page is refused with a sentence, in the model (`LastPage`), not silently ignored. No blank page is made. The README says so.
 - Record lays its rows out as pages: the fields go on this page with the first row, and the page is copied once for each further row with that row in the fields. Previous record and Next record go to the page before and after; the first page has no Previous and the last no Next. Nothing is stored as `records`, so the reader needs no change (Foolbook#53 is closed). `author/test_records.py`.
 - Print writes the PNG proof pages and sends them to the printer when the machine has one call for it: `os.startfile(path, "print")` on Windows, one `lpr` on a Mac or Linux. Anywhere else the folder of pages is the print, and the status line says so.

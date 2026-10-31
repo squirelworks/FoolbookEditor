@@ -127,6 +127,12 @@ python3 examples/welcome.py /path/to/Foolbook/foolbook/books
 That writes the two books a new Foolbook install opens: Using Foolbook and First Light.
 
 
+## Backgrounds live on the page, for now
+
+A background shape is stored on each page that shows it, with `layer: background`, because that is what the web editor stores and what the reader opens today. It is not lifted to a shared background page in this phase. Do not "clean this up" by moving them; a shared background page is a later item with its own pull request, and old books with `layer` will still paint.
+
+The reader paints in array order and does not read `layer`, so Save writes a page's background shapes ahead of its page shapes. Order inside each layer is kept. The book in the editor is not reordered.
+
 ## Quizzes
 
 A quiz is data on the page, `page["quiz"]`: `version` (1), `question`, `choices` (each `{"label", "correct"}`, exactly one right), `feedback_right`, `feedback_wrong`, and optional `next` and `again` pages. `author/quiz.py` makes and checks one. The `choices` list is the shape Foolbook already reads, so an older quiz still opens.
