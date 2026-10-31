@@ -126,6 +126,14 @@ class CurveTests(unittest.TestCase):
         draft.add(5, 5)
         self.assertIsNone(draft.finish(set()))
 
+class ArcTests(unittest.TestCase):
+    def test_an_arc_stores_its_start_angle_and_sweep(self):
+        shape = new_shape("arc", 0, 0, 80, 60, set())
+        self.assertEqual(shape["kind"], "arc")
+        self.assertEqual((shape["start"], shape["sweep"]), (0, 180))
+        self.assertNotIn("ends", shape)
+        self.assertEqual(shape["fill"], "")
+
 
 if __name__ == "__main__":
     unittest.main()

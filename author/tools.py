@@ -56,6 +56,9 @@ _LABEL = {
 }
 
 
+# The start angle and sweep a new arc is placed with.
+ANGLES = {"arc": (0, 180)}
+
 # Tools that are clicked out one point at a time, and the fewest points each keeps.
 POINT_TOOLS = {"polygon": 3, "curve": 2}
 
@@ -173,8 +176,10 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
     elif tool == "curve":
         # Open, so nothing to fill. Foolbook draws it through the points.
         shape["outline"] = INK
-    elif tool == "arc":
-        shape["ends"] = [[int(left), int(top + height / 2)], [int(left + width), int(top + height / 2)]]
+    elif tool in ANGLES:
+        # Degrees: zero is east, a positive sweep turns counterclockwise. Foolbook reads the same.
+        shape["start"], shape["sweep"] = ANGLES[tool]
+        shape["outline"] = INK
     return shape
 
 
