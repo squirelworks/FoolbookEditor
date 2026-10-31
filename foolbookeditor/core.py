@@ -23,6 +23,13 @@ def require():
     return core
 
 
+def format_version() -> int:
+    """The newest book generation the installed reader writes (the ``fbk`` key)."""
+    require()
+    from engine.formats import FORMAT_VERSION
+    return FORMAT_VERSION
+
+
 def load(path: str | Path) -> dict:
     return require().load(path)
 

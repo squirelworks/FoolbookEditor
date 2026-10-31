@@ -11,6 +11,8 @@ are not in it yet.
 
 from __future__ import annotations
 
+import re
+
 import copy
 
 
@@ -22,6 +24,10 @@ _WIDGET = {
     "button": {"w": 80, "h": 24, "label": "Button"},
 }
 
+
+# The book generation. Foolbook's save stamps the same key. A new book
+# carries it from the start, so the editor can refuse a newer one.
+BOOK_VERSION = 1
 
 PAGE_SIZE = (640, 480)
 PAGE_MIN = 64
@@ -43,6 +49,7 @@ def new_book(size: tuple[int, int] = PAGE_SIZE, color: str = "#ffffff") -> dict:
     if len(color) != 7 or color[0] != "#" or any(c not in _HEX for c in color[1:]):
         raise ValueError(f"The background colour is #rrggbb, not {color!r}.")
     book = blank_book()
+    book["fbk"] = BOOK_VERSION
     page = book["pages"][0]
     page["size"] = [w, h]
     page["text"] = []
@@ -62,6 +69,7 @@ def new_book(size: tuple[int, int] = PAGE_SIZE, color: str = "#ffffff") -> dict:
 
 def blank_book() -> dict:
     return {
+        "fbk": BOOK_VERSION,
         "id": "new",
         "title": "New book",
         "pages": [blank_page("P0")],
@@ -328,16 +336,55 @@ def system_of(book: dict) -> str | None:
     return book.get("system") or None
 
 
+_ENTER_BOOK = re.compile(r"(?im)^[ \t]*to[ \t]+handle[ \t]+enterBook\b[^\n]*\n")
+_PUSH = re.compile(
+    r'(?im)^[ \t]*if "[^"\n]+" is not in sysBooks[ \t]*\n'
+    r'[ \t]*push "[^"\n]+" onto sysBooks[ \t]*\n'
+    r'[ \t]*end if[ \t]*\n'
+)
+
+
+def _push_lines(name: str) -> str:
+    return (f'    if "{name}" is not in sysBooks\n'
+            f'        push "{name}" onto sysBooks\n'
+            f'    end if\n')
+
+
+def _without_push(script: str) -> str:
+    """The book script with the system-book push taken out, and an enterBook left empty by it."""
+    script = _PUSH.sub("", script)
+    return re.sub(r"(?im)^[ \t]*to[ \t]+handle[ \t]+enterBook\b[^\n]*\n[ \t]*end(?:[ \t]+enterBook)?[ \t]*(?:\n|$)", "", script)
+
+
 def set_system(book: dict, name: str) -> None:
-    """Name the one system book. It is an .fsk file name."""
+    """Name the one system book. It is an .fsk file name.
+
+    The reader runs OpenScript and reads no key for this, so the book
+    script's enterBook pushes it onto sysBooks, as a ToolBook course does.
+    `system` is kept for the editor's own box.
+    """
     name = name.strip()
     if not name.lower().endswith(".fsk"):
         raise ValueError(f"{name or 'that'} is not an .fsk system book")
     book["system"] = name
+    script = _without_push(str(book.get("script") or ""))
+    found = _ENTER_BOOK.search(script)
+    if found:
+        script = script[:found.end()] + _push_lines(name) + script[found.end():]
+    else:
+        if script and not script.endswith("\n"):
+            script += "\n"
+        script += "to handle enterBook\n" + _push_lines(name) + "end\n"
+    book["script"] = script
 
 
 def clear_system(book: dict) -> None:
     book.pop("system", None)
+    script = _without_push(str(book.get("script") or ""))
+    if script.strip():
+        book["script"] = script
+    else:
+        book.pop("script", None)
 
 
 def handler_names(book: dict) -> list[str]:

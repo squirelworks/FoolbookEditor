@@ -3,6 +3,7 @@
 ## 2026-10-31
 
 - Record lays its rows out as pages: the fields go on this page with the first row, and the page is copied once for each further row with that row in the fields. Previous record and Next record go to the page before and after; the first page has no Previous and the last no Next. Nothing is stored as `records`, so the reader needs no change (Foolbook#53 is closed). `author/test_records.py`.
+- Naming a system book writes OpenScript the reader runs: the book script's `enterBook` gets `if "shared.fsk" is not in sysBooks` / `push "shared.fsk" onto sysBooks` / `end if`, as a ToolBook course does. Before, only a `system` key was stored, and Foolbook does not read it, so the system book's handlers never ran. A new name replaces the push, and clearing it takes the push out and leaves the rest of the script. `system` stays as the editor's own record. Test: `author/test_system_book.py`.
 - Find lists every page text and shape text that holds a word or phrase, with how many times, and Replace all changes them and says how many. The search is plain text, never a regular expression. Match case is off unless ticked.
 
 ## 2026-10-31
@@ -31,6 +32,8 @@
 ## 2026-10-31
 
 - The tool row shows the colours the book already uses, most used first. Click a swatch to fill the selected object with it, right-click to use it for the line.
+- The pages, stage, and properties panes reopen at the widths you left them. The sashes are kept in `settings.json` under the user config directory (`$XDG_CONFIG_HOME` or `~/.config/foolbookeditor`, `%APPDATA%` on Windows), not in the book. A smaller window still leaves the stage at least 300 pixels. Test: `author/test_settings.py`.
+- Proof PNGs writes one picture per page (`001_P0.png`, ...) into a folder, the shared background first, using Foolbook's `draw` as the stage does. It needs no window, and backgrounds are not pages. Text uses Pillow's built-in face. PDF was already in Export, through Foolbook. Test: `author/test_proof.py`.
 - Import .tbk reads a ToolBook book through Foolbook into a book the editor saves as an `.fbk` beside it. The `.tbk` is not written. A report window lists what the reader left behind: groups kept as loose objects, arcs drawn as their ellipse, curves and other kinds it does not draw, handlers with no source, and the limits no `.tbk` import has yet. Test: `author/test_import.py`.
 - The quiz schema is written down: `version`, `question`, `choices` (`label`, `correct`, exactly one right), `feedback_right`, `feedback_wrong`, optional `next` and `again`. `author/quiz.py` has `make_quiz`, `right_index`, and `validate`. Tested in `author/test_quiz.py`, with questions written for the test.
 - System book: a page book names one `.fsk` in the toolbar, stored as `system`. Foolbook runs that book's handlers first once squirelworks/Foolbook#40 lands. Open takes an `.fsk`, which opens as its handlers (the status line counts them) plus any pages it has. Test: `author/test_system_book.py`.
@@ -86,6 +89,7 @@
 - The self test also opens the saved book and Using Foolbook through the reader, so an editor change that breaks the reader fails it.
 - A book the editor opens and saves again, uncompressed, is the same bytes. The editor drops the envelope keys the reader stamps (`format`, `format_version`, `fbk`, `foolbook`) before a save, so they come back in the reader's order. `tests/fixtures/tiny.fbk` is the golden file.
 - The compressed form has a golden file too, `tests/fixtures/tiny_z.fbk`: flags byte 1, then a zlib stream the reader decompresses. Opened and saved compressed, it is the same bytes.
+- A new book carries `"fbk": 1`, the book version Foolbook already stamps. The editor refuses to save a book whose version is newer than the installed reader writes, and says the number. A book with no version key still opens and saves.
 - Duplicate copies the current page, with its shapes and scripts, under a new id. The copy is the next page. Ctrl+Shift+D does the same.
 - Delete asks before it removes a page, and names the page and how many objects go with it. Ctrl+Shift+Delete does the same.
 - Up and Down beside the page list move the current page one place earlier or later. Ctrl+Shift+Up and Ctrl+Shift+Down do the same.
