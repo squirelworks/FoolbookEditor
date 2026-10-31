@@ -912,14 +912,12 @@ class Editor:
             self._load(Path(p))
 
     def _load(self, path: Path):
-        from foolbookeditor.core import is_office, read, to_book
-        suffix = path.suffix.lower()
-        if is_office(path):
-            self.book = to_book(path)
-        elif suffix in {".tbk", ".sbk"}:
-            self.book = read(path)
-        else:
+        from author.files import save_path_for
+        try:
             self.book = load_book(path)
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Foolbook Editor", f"{path.name}: {exc}")
+            return
         from author import recovery
         self._kept = recovery.snapshot(self.book)
         copy = recovery.newer(path)
@@ -929,7 +927,7 @@ class Editor:
             parent=self.root,
         ):
             self.book = load_book(copy)
-        self.path = path
+        self.path = save_path_for(path)
         from author.files import is_compressed
         self.compress.set(is_compressed(path))
         self.current = 0
