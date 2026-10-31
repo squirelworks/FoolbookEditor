@@ -72,6 +72,7 @@ class Editor:
             ("chord", "Chord"),
             ("pie", "Pie"),
             ("picture", "Picture"),
+            ("hotspot", "Hotspot"),
         ):
             ttk.Radiobutton(tools, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)

@@ -2,6 +2,7 @@
 
 Foolbook draws it. The editor only chooses the page and the scale.
 An object Reader hides is still drawn, so Author can select it.
+A hotspot is drawn as its outline for the same reason.
 """
 
 from __future__ import annotations
@@ -13,6 +14,9 @@ def shown(page: dict) -> list[dict]:
     for shape in page.get("shapes") or []:
         if not isinstance(shape, dict):
             continue
+        if (shape.get("kind") or "") == "hotspot":
+            # Reader does not draw a hotspot. Author draws its outline so it can be found.
+            shape = dict(shape, kind="rect", fill="", outline=shape.get("outline") or "#071428")
         if shape.get("visible") is False:
             item = dict(shape)
             item["visible"] = True
