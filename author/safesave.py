@@ -14,6 +14,7 @@ from pathlib import Path
 
 def save_safely(path: str | Path, book: dict, compress: bool = True, replace=os.replace) -> Path:
     """Write `book` to `path` through a temporary file. `replace` is the step a test can fail."""
+    from author.files import payload
     from foolbookeditor.core import save_book
     dest = Path(path)
     suffix = dest.suffix.lower()
@@ -22,7 +23,7 @@ def save_safely(path: str | Path, book: dict, compress: bool = True, replace=os.
         suffix = ".fbk"
     temp = dest.with_name(f".{dest.stem}.saving{suffix}")
     try:
-        written = save_book(temp, book, compress=compress)
+        written = save_book(temp, payload(book), compress=compress)
         replace(written, dest)
     except BaseException:
         try:

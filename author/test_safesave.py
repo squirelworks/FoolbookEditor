@@ -23,6 +23,15 @@ class SafeSave(unittest.TestCase):
             self.assertEqual(load(path)["title"], "Second")
             self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()), ["safe.fbk"])
 
+    def test_an_opened_book_saves_back_to_the_same_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "book.fbk"
+            save_safely(path, _book("Same"))
+            first = path.read_bytes()
+            for _ in range(3):
+                save_safely(path, load(path))
+                self.assertEqual(path.read_bytes(), first)
+
     def test_a_failed_replace_keeps_the_old_file(self):
         def broken(_src, _dst):
             raise OSError("disk pulled out")
