@@ -31,3 +31,18 @@ def first_error(source: str) -> str:
 def status(source: str) -> str:
     """An error first, then a warning, then nothing."""
     return first_error(source) or warning(source)
+
+
+def apply(page: dict, index: int | None, source: str) -> str:
+    """Write the pane's script onto the shape at ``index``, or onto the page
+    when ``index`` is None, and return what the status line says about it.
+
+    A page script is checked the same way as an object script. It is kept
+    whatever the check finds.
+    """
+    from author.catalog import set_object_script, set_page_script
+    if index is None:
+        set_page_script(page, source)
+    else:
+        set_object_script(page, index, source)
+    return status(source)
