@@ -3,6 +3,7 @@
 ## Unreleased — 2026-10-31
 
 - Add puts the new page right after the current page, not at the end. Ctrl+M does the same.
+- With no book named, Author opens a start window: New book, Open book, and up to five recent books that are still on disk.
 
 ## 0.4.0 — 2026-10-24
 

@@ -38,7 +38,31 @@ class Editor:
             self._load(path)
         else:
             self._new()
+            if path is None:
+                self._start([])
         self.root.mainloop()
+
+    def _start(self, recent: list[str]):
+        """The start window. New book keeps the blank book already showing."""
+        from author.start import NEW, OPEN, start_choices
+        win = tk.Toplevel(self.root)
+        win.title("Foolbook Author")
+        win.transient(self.root)
+        frame = ttk.Frame(win, padding=16)
+        frame.pack(fill="both", expand=True)
+
+        def pick(label: str, chosen: Path | None):
+            win.destroy()
+            if chosen is not None:
+                self._load(chosen)
+            elif label == OPEN:
+                self._open()
+
+        for label, chosen in start_choices(recent):
+            text = label if chosen is None else f"{label}: {chosen.name}"
+            ttk.Button(frame, text=text, command=lambda l=label, c=chosen: pick(l, c)).pack(fill="x", pady=2)
+        win.bind("<Escape>", lambda _e: pick(NEW, None))
+        win.grab_set()
 
     def _build(self):
         # toolbar
