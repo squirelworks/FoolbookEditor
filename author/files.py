@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from foolbookeditor.core import format_version, load, save_book
+from foolbookeditor.core import format_version, load, save_book, save_system
 
 # Written by Foolbook's save, not by the author. Dropped before a save so
 # the reader stamps them again in its own order.
@@ -70,6 +70,30 @@ def open_book(path: str | Path) -> dict:
     return load(path)
 
 
+# What Save writes. Anything else is Export.
+SAVE_SUFFIXES = (".fbk", ".fsk", ".json")
+
+
+def save_target(path: str | Path) -> Path:
+    """Where Save writes, given the file the book came from.
+
+    Save writes a book (.fbk), a system book (.fsk), or .json. A book
+    opened from a .tbk, an office file, or anything else is saved
+    beside it as .fbk; an .sbk as .fsk. The original is never written.
+    """
+    path = Path(path)
+    suffix = path.suffix.lower()
+    if suffix in SAVE_SUFFIXES:
+        return path
+    if suffix == ".sbk":
+        return path.with_suffix(".fsk")
+    return path.with_suffix(".fbk")
+
+
 def save(path: str | Path, book: dict, compress: bool = True) -> Path:
+    """Save the book. Returns the file written, which ``save_target`` chose."""
     check_version(book)
-    return save_book(path, payload(book), compress=compress)
+    target = save_target(path)
+    if target.suffix.lower() == ".fsk":
+        return save_system(target, payload(book), compress=compress)
+    return save_book(target, payload(book), compress=compress)
