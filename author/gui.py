@@ -8,10 +8,12 @@ Slide editor. Produces .fbk (and .fsk). Export .tbk writes a shell with compiled
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
-from .files import FutureBook, open_book as load_book, save as save_book
+from .files import FutureBook, open_book as load_book
+from .safesave import save_safely
 
 try:
     import tkinter as tk
@@ -32,6 +34,7 @@ class Editor:
         self.book: dict = {"id": "new", "title": "New book", "pages": []}
         self.path: Path | None = path
         self.current = 0
+        self.saved: dict | None = None
         from author.tools import DEFAULT_TOOL
         self.tool = tk.StringVar(value=DEFAULT_TOOL)
         from author.history import History
@@ -43,12 +46,17 @@ class Editor:
         for name in self._CHANGES:
             setattr(self, name, self._committing(getattr(self, name)))
         self._build()
+        from author.drop import install
+        install(self.root, lambda path: self._discard_ok() and self._load(path))
         if path and path.exists():
             self._load(path)
         else:
             self._new(ask=False)
             if path is None:
-                self._start([])
+                from author import settings
+                self._start(settings.recent())
+        from author.recovery import INTERVAL_MS
+        self.root.after(INTERVAL_MS, self._recover)
         self.root.mainloop()
 
     _CHANGES = (
@@ -200,12 +208,20 @@ class Editor:
         ttk.Button(bar, text="New", command=self._new).pack(side="left")
         ttk.Button(bar, text="Template", command=self._template).pack(side="left", padx=(2, 0))
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
+        recent_button = ttk.Menubutton(bar, text="Recent")
+        self.recent_menu = tk.Menu(recent_button, tearoff=False)
+        recent_button["menu"] = self.recent_menu
+        recent_button.pack(side="left", padx=2)
+        self._fill_recent()
         ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
+        self.compress = tk.BooleanVar(value=True)
+        ttk.Checkbutton(bar, text="Compress", variable=self.compress).pack(side="left", padx=2)
         ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Proof PNGs", command=self._proof).pack(side="left", padx=2)
+        ttk.Button(bar, text="Print", command=self._print).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
         ttk.Button(bar, text="Menu bar", command=self._menubar).pack(side="left", padx=2)
@@ -659,8 +675,36 @@ class Editor:
             pass
 
     def _close(self):
+        if not self._discard_ok():
+            return
         self._keep_panes()
         self.root.destroy()
+
+    def _snapshot(self):
+        import copy
+        self.saved = copy.deepcopy(self.book)
+        self._mark()
+
+    def _mark(self):
+        """A star in the title bar while the book differs from the file."""
+        from author.files import is_dirty
+        name = self.path.name if self.path else (self.book.get("title") or "New book")
+        star = "*" if is_dirty(self.saved, self.book) else ""
+        self.root.title(f"{star}{name} - Foolbook Author")
+
+    def _discard_ok(self) -> bool:
+        """Ask before dropping unsaved changes. True means go on."""
+        from author.files import is_dirty
+        self._apply()
+        if not self.book.get("pages") or not is_dirty(self.saved, self.book):
+            return True
+        answer = messagebox.askyesnocancel("Foolbook Editor", "Save changes to this book first?")
+        if answer is None:
+            return False
+        if answer:
+            self._save()
+            return not is_dirty(self.saved, self.book)
+        return True
 
     def _book_properties(self):
         from .bookprops import properties, set_properties
@@ -796,6 +840,8 @@ class Editor:
         self._menubar_window = win
 
     def _new(self, ask: bool = True):
+        if self.saved is not None and not self._discard_ok():
+            return
         from author.document import new_book
         if not ask:
             self._open_new(new_book())
@@ -906,6 +952,8 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self._snapshot()
+        self._kept = None
         self.status.config(text="New book")
 
     def _open(self):
@@ -917,22 +965,54 @@ class Editor:
                 ("All", "*.*"),
             ],
         )
-        if p:
+        if p and self._discard_ok():
             self._load(Path(p))
 
+    def _remember(self, path: Path):
+        from author import settings
+        settings.remember(path)
+        self._fill_recent()
+
+    def _fill_recent(self):
+        from author import settings
+        self.recent_menu.delete(0, "end")
+        for item in settings.recent():
+            self.recent_menu.add_command(label=item, command=lambda p=item: self._open_recent(p))
+
+    def _open_recent(self, item: str):
+        from author import settings
+        found, said = settings.pick(item)
+        self._fill_recent()
+        if found is None:
+            self.status.config(text=said)
+            return
+        if self._discard_ok():
+            self._load(found)
+
     def _load(self, path: Path):
-        from foolbookeditor.core import is_office, read, to_book
-        suffix = path.suffix.lower()
-        if is_office(path):
-            self.book = to_book(path)
-        elif suffix in {".tbk", ".sbk"}:
-            self.book = read(path)
-        else:
+        from author.files import save_path_for
+        try:
             self.book = load_book(path)
-        self.path = path
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Foolbook Editor", f"{path.name}: {exc}")
+            return
+        from author import recovery
+        self._kept = recovery.snapshot(self.book)
+        copy = recovery.newer(path)
+        if copy is not None and messagebox.askyesno(
+            "Foolbook Editor",
+            f"There is a recovery copy of {path.name} newer than the file. Open the recovery copy?",
+            parent=self.root,
+        ):
+            self.book = load_book(copy)
+        self.path = save_path_for(path)
+        from author.files import is_compressed
+        self.compress.set(is_compressed(path))
+        self._remember(path)
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self._snapshot()
         from author.document import handler_names
         found = handler_names(self.book)
         note = f"  {len(found)} handlers" if path.suffix.lower() == ".fsk" else ""
@@ -951,6 +1031,9 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self.saved = None
+        self._mark()
+        self._kept = None
         self.status.config(text=f"Imported {src.name}. Save writes {self.path.name}")
         win = tk.Toplevel(self.root)
         win.title(f"Import report: {src.name}")
@@ -966,10 +1049,13 @@ class Editor:
             self._save_as()
             return
         try:
-            self.path = save_book(self.path, self.book)
+            self.path = save_safely(self.path, self.book, compress=self.compress.get())
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._snapshot()
+        self._saved()
+        self._remember(self.path)
         self.status.config(text=f"Saved {self.path.name}")
 
     def _save_as(self):
@@ -983,12 +1069,28 @@ class Editor:
             return
         self.path = Path(p)
         try:
-            self.path = save_book(self.path, self.book)
+            self.path = save_safely(self.path, self.book, compress=self.compress.get())
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._snapshot()
+        self._saved()
+        self._remember(self.path)
         self.status.config(text=f"Saved {self.path.name}")
 
+    def _saved(self):
+        from author import recovery
+        recovery.clear(self.path)
+        self._kept = recovery.snapshot(self.book)
+
+    def _recover(self):
+        """Every five minutes: a recovery copy, if there are unsaved changes."""
+        from author import recovery
+        try:
+            recovery.tick(self.book, getattr(self, "_kept", None), self.path)
+        except Exception as exc:
+            self.status.config(text=f"Recovery copy not written: {exc}")
+        self.root.after(recovery.INTERVAL_MS, self._recover)
 
     def _publish(self):
         """A folder with the .fbk, its linked files, and a README. No installer."""
@@ -1043,6 +1145,24 @@ class Editor:
         base = self.path.parent if self.path else None
         written = export_pngs(self.book, folder, base=base)
         self.status.config(text=f"Wrote {len(written)} page pictures")
+
+    def _print(self):
+        """The PNG pages, sent to the printer when this machine has one call for it."""
+        self._apply()
+        folder = filedialog.askdirectory(title="Folder for the printed pages")
+        if not folder:
+            return
+        from author.printing import print_book, printer
+        base = self.path.parent if self.path else None
+        try:
+            written, sent = print_book(self.book, folder, base=base, send=printer())
+        except (OSError, subprocess.CalledProcessError) as exc:
+            self.status.config(text=f"Printing failed: {exc}. The pages are in {folder}")
+            return
+        if sent:
+            self.status.config(text=f"Sent {len(written)} pages to the printer")
+        else:
+            self.status.config(text=f"No printer call here. The {len(written)} PNG pages in {folder} are the print")
 
     def _export_executable(self):
         """ToolBook-style self-running book. Scaffold only."""
@@ -1304,7 +1424,7 @@ class Editor:
         if not (0 <= self.current < len(pages)):
             return
         p = pages[self.current]
-        from author.document import set_id, set_nav, set_size, set_text, set_transition, text_from_editor
+        from author.document import DuplicateId, rename_page, set_nav, set_size, set_text, set_transition, text_from_editor
         from author.stage import page_size
         if (self.page_w.get().strip(), self.page_h.get().strip()) != tuple(str(n) for n in page_size(p)):
             if not set_size(p, self.page_w.get().strip(), self.page_h.get().strip()):
@@ -1314,7 +1434,12 @@ class Editor:
                 self.page_h.delete(0, "end")
                 self.page_h.insert(0, str(height))
                 self.status.config(text="Size is two whole numbers above zero")
-        set_id(p, self.pid.get())
+        try:
+            rename_page(self.book, self.current, self.pid.get())
+        except DuplicateId as exc:
+            self.status.config(text=str(exc))
+            self.pid.delete(0, "end")
+            self.pid.insert(0, p.get("id") or "")
         set_transition(p, self.transition.get())
         set_text(p, text_from_editor(self.text.get("1.0", "end")))
         set_nav(p, self.next.get(), self.back.get())
@@ -1414,6 +1539,7 @@ class Editor:
         self._refresh_list()
 
     def _preview(self):
+        self._mark()
         if getattr(self, "_typing", None) is not None:
             # A field is being typed into. Redrawing now would take the box away.
             return
@@ -1958,7 +2084,7 @@ class Editor:
         self._preview()
 
     def _record(self):
-        """Fields and rows for a record on this page, then the shapes that show it."""
+        """Fields and rows for a record, laid out one page per row from this page."""
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
@@ -1981,7 +2107,7 @@ class Editor:
         def make():
             try:
                 fields, data = parse_rows(names.get(), rows.get("1.0", "end"))
-                place_record(pages[self.current], fields, data, 40, 40)
+                place_record(self.book, self.current, fields, data, 40, 40)
             except ValueError as exc:
                 error.config(text=str(exc))
                 return
@@ -2048,7 +2174,9 @@ class Editor:
 
 def main(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
-    path = Path(argv[0]) if argv else None
+    from author.drop import paths_from
+    found = paths_from(argv)
+    path = found[0] if found else (Path(argv[0]) if argv else None)
     Editor(path)
     return 0
 

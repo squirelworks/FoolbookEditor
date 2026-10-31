@@ -77,7 +77,7 @@ def blank_book() -> dict:
 
 
 def blank_page(page_id: str) -> dict:
-    return {"id": page_id, "text": ["New slide"], "items": [], "widgets": []}
+    return {"id": page_id, "text": ["New slide"], "items": [], "shapes": []}
 
 
 def pages(book: dict) -> list:
@@ -93,11 +93,11 @@ def page_at(book: dict, index: int) -> dict | None:
 
 def fresh_id(book: dict) -> str:
     """Next page id in the P0, P100, P200 style already used by courses."""
-    used = {p.get("id") for p in book.get("pages") or []}
+    used = {(p.get("id") or "").lower() for p in book.get("pages") or []}
     n = 0
     while True:
         candidate = "P0" if n == 0 else f"P{n * 100}"
-        if candidate not in used:
+        if candidate.lower() not in used:
             return candidate
         n += 1
 
@@ -127,11 +127,21 @@ def duplicate_page(book: dict, index: int) -> int:
     return index + 1
 
 
+class LastPage(ValueError):
+    """A book keeps at least one page. The reader cannot show a book with none."""
+
+
 def delete_page(book: dict, index: int) -> int:
-    """Drop a page. The last page stays. Returns the index to show."""
+    """Drop a page. Returns the index to show.
+
+    Deleting the only page is refused with ``LastPage``. No blank page is
+    made in its place. The caller says so; this function does not ask.
+    """
     found = book.get("pages") or []
-    if len(found) <= 1 or not (0 <= index < len(found)):
+    if not (0 <= index < len(found)):
         return index if found else 0
+    if len(found) <= 1:
+        raise LastPage("A book keeps at least one page. Add a page before deleting this one.")
     del found[index]
     return min(index, len(found) - 1)
 
@@ -158,6 +168,29 @@ def set_size(page: dict, width, height) -> bool:
         return False
     page["size"] = [w, h]
     return True
+
+
+class DuplicateId(ValueError):
+    """Another page in the book already has that id."""
+
+
+def rename_page(book: dict, index: int, page_id: str) -> str:
+    """Give the page at ``index`` a new id. Returns the id it has now.
+
+    Ids are unique in a book. The reader finds a page by id without
+    regard to case, so ``p100`` collides with ``P100``. The casing the
+    author typed is the one stored. A blank id keeps the old one.
+    """
+    found = book.get("pages") or []
+    page = found[index]
+    wanted = (page_id or "").strip()
+    if not wanted:
+        return page.get("id") or ""
+    for i, other in enumerate(found):
+        if i != index and (other.get("id") or "").lower() == wanted.lower():
+            raise DuplicateId(f"Another page is already {other.get('id')}.")
+    page["id"] = wanted
+    return wanted
 
 
 def set_id(page: dict, page_id: str) -> None:

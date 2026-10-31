@@ -22,7 +22,11 @@ python3 -m foolbookeditor --selftest    # save and load a book, no window
 
 Every pull request runs the self test before it goes up.
 
+Save compresses by default, as Foolbook packs a book. The Compress box turns it off. A book opened from an uncompressed file, such as a web editor download, is saved uncompressed until the box is ticked.
+
 ## Use
+
+A book always has at least one page. Deleting the only page is refused, and the status line says so. The editor does not make a blank page in its place. The reader cannot show a book with no pages.
 
 ```bash
 python3 -m foolbookeditor --fbk path/to/book.tbk    # write book.fbk beside it
@@ -125,10 +129,20 @@ python3 examples/welcome.py /path/to/Foolbook/foolbook/books
 That writes the two books a new Foolbook install opens: Using Foolbook and First Light.
 
 
+## Backgrounds live on the page, for now
+
+A background shape is stored on each page that shows it, with `layer: background`, because that is what the web editor stores and what the reader opens today. It is not lifted to a shared background page in this phase. Do not "clean this up" by moving them; a shared background page is a later item with its own pull request, and old books with `layer` will still paint.
+
+The reader paints in array order and does not read `layer`, so Save writes a page's background shapes ahead of its page shapes. Order inside each layer is kept. The book in the editor is not reordered.
+
 ## Quizzes
 
 A quiz is data on the page, `page["quiz"]`: `version` (1), `question`, `choices` (each `{"label", "correct"}`, exactly one right), `feedback_right`, `feedback_wrong`, and optional `next` and `again` pages. `author/quiz.py` makes and checks one. The `choices` list is the shape Foolbook already reads, so an older quiz still opens.
 ## Scripts the reader runs
+
+Drag and drop, by platform. Dropping a book onto the open window does nothing anywhere: stock Tk has no drop target, and the editor does not add a dependency for it. Dropping a book onto the program's icon or shortcut opens it on Windows and Linux, because that starts the program with the path. On macOS, dropping onto the Dock icon of a packaged app opens it through `::tk::mac::OpenDocument`. Running from a terminal on macOS has no icon to drop on.
+
+Recent, beside Open, lists the last five books opened or saved, newest first, and the start window offers the ones still on disk. The list is kept under `recent` in the editor's settings file in the user's config folder (`~/.config/foolbookeditor/settings.json`, or `%APPDATA%\foolbookeditor` on Windows), not in the repository. Choosing a book that is gone takes it off the list, and the status line says so.
 
 Foolbook runs a small part of OpenScript. These are the lines a script in this editor can count on today. Anything else is kept in the file and shown in the script pane, but the reader does not act on it.
 
