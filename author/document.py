@@ -23,6 +23,10 @@ _WIDGET = {
 }
 
 
+# The book generation. Foolbook's save stamps the same key. A new book
+# carries it from the start, so the editor can refuse a newer one.
+BOOK_VERSION = 1
+
 PAGE_SIZE = (640, 480)
 PAGE_MIN = 64
 _HEX = "0123456789abcdef"
@@ -43,6 +47,7 @@ def new_book(size: tuple[int, int] = PAGE_SIZE, color: str = "#ffffff") -> dict:
     if len(color) != 7 or color[0] != "#" or any(c not in _HEX for c in color[1:]):
         raise ValueError(f"The background colour is #rrggbb, not {color!r}.")
     book = blank_book()
+    book["fbk"] = BOOK_VERSION
     page = book["pages"][0]
     page["size"] = [w, h]
     page["text"] = []
@@ -62,6 +67,7 @@ def new_book(size: tuple[int, int] = PAGE_SIZE, color: str = "#ffffff") -> dict:
 
 def blank_book() -> dict:
     return {
+        "fbk": BOOK_VERSION,
         "id": "new",
         "title": "New book",
         "pages": [blank_page("P0")],

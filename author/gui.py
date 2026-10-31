@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .files import open_book as load_book, save as save_book
+from .files import FutureBook, open_book as load_book, save as save_book
 
 try:
     import tkinter as tk
@@ -870,7 +870,11 @@ class Editor:
         if not self.path:
             self._save_as()
             return
-        save_book(self.path, self.book)
+        try:
+            save_book(self.path, self.book)
+        except FutureBook as exc:
+            messagebox.showerror("Foolbook Editor", str(exc))
+            return
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
     def _save_as(self):
@@ -883,7 +887,11 @@ class Editor:
         if not p:
             return
         self.path = Path(p)
-        save_book(self.path, self.book)
+        try:
+            save_book(self.path, self.book)
+        except FutureBook as exc:
+            messagebox.showerror("Foolbook Editor", str(exc))
+            return
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
 
