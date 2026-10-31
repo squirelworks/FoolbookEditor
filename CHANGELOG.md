@@ -1,5 +1,8 @@
 # Changelog
 
+## Unreleased — 2026-10-31
+
+- Author starts on Select, and Escape goes back to Select from any tool.
 ## 2026-10-31
 
 - The page form has a Background list. It names the shared backgrounds in the book (pages with `"background": true`) and `(none)`. Picking one sets the page's `uses`, and the stage draws that background under the page. `(none)` clears it. The model refuses a name that is not a background. Test: `author/test_backgrounds.py`.

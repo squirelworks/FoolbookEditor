@@ -58,5 +58,16 @@ class ToolTests(unittest.TestCase):
         self.assertIsNone(handle_at(view, shape, 50, 20))
 
 
+class SelectTests(unittest.TestCase):
+    def test_select_is_the_tool_author_starts_with(self):
+        from author.tools import DEFAULT_TOOL
+        self.assertEqual(DEFAULT_TOOL, "select")
+
+    def test_escape_returns_to_select(self):
+        from author.tools import after_escape
+        for tool in ("button", "text", "box", "line", "ellipse", "polygon", "arc", "picture", "select"):
+            self.assertEqual(after_escape(tool), "select")
+
+
 if __name__ == "__main__":
     unittest.main()
