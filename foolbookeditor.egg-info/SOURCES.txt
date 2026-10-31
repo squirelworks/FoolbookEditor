@@ -22,3 +22,4 @@ foolbookeditor.egg-info/SOURCES.txt
 foolbookeditor.egg-info/dependency_links.txt
 foolbookeditor.egg-info/requires.txt
 foolbookeditor.egg-info/top_level.txt
+tests/test_readme.py
