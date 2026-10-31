@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from author.schema import NOT_WRITTEN
 from foolbookeditor.core import (
     format_version,
     is_office,
@@ -67,9 +68,12 @@ def background_first(page: dict) -> dict:
 
 
 def payload(book: dict) -> dict:
-    """The book as it is written: no envelope keys, and background shapes
-    ahead of page shapes on every page."""
-    out = {key: value for key, value in book.items() if key not in ENVELOPE}
+    """The book as it is written: no envelope keys, no editor state, and
+    background shapes ahead of page shapes on every page."""
+    out = {
+        key: value for key, value in book.items()
+        if key not in ENVELOPE and key not in NOT_WRITTEN
+    }
     if isinstance(out.get("pages"), list):
         out["pages"] = [background_first(p) if isinstance(p, dict) else p for p in out["pages"]]
     return out
