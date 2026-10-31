@@ -107,12 +107,18 @@ class Editor:
         self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
         self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
         self.root.bind(SHORTCUTS["go_to_page"][1], lambda _e: (self.goto.focus_set(), self.goto.select_range(0, "end")))
+        for command in ("first_page", "previous_page", "next_page", "last_page"):
+            self.root.bind(SHORTCUTS[command][1], lambda _e, c=command: self._browse(c))
         self.root.bind(SHORTCUTS["page_up"][1], lambda _e: self._reorder("page_up"))
         self.root.bind(SHORTCUTS["page_down"][1], lambda _e: self._reorder("page_down"))
         ttk.Button(row, text="Duplicate", command=self._duplicate_page).pack(side="left", padx=4)
         ttk.Button(row, text="Delete", command=self._del_page).pack(side="left")
         order = ttk.Frame(left)
         order.pack(fill="x")
+        browse = ttk.Frame(left)
+        browse.pack(fill="x", pady=(4, 0))
+        for command, label in (("first_page", "|<"), ("previous_page", "<"), ("next_page", ">"), ("last_page", ">|")):
+            ttk.Button(browse, text=label, width=3, command=lambda c=command: self._browse(c)).pack(side="left")
         goto = ttk.Frame(left)
         goto.pack(fill="x", pady=(4, 0))
         ttk.Label(goto, text="Go to").pack(side="left")
@@ -418,6 +424,16 @@ class Editor:
         from author.commands import duplicate_page
         self.current = duplicate_page(self.book, self.current)
         self._refresh_list()
+
+    def _browse(self, command: str):
+        from author import commands
+        index = getattr(commands, command)(self.book, self.current)
+        if index == self.current:
+            return
+        self.pages.selection_clear(0, "end")
+        self.pages.selection_set(index)
+        self.pages.see(index)
+        self._on_select()
 
     def _go_to(self):
         from author.commands import go_to_page

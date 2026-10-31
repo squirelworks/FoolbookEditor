@@ -124,5 +124,27 @@ class GoToPageTests(unittest.TestCase):
         self.assertEqual(commands.go_to_page(_book("P0"), 0, " "), (0, ""))
 
 
+class BrowseTests(unittest.TestCase):
+    def test_first_previous_next_last_move_the_editor(self):
+        book = _book("P0", "P100", "P200", "P300")
+        self.assertEqual(commands.first_page(book, 2), 0)
+        self.assertEqual(commands.previous_page(book, 2), 1)
+        self.assertEqual(commands.next_page(book, 2), 3)
+        self.assertEqual(commands.last_page(book, 1), 3)
+
+    def test_they_stop_at_the_ends(self):
+        book = _book("P0", "P100")
+        self.assertEqual(commands.previous_page(book, 0), 0)
+        self.assertEqual(commands.next_page(book, 1), 1)
+
+    def test_they_do_not_follow_the_books_next_button(self):
+        book = {"pages": [
+            {"id": "P0", "items": [{"label": "Next", "page": "P200"}]},
+            {"id": "P100"},
+            {"id": "P200"},
+        ]}
+        self.assertEqual(commands.next_page(book, 0), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
