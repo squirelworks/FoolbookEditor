@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Write script puts the script an action list stands for into the object script, so the author can see it and edit it. The action list stays. A play action has no script line and the script says so in a comment.
 - The Actions pane builds an action list on the selected object (go to page, next, previous, show, hide, set text, play), one `do` plus its arguments each. Foolbook runs them on a click. When the object also has a script, the pane says the script runs, not the actions.
 
 ## 0.4.0 — 2026-10-24
