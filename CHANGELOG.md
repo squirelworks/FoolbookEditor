@@ -7,6 +7,7 @@
 
 ## 2026-10-31
 
+- Zoom: Fit (as before), 50%, 100%, 200%. At a fixed zoom, a page smaller than the stage sits in the middle and a larger one scrolls. A click on a scrolled stage still lands on the right object. Zoom is view-only and stored coordinates never change. Test: `author/test_view.py` (`to_page(x, y, zoom)`).
 - Spelling lists words in page text, fields, and buttons that are not in a small list of ordinary English words (`author/words.txt`, written for this editor, under 600 words). Selecting one goes to its page. Add to book stores the word in the book's `words` so it is not flagged again. Nothing is shelled out to.
 
 ## 2026-10-31
