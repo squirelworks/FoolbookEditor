@@ -221,6 +221,23 @@ class Editor:
                 entry.bind("<Return>", lambda _e, k=key: self._set_property(k))
                 entry.bind("<FocusOut>", lambda _e, k=key: self._set_property(k))
             self._prop_vars[key] = var
+        self._build_well(len(ROWS))
+
+    def _build_well(self, row: int):
+        """Eight plain colours. A click sets the fill, a right-click the outline."""
+        from author.properties import WELL
+        ttk.Label(self.props, text="Colours").grid(row=row, column=0, sticky="w")
+        well = ttk.Frame(self.props)
+        well.grid(row=row, column=1, sticky="w", padx=4, pady=2)
+        for at, color in enumerate(WELL):
+            swatch = tk.Label(well, bg=color, width=2, relief="solid", borderwidth=1, name=f"well{color[1:]}")
+            swatch.grid(row=0, column=at, padx=1)
+            swatch.bind("<Button-1>", lambda _e, c=color: self._pick_color("fill", c))
+            swatch.bind("<Button-3>", lambda _e, c=color: self._pick_color("outline", c))
+
+    def _pick_color(self, key: str, color: str):
+        self._prop_vars[key].set(color)
+        self._set_property(key)
 
     def _show_properties(self):
         from author.properties import read
