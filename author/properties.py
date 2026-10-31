@@ -51,6 +51,9 @@ WELL = (
     "#f7f4ee",
 )
 
+# What Tab puts into a script pane.
+SCRIPT_TAB = "  "
+
 # What a shape with no stroke is drawn at.
 STROKE = 1
 
