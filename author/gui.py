@@ -1810,7 +1810,7 @@ class Editor:
         self._preview()
 
     def _record(self):
-        """Fields and rows for a record on this page, then the shapes that show it."""
+        """Fields and rows for a record, laid out one page per row from this page."""
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
@@ -1833,7 +1833,7 @@ class Editor:
         def make():
             try:
                 fields, data = parse_rows(names.get(), rows.get("1.0", "end"))
-                place_record(pages[self.current], fields, data, 40, 40)
+                place_record(self.book, self.current, fields, data, 40, 40)
             except ValueError as exc:
                 error.config(text=str(exc))
                 return

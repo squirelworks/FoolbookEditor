@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Record lays its rows out as pages: the fields go on this page with the first row, and the page is copied once for each further row with that row in the fields. Previous record and Next record go to the page before and after; the first page has no Previous and the last no Next. Nothing is stored as `records`, so the reader needs no change (Foolbook#53 is closed). `author/test_records.py`.
 - Find lists every page text and shape text that holds a word or phrase, with how many times, and Replace all changes them and says how many. The search is plain text, never a regular expression. Match case is off unless ticked.
 
 ## 2026-10-31
