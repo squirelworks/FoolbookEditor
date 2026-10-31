@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from author.proof import export_pngs
@@ -28,10 +29,16 @@ def _book() -> dict:
 
 
 class ProofPages(unittest.TestCase):
+    def test_the_display_is_left_as_it_was(self):
+        before = os.environ.get("DISPLAY")
+        self.test_one_png_per_page_and_none_for_a_background()
+        self.assertEqual(os.environ.get("DISPLAY"), before)
+
     def test_one_png_per_page_and_none_for_a_background(self):
         from PIL import Image
-        os.environ.pop("DISPLAY", None)
-        with tempfile.TemporaryDirectory() as tmp:
+        # No display for this test only. The Tk tests after it keep theirs.
+        env = {k: v for k, v in os.environ.items() if k != "DISPLAY"}
+        with mock.patch.dict(os.environ, env, clear=True), tempfile.TemporaryDirectory() as tmp:
             Image.new("RGB", (90, 28), (255, 255, 0)).save(Path(tmp) / "face.png")
             written = export_pngs(_book(), Path(tmp) / "proof", base=tmp)
             self.assertEqual([p.name for p in written], ["001_P0.png", "002_P100.png"])
