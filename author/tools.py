@@ -53,9 +53,49 @@ _LABEL = {
 }
 
 
-def after_escape(tool: str) -> str:
-    """Escape puts the pointer back to Select, whatever tool was chosen."""
+# Tools that are clicked out one point at a time, and the fewest points each keeps.
+POINT_TOOLS = {"polygon": 3}
+
+
+def after_escape(tool: str, draft: "PointDraft | None" = None) -> str:
+    """Escape puts the pointer back to Select, whatever tool was chosen.
+
+    A shape still being clicked out is dropped first, and the tool stays.
+    The caller clears the draft. Nothing of it is left on the page.
+    """
+    if draft is not None and draft.points:
+        return tool
     return DEFAULT_TOOL
+
+
+class PointDraft:
+    """A polygon being clicked out. One click is one point.
+
+    Double-click or Enter closes it. Escape drops it.
+    """
+
+    def __init__(self, tool: str):
+        if tool not in POINT_TOOLS:
+            raise ValueError(f"{tool} is not clicked out")
+        self.tool = tool
+        self.points: list[list[int]] = []
+
+    def add(self, x: float, y: float) -> None:
+        point = [int(x), int(y)]
+        # The second click of a double-click lands on the first.
+        if self.points and self.points[-1] == point:
+            return
+        self.points.append(point)
+
+    def finish(self, names: set[str], layer: str = "page") -> dict | None:
+        """The shape, or None when there are too few points to keep."""
+        if len(self.points) < POINT_TOOLS[self.tool]:
+            return None
+        xs = [pt[0] for pt in self.points]
+        ys = [pt[1] for pt in self.points]
+        shape = new_shape(self.tool, min(xs), min(ys), max(xs), max(ys), names, layer)
+        shape["points"] = [list(pt) for pt in self.points]
+        return shape
 
 
 def page_point(view: dict, x: float, y: float) -> tuple[float, float]:

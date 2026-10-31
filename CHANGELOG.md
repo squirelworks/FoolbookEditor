@@ -5,6 +5,7 @@
 - Author starts on Select, and Escape goes back to Select from any tool.
 - A new rectangle is filled `#f7f4ee` with a `#071428` outline. It had no fill and a black outline.
 - Rounded places a rounded rectangle (`kind: roundrect`, `radius: 8`). Foolbook draws it from Foolbook#23 on.
+- Polygon is clicked out: each click is a point, double-click or Enter closes it, and Escape drops it with nothing left on the page. It used to be a rectangle you dragged.
 
 ## 0.4.0 — 2026-10-24
 

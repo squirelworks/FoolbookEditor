@@ -83,6 +83,32 @@ class RoundRectTests(unittest.TestCase):
         self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 10, 100, 60))
         self.assertEqual((shape["fill"], shape["outline"]), ("#f7f4ee", "#071428"))
 
+class PolygonTests(unittest.TestCase):
+    def test_clicks_add_points_and_finish_closes_the_polygon(self):
+        from author.tools import PointDraft
+        draft = PointDraft("polygon")
+        for x, y in ((10, 10), (90, 10), (50, 70)):
+            draft.add(x, y)
+        draft.add(50, 70)  # the second click of the double-click
+        shape = draft.finish(set())
+        self.assertEqual(shape["kind"], "polygon")
+        self.assertEqual(shape["points"], [[10, 10], [90, 10], [50, 70]])
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 10, 80, 60))
+
+    def test_two_points_are_not_a_polygon(self):
+        from author.tools import PointDraft
+        draft = PointDraft("polygon")
+        draft.add(0, 0)
+        draft.add(10, 10)
+        self.assertIsNone(draft.finish(set()))
+
+    def test_escape_drops_the_unfinished_polygon_and_keeps_the_tool(self):
+        from author.tools import PointDraft, after_escape
+        draft = PointDraft("polygon")
+        draft.add(0, 0)
+        self.assertEqual(after_escape("polygon", draft), "polygon")
+        self.assertEqual(after_escape("polygon", None), "select")
+
 
 if __name__ == "__main__":
     unittest.main()

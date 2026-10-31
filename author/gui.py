@@ -142,6 +142,11 @@ class Editor:
 
         ttk.Button(center, text="Apply", command=self._apply).pack(anchor="e", pady=4)
         self.root.bind("<Escape>", self._on_escape)
+        self.canvas.bind("<Double-Button-1>", self._finish_draft)
+        self.root.bind("<Return>", self._finish_draft)
+        self._draft = None
+        # Choosing another tool drops a polygon that was not closed.
+        self.tool.trace_add("write", lambda *_args: setattr(self, "_draft", None))
         self.root.after_idle(self._split)
 
     def _split(self):
@@ -354,6 +359,7 @@ class Editor:
         from author.stage import paint
         paint(self.canvas, page or {})
         self._draw_handles()
+        self._draw_draft()
 
     def _draw_handles(self):
         if self.tool.get() != "select" or self._object is None:
@@ -439,14 +445,19 @@ class Editor:
         view = getattr(self.canvas, "_author_view", None)
         if not view or not view.get("scale"):
             return
-        from author.catalog import place_shape
-        from author.tools import new_shape, page_point
+        from author.tools import POINT_TOOLS, PointDraft, new_shape, page_point
         x0, y0 = page_point(view, down[0], down[1])
         x1, y1 = page_point(view, evt.x, evt.y)
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
         page = pages[self.current]
+        if tool in POINT_TOOLS:
+            if self._draft is None or self._draft.tool != tool:
+                self._draft = PointDraft(tool)
+            self._draft.add(x1, y1)
+            self._preview()
+            return
         names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
         shape = new_shape(tool, x0, y0, x1, y1, names, self.layer.get())
         if tool == "picture":
@@ -458,6 +469,10 @@ class Editor:
                 return
             import base64
             shape["data"] = base64.b64encode(Path(chosen).read_bytes()).decode("ascii")
+        self._place(page, shape)
+
+    def _place(self, page: dict, shape: dict):
+        from author.catalog import place_shape
         placed = place_shape(page, shape)
         self._fill_objects(page)
         for row, item in enumerate(self._rows):
@@ -472,8 +487,42 @@ class Editor:
 
     def _on_escape(self, _evt=None):
         from author.tools import after_escape
-        self.tool.set(after_escape(self.tool.get()))
+        self.tool.set(after_escape(self.tool.get(), self._draft))
+        self._draft = None
         self._preview()
+
+    def _finish_draft(self, _evt=None):
+        """Close the polygon being clicked out. Too few points leaves nothing."""
+        draft = self._draft
+        if draft is None:
+            return None
+        self._draft = None
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return "break"
+        page = pages[self.current]
+        names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
+        shape = draft.finish(names, self.layer.get())
+        if shape is None:
+            self._preview()
+            return "break"
+        self._place(page, shape)
+        return "break"
+
+    def _draw_draft(self):
+        draft = self._draft
+        view = getattr(self.canvas, "_author_view", None)
+        if draft is None or not draft.points or not view:
+            return
+        from author.tools import window_point
+        flat = []
+        for x, y in draft.points:
+            flat.extend(window_point(view, x, y))
+        if len(flat) >= 4:
+            self.canvas.create_line(*flat, fill="#071428", dash=(4, 2))
+        for x, y in draft.points:
+            sx, sy = window_point(view, x, y)
+            self.canvas.create_rectangle(sx - 2, sy - 2, sx + 2, sy + 2, outline="#071428")
 
     def _selected(self):
         pages = self.book.get("pages") or []
