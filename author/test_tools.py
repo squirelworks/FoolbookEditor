@@ -180,6 +180,13 @@ class ChordTests(unittest.TestCase):
         self.assertEqual(first["group"], second["group"])
         self.assertIs(first["value"], False)
 
+    def test_a_list_box_starts_with_three_choices_and_none_chosen(self):
+        shape = new_shape("list", 0, 0, 0, 0, set())
+        self.assertEqual((shape["kind"], shape["name"]), ("list", "List"))
+        self.assertEqual(shape["choices"], ["First", "Second", "Third"])
+        self.assertNotIn("value", shape)
+        self.assertEqual(shape["text"], "")
+
 
 if __name__ == "__main__":
     unittest.main()
