@@ -178,7 +178,7 @@ class Editor:
 
     def _start(self, recent: list[str]):
         """The start window. New book keeps the blank book already showing."""
-        from author.start import OPEN, start_choices
+        from author.start import GARDEN, OPEN, start_choices
         win = tk.Toplevel(self.root)
         win.title("Foolbook Author")
         win.transient(self.root)
@@ -191,6 +191,8 @@ class Editor:
                 self._load(chosen)
             elif label == OPEN:
                 self._open()
+            elif label == GARDEN:
+                self._open_demo()
             else:
                 self._new()
 
@@ -955,6 +957,22 @@ class Editor:
         self._snapshot()
         self._kept = None
         self.status.config(text="New book")
+
+    def _open_demo(self):
+        """A Small Garden, as a copy. Save asks where to put it."""
+        from author.start import first_book
+        book, _path = first_book(None)
+        if book is None:
+            self.status.config(text="The demo book is not installed.")
+            return
+        self.book = book
+        self.path = None
+        self.current = 0
+        self._refresh_list()
+        self.history.reset(self.book)
+        self._snapshot()
+        self._kept = None
+        self.status.config(text="A Small Garden. Save as keeps a copy.")
 
     def _open(self):
         p = filedialog.askopenfilename(
