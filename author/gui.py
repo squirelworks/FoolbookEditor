@@ -329,8 +329,13 @@ class Editor:
         if not (0 <= self.current < len(pages)):
             return
         p = pages[self.current]
-        from author.document import set_id, set_nav, set_text, text_from_editor
-        set_id(p, self.pid.get())
+        from author.document import DuplicateId, rename_page, set_nav, set_text, text_from_editor
+        try:
+            rename_page(self.book, self.current, self.pid.get())
+        except DuplicateId as exc:
+            self.status.config(text=str(exc))
+            self.pid.delete(0, "end")
+            self.pid.insert(0, p.get("id") or "")
         set_text(p, text_from_editor(self.text.get("1.0", "end")))
         set_nav(p, self.next.get(), self.back.get())
         self.pages.delete(self.current)

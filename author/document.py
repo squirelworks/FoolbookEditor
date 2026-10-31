@@ -51,11 +51,11 @@ def page_at(book: dict, index: int) -> dict | None:
 
 def fresh_id(book: dict) -> str:
     """Next page id in the P0, P100, P200 style already used by courses."""
-    used = {p.get("id") for p in book.get("pages") or []}
+    used = {(p.get("id") or "").lower() for p in book.get("pages") or []}
     n = 0
     while True:
         candidate = "P0" if n == 0 else f"P{n * 100}"
-        if candidate not in used:
+        if candidate.lower() not in used:
             return candidate
         n += 1
 
@@ -86,6 +86,29 @@ def move_page(book: dict, index: int, delta: int) -> int:
         return index
     found[index], found[j] = found[j], found[index]
     return j
+
+
+class DuplicateId(ValueError):
+    """Another page in the book already has that id."""
+
+
+def rename_page(book: dict, index: int, page_id: str) -> str:
+    """Give the page at ``index`` a new id. Returns the id it has now.
+
+    Ids are unique in a book. The reader finds a page by id without
+    regard to case, so ``p100`` collides with ``P100``. The casing the
+    author typed is the one stored. A blank id keeps the old one.
+    """
+    found = book.get("pages") or []
+    page = found[index]
+    wanted = (page_id or "").strip()
+    if not wanted:
+        return page.get("id") or ""
+    for i, other in enumerate(found):
+        if i != index and (other.get("id") or "").lower() == wanted.lower():
+            raise DuplicateId(f"Another page is already {other.get('id')}.")
+    page["id"] = wanted
+    return wanted
 
 
 def set_id(page: dict, page_id: str) -> None:
