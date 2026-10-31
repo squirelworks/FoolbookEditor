@@ -56,5 +56,19 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(page["shapes"][0]["name"], "paper")
 
 
+class TypedTextTests(unittest.TestCase):
+    def test_typed_lines_are_kept_as_lines(self):
+        from author.catalog import set_object_text
+        page = {"shapes": [{"kind": "text", "name": "Field", "text": "Field"}]}
+        set_object_text(page, 0, "First line\nSecond line\n")
+        self.assertEqual(page["shapes"][0]["text"], "First line\nSecond line")
+
+    def test_typing_nothing_leaves_an_empty_field(self):
+        from author.catalog import set_object_text
+        page = {"shapes": [{"kind": "text", "text": "Field"}]}
+        set_object_text(page, 0, "\n")
+        self.assertEqual(page["shapes"][0]["text"], "")
+
+
 if __name__ == "__main__":
     unittest.main()
