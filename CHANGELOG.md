@@ -48,6 +48,7 @@
 - List places a list box with three choices and none chosen. The reader picks a row into `value` and scrolls a long list. Needs Foolbook#50.
 - Combo places a one-row combo box with three choices. The reader opens it on a click and closes it on the row picked. Needs Foolbook#51.
 - Fit steps the selected picture through `fill`, `contain`, and `none`, which is how the reader sits it in its frame. A picture with no `fit` is `fill`. Needs Foolbook#52.
+- Record asks for field names and rows, then places one text field per name and Previous and Next buttons, and stores the rows on the page as `records`. The reader shows one row at a time. Needs Foolbook#53.
 - Rounded places a rounded rectangle (`kind: roundrect`, `radius: 8`). Foolbook draws it from Foolbook#23 on.
 - Polygon is clicked out: each click is a point, double-click or Enter closes it, and Escape drops it with nothing left on the page. It used to be a rectangle you dragged.
 - Curve is clicked out like Polygon and stays open. It stores `kind: curve` and its points. Foolbook draws it from Foolbook#26 on.
