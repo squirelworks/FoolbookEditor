@@ -21,6 +21,26 @@ class SelftestTests(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("selftest: ok", done.stdout)
 
+    def test_the_reader_opens_the_saved_book_and_using_foolbook(self):
+        done = subprocess.run(
+            [sys.executable, "-m", "foolbookeditor", "--selftest"],
+            cwd=ROOT, capture_output=True, text=True, timeout=120,
+        )
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("the reader opens the saved book", done.stdout)
+        from foolbookeditor.core import shipped_book
+        if shipped_book("using_foolbook") is None:
+            self.skipTest("Foolbook's sample books are not installed")
+        self.assertIn("the reader opens Using Foolbook", done.stdout)
+
+    def test_a_file_the_reader_cannot_open_is_reported(self):
+        import tempfile
+        from foolbookeditor.selftest import reader_problems
+        with tempfile.TemporaryDirectory() as tmp:
+            bad = Path(tmp) / "bad.fbk"
+            bad.write_bytes(b"FBK1\x00not json")
+            self.assertTrue(reader_problems(bad))
+
     def test_a_missing_script_is_reported(self):
         from foolbookeditor.selftest import problems, sample
         book = sample()

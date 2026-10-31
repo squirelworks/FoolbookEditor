@@ -1,8 +1,8 @@
 """``python3 -m foolbookeditor --selftest``.
 
 Build a book in memory, save it, load it, and check that the page id,
-one shape, and one script came back. No window. Every editor pull
-request runs this.
+one shape, and one script came back. Then the reader opens that file
+and Using Foolbook. No window. Every editor pull request runs this.
 """
 
 from __future__ import annotations
@@ -47,12 +47,38 @@ def problems(book: dict) -> list[str]:
     return found
 
 
+def reader_problems(path: Path, page_ids: list[str] | None = None) -> list[str]:
+    """Open a file the way the reader does. Empty means it opened."""
+    from foolbookeditor.core import read
+    try:
+        book = read(path)
+    except Exception as exc:
+        return [f"reader: {path.name}: {exc}"]
+    found = [p.get("id") for p in book.get("pages") or []]
+    if not found:
+        return [f"reader: {path.name}: no pages"]
+    if page_ids is not None and found != page_ids:
+        return [f"reader: {path.name}: pages {found}, expected {page_ids}"]
+    return []
+
+
 def run(out=print) -> int:
-    from foolbookeditor.core import load, save_book
+    from foolbookeditor.core import load, save_book, shipped_book
     with tempfile.TemporaryDirectory() as tmp:
         path = save_book(Path(tmp) / "selftest.fbk", sample())
         book = load(path)
-    found = problems(book)
+        found = problems(book)
+        found += reader_problems(path, [PAGE_ID])
+    if not found:
+        out("selftest: the reader opens the saved book")
+    using = shipped_book("using_foolbook")
+    if using is None:
+        out("selftest: Using Foolbook is not installed beside the reader, not checked")
+    else:
+        more = reader_problems(using)
+        found += more
+        if not more:
+            out("selftest: the reader opens Using Foolbook")
     for line in found:
         out(f"selftest: {line}")
     out("selftest: ok" if not found else "selftest: failed")
