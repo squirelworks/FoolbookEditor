@@ -3,6 +3,9 @@
 ## 2026-10-31
 
 - `schema.md` and `author/schema.py` write the book dict down, starting with the book fields `id`, `title`, and `pages`. `_magic` is the web editor's envelope state and is not written into the payload; the reader opens a book with or without it.
+- Save is not Export. Save writes `.fbk`, `.fsk`, or `.json`. A book opened from a `.tbk`, an `.sbk`, or an office file is saved beside it as `.fbk` (or `.fsk`), and the original is not written. Saving an `.fsk` keeps it a system book; it was written as an `.fbk`. The status line names the file written. Export stays its own button. The extension picks the kind whatever its case, no extension saves as `.fbk`, a system book saved as `.fbk` becomes a book, and an empty system book is still a valid `FSK1` file. Tests: `tests/test_save_target.py`, `tests/test_save_as_kind.py`.
+- Apply script on an object shows a warning in the status line when a line uses a word Foolbook does not run, with the line number. The script is still kept. The words come from Foolbook's `engine/subset.py` table through `foolbook.core.unknown_words`. Tested in `author/test_scripts.py`.
+- Foolbook comes from its main branch, not commit 031e8d8. The pin froze the editor on a reader main has moved past: at that commit the system-book test fails, and at the v1.0.8 tag eight tests fail. A release tag is the other allowed form. Test: `tests/test_pin.py`.
 
 ## 2026-10-31
 
@@ -11,19 +14,23 @@
 
 ## 2026-10-31
 
+- Zoom: Fit (as before), 50%, 100%, 200%. At a fixed zoom, a page smaller than the stage sits in the middle and a larger one scrolls. A click on a scrolled stage still lands on the right object. Zoom is view-only and stored coordinates never change. Test: `author/test_view.py` (`to_page(x, y, zoom)`).
 - Spelling lists words in page text, fields, and buttons that are not in a small list of ordinary English words (`author/words.txt`, written for this editor, under 600 words). Selecting one goes to its page. Add to book stores the word in the book's `words` so it is not flagged again. Nothing is shelled out to.
 
 ## 2026-10-31
 
+- A status line at the bottom of the window shows the tool, page id, selected shape, and Saved or Unsaved changes, and the zoom once the stage has a zoom control. Unsaved changes reads the dirty flag from item 22 once that has landed, and says Saved until then. Test: `author/test_status.py`.
 - A page's Transition is stored as `transition` and ignored. Foolbook changes pages with no animation, and the README says so. "none" stores nothing.
 
 ## 2026-10-31
 
+- The README has a Tools section with one `###` heading per tool (Select, Button, Field, Rectangle, Line, Ellipse, Polygon, Arc, Picture), so Help can open the local section for the tool in use. Test: `author/test_help.py`.
 - A picture is stored as PNG. GIF, BMP, and JPEG are converted when Pillow is installed. The picture's size in pixels shows when it comes in and when it is selected, and a click without a drag places it at that size. A file that is not a picture is refused.
 - Book sets the book's title, author, default page size (`pageSize`), and first page (`firstPage`). A bad size or a page that does not exist is refused and changes nothing. Foolbook opens the book at its first page.
 
 ## 2026-10-31
 
+- A menu bar: File, Edit, Insert, Arrange, Book, Help. It is built from `author/menus.py`, and every item runs a command the window already has. Help for this tool opens the tool's README section in a window, not a website. Test: `author/test_menus.py`.
 - Drag an action from the Actions pane onto an object on the page and it is added to that object's list. Goto, show, hide, set text, and play take their page or shape from the box beside the list, or ask.
 - Write script puts the script an action list stands for into the object script, so the author can see it and edit it. The action list stays. A play action has no script line and the script says so in a comment.
 - The Actions pane builds an action list on the selected object (go to page, next, previous, show, hide, set text, play), one `do` plus its arguments each. Foolbook runs them on a click. When the object also has a script, the pane says the script runs, not the actions.
