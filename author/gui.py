@@ -74,6 +74,7 @@ class Editor:
         ttk.Button(bar, text="New", command=self._new).pack(side="left")
         ttk.Button(bar, text="Template", command=self._template).pack(side="left", padx=(2, 0))
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
+        ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
@@ -282,6 +283,34 @@ class Editor:
         listing.bind("<Double-Button-1>", lambda _e: make())
         win.bind("<Escape>", lambda _e: win.destroy())
         win.grab_set()
+
+    def _catalog(self):
+        """The books in a folder. Double-click opens one."""
+        from author.shelf import list_books
+        folder = filedialog.askdirectory(title="Catalog folder")
+        if not folder:
+            return
+        rows = list_books(folder)
+        win = tk.Toplevel(self.root)
+        win.title(f"Catalog: {Path(folder).name}")
+        tree = ttk.Treeview(win, columns=("title", "pages", "file"), show="headings", height=min(20, max(4, len(rows))))
+        for column, label, width in (("title", "Title", 260), ("pages", "Pages", 60), ("file", "File", 200)):
+            tree.heading(column, text=label)
+            tree.column(column, width=width, anchor="e" if column == "pages" else "w")
+        for index, row in enumerate(rows):
+            title = row["error"] or row["title"]
+            tree.insert("", "end", iid=str(index), values=(title, row["pages"], row["file"]))
+        tree.pack(fill="both", expand=True, padx=8, pady=8)
+
+        def open_row(_evt=None):
+            sel = tree.selection()
+            if not sel or rows[int(sel[0])]["error"]:
+                return
+            win.destroy()
+            self._load(rows[int(sel[0])]["path"])
+
+        tree.bind("<Double-Button-1>", open_row)
+        tree.bind("<Return>", open_row)
 
     def _open_new(self, book: dict):
         self.book = book
