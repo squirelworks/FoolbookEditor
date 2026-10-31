@@ -77,6 +77,7 @@ class Editor:
         ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
+        ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
@@ -464,6 +465,27 @@ class Editor:
         found = handler_names(self.book)
         note = f"  {len(found)} handlers" if path.suffix.lower() == ".fsk" else ""
         self.status.config(text=str(path.name) + note)
+
+    def _import(self):
+        p = filedialog.askopenfilename(title="Import a ToolBook book", filetypes=[("ToolBook", "*.tbk"), ("All", "*.*")])
+        if p:
+            self._import_from(Path(p))
+
+    def _import_from(self, src: Path):
+        """The .tbk is only read. Save writes an .fbk beside it."""
+        from author.importer import import_book, report_text
+        self.book, lines = import_book(src)
+        self.path = src.with_suffix(".fbk")
+        self.current = 0
+        self._refresh_list()
+        self.status.config(text=f"Imported {src.name}. Save writes {self.path.name}")
+        win = tk.Toplevel(self.root)
+        win.title(f"Import report: {src.name}")
+        box = tk.Text(win, width=90, height=24, wrap="word")
+        box.pack(fill="both", expand=True)
+        box.insert("1.0", report_text(lines))
+        box.config(state="disabled")
+        self.report = box
 
     def _save(self):
         self._apply()

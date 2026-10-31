@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Import .tbk reads a ToolBook book through Foolbook into a book the editor saves as an `.fbk` beside it. The `.tbk` is not written. A report window lists what the reader left behind: groups kept as loose objects, arcs drawn as their ellipse, curves and other kinds it does not draw, handlers with no source, and the limits no `.tbk` import has yet. Test: `author/test_import.py`.
 - The quiz schema is written down: `version`, `question`, `choices` (`label`, `correct`, exactly one right), `feedback_right`, `feedback_wrong`, optional `next` and `again`. `author/quiz.py` has `make_quiz`, `right_index`, and `validate`. Tested in `author/test_quiz.py`, with questions written for the test.
 - System book: a page book names one `.fsk` in the toolbar, stored as `system`. Foolbook runs that book's handlers first once squirelworks/Foolbook#40 lands. Open takes an `.fsk`, which opens as its handlers (the status line counts them) plus any pages it has. Test: `author/test_system_book.py`.
 - Viewer: Previous, Next, and Page number checkboxes store the book's first viewer (`viewers[0]`: name, size, buttons). Foolbook shows those buttons under the page once squirelworks/Foolbook#34 lands. Test: `author/test_viewers.py`.
