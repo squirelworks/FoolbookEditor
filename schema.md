@@ -36,6 +36,12 @@ An `.fbk` is `FBK1`, a flags byte (bit 0 means zlib), then this dict as JSON. An
 - `data`: a picture's PNG bytes as base64, so the book is one file.
 - `visible`: `false` means the reader does not draw it. Missing means visible.
 - `layer`: `page` or `background`. Missing means `page`.
+
+### Backgrounds live on the page, for now
+
+A background shape is stored on each page that shows it, with `layer: background`, because that is what the web editor stores and what the reader opens today. It is not lifted to a shared background page in this phase. Do not "clean this up" by moving them; the shared background (a page with `background: true` that others name in `uses`) is a later item with its own pull request, and old books with `layer` will still paint.
+
+The reader paints in array order and does not read `layer`, so Save writes a page's background shapes ahead of its page shapes. Order inside each layer is kept.
 - `ends`: an arc's two end points, `[[x, y], [x, y]]`. Only an arc has it.
 
 The reader stamps `format`, `format_version`, `fbk` (the book version, now 1), and `foolbook` (the reader's own version) on every save. The editor drops those before it saves so the reader writes them in its own order.

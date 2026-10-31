@@ -38,12 +38,36 @@ def check_version(book: dict) -> None:
         )
 
 
+def background_first(page: dict) -> dict:
+    """The page with its background shapes ahead of its page shapes.
+
+    The reader paints a page's shapes in array order and does not read
+    ``layer``. A background shape after a page shape would be drawn over
+    it. Order inside each layer is kept.
+    """
+    shapes = page.get("shapes")
+    if not isinstance(shapes, list):
+        return page
+    back = [s for s in shapes if isinstance(s, dict) and s.get("layer") == "background"]
+    if not back:
+        return page
+    rest = [s for s in shapes if not (isinstance(s, dict) and s.get("layer") == "background")]
+    ordered = back + rest
+    if ordered == shapes:
+        return page
+    return {**page, "shapes": ordered}
+
+
 def payload(book: dict) -> dict:
-    """The book without the keys the envelope writer stamps, or editor state."""
-    return {
+    """The book as it is written: no envelope keys, no editor state,
+    and background shapes ahead of page shapes on every page."""
+    out = {
         key: value for key, value in book.items()
         if key not in ENVELOPE and key not in NOT_WRITTEN
     }
+    if isinstance(out.get("pages"), list):
+        out["pages"] = [background_first(p) if isinstance(p, dict) else p for p in out["pages"]]
+    return out
 
 
 def open_book(path: str | Path) -> dict:
