@@ -25,6 +25,7 @@ _SIZE = {
     "line": (80, 8),
     "ellipse": (80, 60),
     "polygon": (80, 60),
+    "curve": (80, 60),
     "arc": (80, 60),
     "picture": (120, 80),
 }
@@ -37,6 +38,7 @@ _KIND = {
     "line": "line",
     "ellipse": "ellipse",
     "polygon": "polygon",
+    "curve": "curve",
     "arc": "arc",
     "picture": "image",
 }
@@ -48,13 +50,14 @@ _LABEL = {
     "line": "Line",
     "ellipse": "Ellipse",
     "polygon": "Polygon",
+    "curve": "Curve",
     "arc": "Arc",
     "picture": "Picture",
 }
 
 
 # Tools that are clicked out one point at a time, and the fewest points each keeps.
-POINT_TOOLS = {"polygon": 3}
+POINT_TOOLS = {"polygon": 3, "curve": 2}
 
 
 def after_escape(tool: str, draft: "PointDraft | None" = None) -> str:
@@ -69,7 +72,7 @@ def after_escape(tool: str, draft: "PointDraft | None" = None) -> str:
 
 
 class PointDraft:
-    """A polygon being clicked out. One click is one point.
+    """A polygon or curve being clicked out. One click is one point.
 
     Double-click or Enter closes it. Escape drops it.
     """
@@ -167,6 +170,9 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
             [int(left), int(top + height)],
         ]
         shape["fill"] = "#c0c0c0"
+    elif tool == "curve":
+        # Open, so nothing to fill. Foolbook draws it through the points.
+        shape["outline"] = INK
     elif tool == "arc":
         shape["ends"] = [[int(left), int(top + height / 2)], [int(left + width), int(top + height / 2)]]
     return shape
