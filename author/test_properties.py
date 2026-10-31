@@ -177,5 +177,42 @@ class PointsTests(unittest.TestCase):
         self.assertTrue(write({"kind": "line"}, "points", "0, 0\n10, 0"))
 
 
+class ItemTests(unittest.TestCase):
+    def test_a_page_id_makes_the_jump(self):
+        shape = {"kind": "button", "x": 0, "y": 0, "w": 90, "h": 28}
+        self.assertTrue(write(shape, "jump_page", "P200"))
+        self.assertEqual(shape["item"], {"page": "P200"})
+        self.assertEqual(read(shape, "jump_page"), "P200")
+
+    def test_book_and_label_ride_with_the_page(self):
+        shape = {"kind": "button", "item": {"page": "P200"}}
+        self.assertTrue(write(shape, "jump_book", "other.fbk"))
+        self.assertTrue(write(shape, "jump_label", "Next"))
+        self.assertEqual(shape["item"], {"page": "P200", "book": "other.fbk", "label": "Next"})
+        self.assertTrue(write(shape, "jump_book", ""))
+        self.assertEqual(shape["item"], {"page": "P200", "label": "Next"})
+
+    def test_an_empty_page_clears_the_jump(self):
+        shape = {"kind": "button", "item": {"page": "P200", "book": "other.fbk", "label": "Next"}}
+        self.assertTrue(write(shape, "jump_page", ""))
+        self.assertNotIn("item", shape)
+        self.assertEqual(read(shape, "jump_book"), "")
+
+    def test_book_or_label_need_a_page_first(self):
+        shape = {"kind": "button"}
+        self.assertFalse(write(shape, "jump_book", "other.fbk"))
+        self.assertFalse(write(shape, "jump_label", "Next"))
+        self.assertNotIn("item", shape)
+
+    def test_the_reader_sees_the_jump(self):
+        from foolbookeditor.core import pack, unpack
+        from engine.place import click_target
+        shape = {"kind": "button", "x": 10, "y": 10, "w": 90, "h": 28}
+        write(shape, "jump_page", "P200")
+        book = unpack(pack({"pages": [{"id": "P0", "shapes": [shape]}, {"id": "P200", "shapes": []}]}))
+        target = click_target(book["pages"][0]["shapes"], 20, 20)
+        self.assertEqual(target["item"]["page"], "P200")
+
+
 if __name__ == "__main__":
     unittest.main()
