@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10-31
+
+- `instructor-map.md` lists the fourteen Instructor jobs, where each one stands, and the work order items that cover it. `author/test_instructor_map.py` keeps every job listed once with a status.
 ## Unreleased — 2026-10-31
 
 - Add puts the new page right after the current page, not at the end. Ctrl+M does the same.
