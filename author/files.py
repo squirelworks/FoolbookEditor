@@ -10,7 +10,16 @@ from __future__ import annotations
 from pathlib import Path
 
 from author.schema import NOT_WRITTEN
-from foolbookeditor.core import format_version, load, save_book, save_system
+from foolbookeditor.core import (
+    format_version,
+    is_office,
+    is_toolbook,
+    load,
+    read,
+    save_book,
+    save_system,
+    to_book,
+)
 
 # Written by Foolbook's save, not by the author. Dropped before a save so
 # the reader stamps them again in its own order.
@@ -70,8 +79,53 @@ def payload(book: dict) -> dict:
     return out
 
 
+FOOLBOOK_MAGIC = (b"FBK1", b"FSK1", b"FSC1")
+
+
+def sniff(path: str | Path) -> str:
+    """What the bytes are: ``foolbook``, ``toolbook``, ``office``, or ``unknown``.
+
+    The extension is a hint. A ToolBook file renamed to .fbk is ToolBook,
+    and an .fbk envelope named .tbk is a Foolbook book.
+    """
+    path = Path(path)
+    with path.open("rb") as handle:
+        head = handle.read(8)
+    if head[:4] in FOOLBOOK_MAGIC or head.lstrip()[:1] in (b"{", b"["):
+        return "foolbook"
+    if is_toolbook(path):
+        return "toolbook"
+    if is_office(path):
+        return "office"
+    return "unknown"
+
+
 def open_book(path: str | Path) -> dict:
-    return load(path)
+    """Open whatever the bytes are, as the book dict the editor holds."""
+    kind = sniff(path)
+    if kind == "foolbook":
+        return load(path)
+    if kind == "toolbook":
+        return read(path)
+    if kind == "office":
+        return to_book(path)
+    # Anything else the reader may still know: a TBX folder, notes, an
+    # older store. It says so when it cannot.
+    return read(path)
+
+
+def save_path_for(opened: str | Path) -> Path | None:
+    """Where Save goes after opening this file, or None to ask (Save as).
+
+    A Foolbook book saves over itself. Anything else saves beside it.
+    A ToolBook file named .fbk has nowhere beside it to go that is not
+    itself, so Save asks instead of writing over the original.
+    """
+    opened = Path(opened)
+    target = save_target(opened)
+    if sniff(opened) != "foolbook" and target == opened:
+        return None
+    return target
 
 
 # What Save writes. Anything else is Export.
