@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Apply script checks the page script as it checks an object script: the first error, with its line, or else the first word Foolbook does not run, shows in the status line. Before, a page script was saved with no check. It is still saved whatever the check finds. Test: `author/test_page_script_check.py`.
 - A question bank is `name.bank.json` beside the book: `{"bank": 1, "questions": [...]}`, the quiz schema as an array. `author/bank.py` loads, checks, and saves it, refuses a newer bank version and names it, and `pick` puts one question on a page. Tested in `author/test_bank.py`, with questions written for the test.
 - `author.quiz.insert_quiz` puts a quiz on the page as shapes: the question, one button per choice with its `choice` index, and the right and wrong feedback hidden. Foolbook grades the saved page by that index. Tested in `author/test_quiz_insert.py`.
 - Apply script shows the first error Foolbook's check finds, with its line number, in the status line, ahead of any warning. The script is saved anyway. Tested in `author/test_script_check.py`.
