@@ -8,6 +8,7 @@ Slide editor. Produces .fbk (and .fsk). Export .tbk writes a shell with compiled
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -209,6 +210,7 @@ class Editor:
         ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Proof PNGs", command=self._proof).pack(side="left", padx=2)
+        ttk.Button(bar, text="Print", command=self._print).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
         ttk.Button(bar, text="Menu bar", command=self._menubar).pack(side="left", padx=2)
@@ -1055,6 +1057,24 @@ class Editor:
         base = self.path.parent if self.path else None
         written = export_pngs(self.book, folder, base=base)
         self.status.config(text=f"Wrote {len(written)} page pictures")
+
+    def _print(self):
+        """The PNG pages, sent to the printer when this machine has one call for it."""
+        self._apply()
+        folder = filedialog.askdirectory(title="Folder for the printed pages")
+        if not folder:
+            return
+        from author.printing import print_book, printer
+        base = self.path.parent if self.path else None
+        try:
+            written, sent = print_book(self.book, folder, base=base, send=printer())
+        except (OSError, subprocess.CalledProcessError) as exc:
+            self.status.config(text=f"Printing failed: {exc}. The pages are in {folder}")
+            return
+        if sent:
+            self.status.config(text=f"Sent {len(written)} pages to the printer")
+        else:
+            self.status.config(text=f"No printer call here. The {len(written)} PNG pages in {folder} are the print")
 
     def _export_executable(self):
         """ToolBook-style self-running book. Scaffold only."""
