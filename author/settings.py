@@ -58,3 +58,34 @@ def sashes(saved, width: int) -> list[int]:
     right = min(right, width - EDGE)
     left = max(40, min(left, right - STAGE))
     return [left, right]
+
+
+# Recent books: the last five opened or saved, newest first, under "recent".
+RECENT_KEEP = 5
+
+
+def recent() -> list[str]:
+    found = load().get("recent")
+    return [p for p in found if isinstance(p, str)][:RECENT_KEEP] if isinstance(found, list) else []
+
+
+def remember(book: str | Path) -> list[str]:
+    """Put this book first. The list keeps five and no copies."""
+    book = str(Path(book).resolve())
+    kept = ([book] + [p for p in recent() if p != book])[:RECENT_KEEP]
+    update(recent=kept)
+    return kept
+
+
+def forget(book: str | Path) -> list[str]:
+    kept = [p for p in recent() if p != str(book)]
+    update(recent=kept)
+    return kept
+
+
+def pick(book: str) -> tuple[Path | None, str]:
+    """The book to open, or None and the sentence to show when it is gone."""
+    if Path(book).is_file():
+        return Path(book), ""
+    forget(book)
+    return None, f"{Path(book).name} is not there any more. It was taken off the recent list."
