@@ -77,6 +77,7 @@ class Editor:
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(tools, text="Fill", command=lambda: self._color("fill")).pack(side="left")
         ttk.Button(tools, text="Fit", command=self._fit).pack(side="left", padx=(2, 0))
+        ttk.Button(tools, text="Record", command=self._record).pack(side="left", padx=(2, 0))
         ttk.Button(tools, text="Line", command=lambda: self._color("outline")).pack(side="left", padx=2)
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
@@ -517,6 +518,41 @@ class Editor:
             return
         self.status.config(text=f"Fit {fit}")
         self._preview()
+
+    def _record(self):
+        """Fields and rows for a record on this page, then the shapes that show it."""
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        from author.records import parse_rows, place_record
+        win = tk.Toplevel(self.root)
+        win.title("Record")
+        win.transient(self.root)
+        form = ttk.Frame(win, padding=12)
+        form.pack(fill="both", expand=True)
+        ttk.Label(form, text="Fields, separated by commas").pack(anchor="w")
+        names = ttk.Entry(form, width=40)
+        names.insert(0, "Name, Town")
+        names.pack(fill="x")
+        ttk.Label(form, text="Rows, one per line, commas between fields").pack(anchor="w", pady=(8, 0))
+        rows = tk.Text(form, width=40, height=6)
+        rows.pack(fill="both", expand=True)
+        error = ttk.Label(form, text="", foreground="#a00000", wraplength=300)
+        error.pack(anchor="w")
+
+        def make():
+            try:
+                fields, data = parse_rows(names.get(), rows.get("1.0", "end"))
+                place_record(pages[self.current], fields, data, 40, 40)
+            except ValueError as exc:
+                error.config(text=str(exc))
+                return
+            win.destroy()
+            self._show(self.current)
+
+        ttk.Button(form, text="Place", command=make).pack(anchor="e", pady=(8, 0))
+        win.bind("<Escape>", lambda _e: win.destroy())
+        win.grab_set()
 
     def _restack(self, direction: str):
         _shape, index = self._selected()
