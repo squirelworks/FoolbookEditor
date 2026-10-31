@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Save from the window keeps a system book a system book again. The safe save, which writes beside the file and then replaces it, saved `.fsk` as `.fbk` and an `.sbk` import as `.fbk`; it now writes where `save_target` says, through `save_system` for `.fsk`. Test: `tests/test_safe_save_kind.py`.
 - Save writes compressed or uncompressed. Compressed stays the default, matching Foolbook's `pack`. A Compress box turns it off, and a book opened from an uncompressed file saves uncompressed.
 - Open sniffs the bytes. A ToolBook file renamed `.fbk` opens as ToolBook, and an `.fbk` named `.tbk` opens as a Foolbook book. Save after opening a renamed ToolBook file asks for a name instead of writing over it. A file that will not open says why instead of stopping the window.
 - Save writes a page's background shapes ahead of its page shapes. The reader paints in array order, so a background shape added after a page shape (a web editor book) was drawn on top of it. Backgrounds stay on the page, tagged `layer: background`; `schema.md` says why.
