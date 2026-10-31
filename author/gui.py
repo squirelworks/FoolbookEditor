@@ -35,8 +35,12 @@ class Editor:
         self.current = 0
         self.tool = tk.StringVar(value="select")
         self._build()
+        from author.start import first_book
+        demo, _ = first_book(path)
         if path and path.exists():
             self._load(path)
+        elif demo is not None:
+            self._open_demo(demo)
         else:
             self._new()
         from author.recovery import INTERVAL_MS
@@ -282,6 +286,15 @@ class Editor:
         self._kept = None
         self._refresh_list()
         self.status.config(text="New book")
+
+    def _open_demo(self, book: dict):
+        """The shipped demo, as a copy. Save asks where to put it."""
+        self.book = book
+        self.path = None
+        self.current = 0
+        self._kept = None
+        self._refresh_list()
+        self.status.config(text="Demo book. Save as keeps a copy.")
 
     def _open(self):
         p = filedialog.askopenfilename(

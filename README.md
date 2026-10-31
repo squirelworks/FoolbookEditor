@@ -60,6 +60,8 @@ Drag the box, then choose a PNG, GIF, BMP, or JPEG. The picture is stored in the
 
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
+With no path, Author opens A Small Garden, the demo book in `foolbookeditor/demo/`, as an unsaved copy. `python3 examples/demo.py` rebuilds it.
+
 ```bash
 python3 examples/welcome.py /path/to/Foolbook/foolbook/books
 ```
