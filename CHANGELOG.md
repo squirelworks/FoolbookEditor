@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Every menu item has a keyboard shortcut, or `none` on purpose (Delete page, so a slip cannot drop a page, and the two layer items). The menus show the keys, and Help > Keyboard map prints the whole map. Ctrl+1 to Ctrl+8 pick the drawing tools. Test: `author/test_menus.py` `KeyboardMap`.
 - A menu bar: File, Edit, Insert, Arrange, Book, Help. It is built from `author/menus.py`, and every item runs a command the window already has. Help for this tool opens the tool's README section in a window, not a website. Test: `author/test_menus.py`.
 - The README has a Tools section with one `###` heading per tool (Select, Button, Field, Rectangle, Line, Ellipse, Polygon, Arc, Picture), so Help can open the local section for the tool in use. Test: `author/test_help.py`.
 - A status line at the bottom of the window shows the tool, page id, selected shape, zoom, and Saved or Unsaved changes. Unsaved changes reads the dirty flag from item 22 once that has landed, and says Saved until then. Test: `author/test_status.py`.
