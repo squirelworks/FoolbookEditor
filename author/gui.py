@@ -81,6 +81,7 @@ class Editor:
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
+        ttk.Button(bar, text="Menu bar", command=self._menubar).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle"), ("roundrect", "Rounded")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
@@ -324,6 +325,27 @@ class Editor:
             self.body.sashpos(1, width - 280)
         except tk.TclError:
             return
+
+    def _menubar(self):
+        from .menubar import render, set_menubar
+        win = tk.Toplevel(self.root)
+        win.title("Menu bar")
+        win.transient(self.root)
+        ttk.Label(win, text="A menu at the margin, its items indented. Label -> page, or Label: one line of script.").pack(anchor="w", padx=6, pady=4)
+        box = tk.Text(win, width=60, height=14, font=("TkFixedFont", 10))
+        box.pack(fill="both", expand=True, padx=6)
+        box.insert("1.0", render(self.book.get("menubar") or []))
+
+        def apply():
+            try:
+                set_menubar(self.book, box.get("1.0", "end"))
+            except ValueError as exc:
+                messagebox.showerror("Menu bar", str(exc), parent=win)
+                return
+            win.destroy()
+
+        ttk.Button(win, text="Apply", command=apply).pack(anchor="e", padx=6, pady=4)
+        self._menubar_window = win
 
     def _new(self, ask: bool = True):
         from author.document import new_book
