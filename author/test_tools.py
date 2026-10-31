@@ -109,6 +109,23 @@ class PolygonTests(unittest.TestCase):
         self.assertEqual(after_escape("polygon", draft), "polygon")
         self.assertEqual(after_escape("polygon", None), "select")
 
+class CurveTests(unittest.TestCase):
+    def test_a_curve_keeps_its_points_and_is_not_filled(self):
+        from author.tools import PointDraft
+        draft = PointDraft("curve")
+        for x, y in ((0, 40), (30, 0), (60, 40), (90, 0)):
+            draft.add(x, y)
+        shape = draft.finish(set())
+        self.assertEqual(shape["kind"], "curve")
+        self.assertEqual(shape["points"], [[0, 40], [30, 0], [60, 40], [90, 0]])
+        self.assertEqual(shape["fill"], "")
+
+    def test_one_point_is_not_a_curve(self):
+        from author.tools import PointDraft
+        draft = PointDraft("curve")
+        draft.add(5, 5)
+        self.assertIsNone(draft.finish(set()))
+
 
 if __name__ == "__main__":
     unittest.main()

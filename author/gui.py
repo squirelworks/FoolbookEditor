@@ -67,6 +67,7 @@ class Editor:
             ("line", "Line"),
             ("ellipse", "Ellipse"),
             ("polygon", "Polygon"),
+            ("curve", "Curve"),
             ("arc", "Arc"),
             ("picture", "Picture"),
         ):
@@ -492,7 +493,7 @@ class Editor:
         self._preview()
 
     def _finish_draft(self, _evt=None):
-        """Close the polygon being clicked out. Too few points leaves nothing."""
+        """Close the polygon or curve being clicked out. Too few points leaves nothing."""
         draft = self._draft
         if draft is None:
             return None
