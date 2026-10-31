@@ -1,4 +1,4 @@
-"""What the script pane says about a script. A warning, never an error.
+"""What the script pane says about a script. It never stops a save.
 
 The words come from Foolbook's table of what the reader runs. They are not
 typed here a second time.
@@ -16,3 +16,18 @@ def warning(source: str) -> str:
     line, word = found[0]
     more = f" (and {len(found) - 1} more)" if len(found) > 1 else ""
     return f"Warning: line {line}: the reader does not run '{word}'{more}. The script is kept."
+
+
+def first_error(source: str) -> str:
+    """The first error Foolbook's check finds, for the status bar, or ""."""
+    from foolbookeditor.core import check_script
+    errors = check_script(source or "")
+    if not errors:
+        return ""
+    line, message = errors[0]
+    return f"Error: line {line}: {message}. Saved anyway."
+
+
+def status(source: str) -> str:
+    """An error first, then a warning, then nothing."""
+    return first_error(source) or warning(source)
