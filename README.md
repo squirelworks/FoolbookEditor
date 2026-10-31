@@ -22,6 +22,8 @@ Pages: Add (Ctrl+M) puts a blank page right after the current page. Duplicate (C
 
 Size under the stage sets the page's `size`. A page with none is 640 by 480. The stage draws a dashed line at the page edge. A shape that hangs past it stays in the file as it is and is drawn past the line.
 
+Under the page list, each page has a small drawing of its shapes. A click on one shows that page.
+
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash

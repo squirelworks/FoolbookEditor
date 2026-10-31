@@ -87,9 +87,18 @@ class Editor:
         left = ttk.Frame(body, width=160)
         body.add(left, weight=0)
         ttk.Label(left, text="Pages").pack(anchor="w")
-        self.pages = tk.Listbox(left, exportselection=False, width=18)
+        self.pages = tk.Listbox(left, exportselection=False, width=18, height=8)
         self.pages.pack(fill="both", expand=True)
         self.pages.bind("<<ListboxSelect>>", self._on_select)
+        # One small drawing per page. A click on one shows that page.
+        strip = ttk.Frame(left)
+        strip.pack(fill="both", expand=True, pady=(4, 0))
+        self.thumbs = tk.Canvas(strip, width=120, height=200, bg="#e8e8e8", highlightthickness=0)
+        thumb_bar = ttk.Scrollbar(strip, orient="vertical", command=self.thumbs.yview)
+        self.thumbs.configure(yscrollcommand=thumb_bar.set)
+        thumb_bar.pack(side="right", fill="y")
+        self.thumbs.pack(side="left", fill="both", expand=True)
+        self.thumbs.bind("<ButtonRelease-1>", self._on_thumb)
         row = ttk.Frame(left)
         row.pack(fill="x", pady=4)
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
@@ -270,9 +279,32 @@ class Editor:
         self.pages.delete(0, "end")
         for p in self.book.get("pages") or []:
             self.pages.insert("end", p.get("id") or "?")
+        self._draw_thumbs()
         if self.book.get("pages"):
             self.pages.selection_set(self.current)
             self._show(self.current)
+
+    _THUMB_STEP = 96
+
+    def _draw_thumbs(self):
+        from author.thumbs import draw, miniature
+        self.thumbs.delete("all")
+        pages = self.book.get("pages") or []
+        for index, page in enumerate(pages):
+            top = 4 + index * self._THUMB_STEP
+            if index == self.current:
+                self.thumbs.create_rectangle(2, top - 2, 102, top + 90, fill="#a8c4e0", outline="")
+            draw(self.thumbs, miniature(page), 4, top, f"thumb{index}")
+            self.thumbs.create_text(4, top + 74, text=page.get("id") or "?", anchor="nw", font=("TkDefaultFont", 8))
+        self.thumbs.configure(scrollregion=(0, 0, 110, 8 + len(pages) * self._THUMB_STEP))
+
+    def _on_thumb(self, evt):
+        index = int(self.thumbs.canvasy(evt.y) - 4) // self._THUMB_STEP
+        if not (0 <= index < len(self.book.get("pages") or [])) or index == self.current:
+            return
+        self.pages.selection_clear(0, "end")
+        self.pages.selection_set(index)
+        self._on_select()
 
     def _on_select(self, _evt=None):
         sel = self.pages.curselection()
@@ -282,6 +314,7 @@ class Editor:
         self._apply_script()
         self.current = sel[0]
         self._show(self.current)
+        self._draw_thumbs()
 
     def _show(self, idx: int):
         pages = self.book.get("pages") or []
@@ -364,6 +397,7 @@ class Editor:
         self.pages.insert(self.current, p["id"])
         self.pages.selection_set(self.current)
         self._preview()
+        self._draw_thumbs()
 
     def _add_page(self):
         self._apply()
@@ -481,6 +515,8 @@ class Editor:
         down = getattr(self, "_down", None)
         self._down = None
         if tool == "select":
+            if self._drag:
+                self._draw_thumbs()
             self._drag = None
             return
         self._drag = None
@@ -519,6 +555,7 @@ class Editor:
                 break
         self._fitted = None
         self._preview()
+        self._draw_thumbs()
 
     def _selected(self):
         pages = self.book.get("pages") or []
