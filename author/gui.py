@@ -164,12 +164,19 @@ class Editor:
         self.root.bind(SHORTCUTS["add_page"][1], lambda _e: self._add_page())
         self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
         self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
+        self.root.bind(SHORTCUTS["go_to_page"][1], lambda _e: (self.goto.focus_set(), self.goto.select_range(0, "end")))
         self.root.bind(SHORTCUTS["page_up"][1], lambda _e: self._reorder("page_up"))
         self.root.bind(SHORTCUTS["page_down"][1], lambda _e: self._reorder("page_down"))
         ttk.Button(row, text="Duplicate", command=self._duplicate_page).pack(side="left", padx=4)
         ttk.Button(row, text="Delete", command=self._del_page).pack(side="left")
         order = ttk.Frame(left)
         order.pack(fill="x")
+        goto = ttk.Frame(left)
+        goto.pack(fill="x", pady=(4, 0))
+        ttk.Label(goto, text="Go to").pack(side="left")
+        self.goto = ttk.Entry(goto, width=10)
+        self.goto.pack(side="left", padx=4, fill="x", expand=True)
+        self.goto.bind("<Return>", lambda _e: self._go_to())
         ttk.Button(order, text="Up", command=lambda: self._reorder("page_up")).pack(side="left")
         ttk.Button(order, text="Down", command=lambda: self._reorder("page_down")).pack(side="left", padx=4)
         ttk.Button(left, text="New background", command=self._add_background).pack(anchor="w")
@@ -1024,6 +1031,18 @@ class Editor:
         from author.commands import duplicate_page
         self.current = duplicate_page(self.book, self.current)
         self._refresh_list()
+
+    def _go_to(self):
+        from author.commands import go_to_page
+        index, note = go_to_page(self.book, self.current, self.goto.get())
+        if note:
+            self.status.config(text=note)
+        if index == self.current:
+            return
+        self.pages.selection_clear(0, "end")
+        self.pages.selection_set(index)
+        self.pages.see(index)
+        self._on_select()
 
     def _reorder(self, command: str):
         self._apply()
