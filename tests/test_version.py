@@ -6,13 +6,25 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from author.document import blank_book
+from author.document import BOOK_VERSION, blank_book, new_book
 from author.files import FutureBook, open_book, save, version_of
 
 
 class VersionTests(unittest.TestCase):
     def test_a_new_book_carries_the_version(self):
         self.assertEqual(blank_book()["fbk"], 1)
+
+    def test_a_book_made_with_new_carries_the_version(self):
+        self.assertEqual(new_book()["fbk"], BOOK_VERSION)
+        self.assertEqual(new_book((800, 600), "#336699")["fbk"], BOOK_VERSION)
+
+    def test_a_new_book_saves_loads_and_saves_the_same(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            first = save(Path(tmp) / "one.fbk", new_book(), compress=False)
+            book = open_book(first)
+            self.assertEqual(book["fbk"], BOOK_VERSION)
+            second = save(Path(tmp) / "two.fbk", book, compress=False)
+            self.assertEqual(first.read_bytes(), second.read_bytes())
 
     def test_a_future_book_is_refused_and_the_number_is_said(self):
         book = {**blank_book(), "fbk": 7}
