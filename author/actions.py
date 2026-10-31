@@ -112,3 +112,14 @@ def write_script(shape: dict, shapes: list[dict]) -> str:
     """Put the equivalent script on the shape. The action list stays."""
     shape["script"] = script_for(shape.get("actions") or [], shapes)
     return shape["script"]
+
+
+def drop(page: dict, x: float, y: float, action: dict, layer: str | None = None) -> int | None:
+    """Add the action to the topmost object under a page point. None when there is none."""
+    from author.stage import hit
+    shapes = page.get("shapes") or []
+    index = hit(shapes, x, y, layer)
+    if index is None:
+        return None
+    add(shapes[index], action)
+    return index
