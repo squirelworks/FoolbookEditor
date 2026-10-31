@@ -14,17 +14,17 @@ from pathlib import Path
 
 def save_safely(path: str | Path, book: dict, compress: bool = True, replace=os.replace) -> Path:
     """Write `book` to `path` through a temporary file. `replace` is the step a test can fail."""
-    from foolbookeditor.core import save_book
-    from author.files import check_version, payload
+    from foolbookeditor.core import save_book, save_system
+    from author.files import check_version, payload, save_target
     check_version(book)
-    dest = Path(path)
+    # The same file Save picks everywhere: .fbk, .fsk, or .json, and an
+    # import saved beside its original (.sbk as .fsk, anything else as .fbk).
+    dest = save_target(path)
     suffix = dest.suffix.lower()
-    if suffix not in (".fbk", ".json"):
-        dest = dest.with_suffix(".fbk")
-        suffix = ".fbk"
+    write = save_system if suffix == ".fsk" else save_book
     temp = dest.with_name(f".{dest.stem}.saving{suffix}")
     try:
-        written = save_book(temp, payload(book), compress=compress)
+        written = write(temp, payload(book), compress=compress)
         replace(written, dest)
     except BaseException:
         try:
