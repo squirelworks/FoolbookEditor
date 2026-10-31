@@ -187,6 +187,12 @@ class ChordTests(unittest.TestCase):
         self.assertNotIn("value", shape)
         self.assertEqual(shape["text"], "")
 
+    def test_a_combo_box_is_one_row_high_and_closed(self):
+        shape = new_shape("combo", 0, 0, 0, 0, set())
+        self.assertEqual((shape["kind"], shape["name"], shape["h"]), ("combo", "Combo", 22))
+        self.assertEqual(shape["choices"], ["First", "Second", "Third"])
+        self.assertNotIn("open", shape)
+
 
 if __name__ == "__main__":
     unittest.main()
