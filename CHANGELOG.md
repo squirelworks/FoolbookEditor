@@ -11,6 +11,7 @@
 - The README says how to install the editor: a venv, `pip install -e .`, and `python3 -m foolbookeditor`.
 - Foolbook is pinned to commit 031e8d8, not to a floating main. A pull request that needs a newer reader bumps the pin and names the function.
 - `python3 -m foolbookeditor --selftest` builds a book in memory, saves it, loads it, and checks the page id, one shape, and one script. No window.
+- The self test also opens the saved book and Using Foolbook through the reader, so an editor change that breaks the reader fails it.
 - Duplicate copies the current page, with its shapes and scripts, under a new id. The copy is the next page. Ctrl+Shift+D does the same.
 - Delete asks before it removes a page, and names the page and how many objects go with it. Ctrl+Shift+Delete does the same.
 
