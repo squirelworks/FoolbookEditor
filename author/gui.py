@@ -121,7 +121,16 @@ class Editor:
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
         from author.commands import SHORTCUTS
         self.root.bind(SHORTCUTS["add_page"][1], lambda _e: self._add_page())
-        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left", padx=4)
+        self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
+        self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
+        self.root.bind(SHORTCUTS["page_up"][1], lambda _e: self._reorder("page_up"))
+        self.root.bind(SHORTCUTS["page_down"][1], lambda _e: self._reorder("page_down"))
+        ttk.Button(row, text="Duplicate", command=self._duplicate_page).pack(side="left", padx=4)
+        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left")
+        order = ttk.Frame(left)
+        order.pack(fill="x")
+        ttk.Button(order, text="Up", command=lambda: self._reorder("page_up")).pack(side="left")
+        ttk.Button(order, text="Down", command=lambda: self._reorder("page_down")).pack(side="left", padx=4)
 
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
@@ -161,6 +170,10 @@ class Editor:
         ttk.Label(form, text="Back").grid(row=0, column=4, sticky="w")
         self.back = ttk.Entry(form, width=10)
         self.back.grid(row=0, column=5, sticky="w", padx=4)
+        ttk.Label(form, text="Background").grid(row=0, column=6, sticky="w")
+        self.uses = ttk.Combobox(form, width=14, state="readonly")
+        self.uses.grid(row=0, column=7, sticky="w", padx=4)
+        self.uses.bind("<<ComboboxSelected>>", self._on_uses)
 
         ttk.Label(center, text="Text  (blank line = new paragraph; lines starting with - or * are a list)").pack(anchor="w", pady=(6, 0))
         self.text = tk.Text(center, height=4, wrap="word")
@@ -354,7 +367,29 @@ class Editor:
         self.back.insert(0, items.get("back") or "")
         self.text.delete("1.0", "end")
         self.text.insert("1.0", "\n\n".join(p.get("text") or []))
+        self._fill_uses(p)
         self._fill_objects(p)
+        self._preview()
+
+    def _fill_uses(self, page: dict):
+        from author.document import background_of
+        names = [str(p.get("id") or "") for p in self.book.get("pages") or [] if p.get("background")]
+        self.uses.config(values=["(none)"] + names, state="disabled" if page.get("background") else "readonly")
+        found = background_of(self.book, page)
+        self.uses.set(found.get("id") if found else "(none)")
+
+    def _on_uses(self, _evt=None):
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        from author.document import clear_background, set_background
+        page = pages[self.current]
+        chosen = self.uses.get()
+        if chosen == "(none)":
+            clear_background(page)
+        else:
+            set_background(self.book, page, chosen)
+        self._fitted = None
         self._preview()
 
     def _fill_objects(self, page: dict):
@@ -413,8 +448,28 @@ class Editor:
         self.current = add_page(self.book, self.current)
         self._refresh_list()
 
+    def _duplicate_page(self):
+        self._apply()
+        self._apply_script()
+        from author.commands import duplicate_page
+        self.current = duplicate_page(self.book, self.current)
+        self._refresh_list()
+
+    def _reorder(self, command: str):
+        self._apply()
+        self._apply_script()
+        from author import commands
+        self.current = getattr(commands, command)(self.book, self.current)
+        self._refresh_list()
+
     def _del_page(self):
-        from author.document import delete_page
+        from author.commands import delete_page, delete_question
+        question = delete_question(self.book, self.current)
+        if question is None:
+            self.status.config(text="A book keeps its last page")
+            return
+        if not messagebox.askyesno("Delete page", question, parent=self.root):
+            return
         self.current = delete_page(self.book, self.current)
         self._refresh_list()
 
@@ -424,7 +479,7 @@ class Editor:
         if 0 <= self.current < len(pages):
             page = pages[self.current]
         from author.stage import paint
-        paint(self.canvas, page or {})
+        paint(self.canvas, page or {}, self.book)
         self._draw_handles()
 
     def _draw_handles(self):
