@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31
+
+- The Actions pane builds an action list on the selected object (go to page, next, previous, show, hide, set text, play), one `do` plus its arguments each. Foolbook runs them on a click. When the object also has a script, the pane says the script runs, not the actions.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.
