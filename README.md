@@ -16,6 +16,12 @@ python3 -m foolbookeditor
 
 `pip install -e .` brings Foolbook with it, at the commit `pyproject.toml` pins. A pull request that needs a newer reader function bumps that pin and says which function. The window needs Tk. On Debian and Ubuntu that is `sudo apt install python3-tk`.
 
+```bash
+python3 -m foolbookeditor --selftest    # save and load a book, no window
+```
+
+Every pull request runs the self test before it goes up.
+
 ## Use
 
 ```bash
