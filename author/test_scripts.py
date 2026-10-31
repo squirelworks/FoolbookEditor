@@ -17,11 +17,10 @@ class ScriptWarningTests(unittest.TestCase):
         self.assertIn("'flash'", text)
         self.assertIn("1 more", text)
 
-    def test_the_list_is_foolbooks(self):
-        from engine.subset import COMMANDS
-        for word in COMMANDS:
-            self.assertEqual(warning(word), "", word)
-
+    def test_the_answer_is_foolbooks(self):
+        from engine.subset import unknown_words
+        for line in ("beep", "beep(1)", 'go to page "P2"', "pause 2 seconds"):
+            self.assertEqual(warning(line) == "", unknown_words(line) == [], line)
 
 if __name__ == "__main__":
     unittest.main()
