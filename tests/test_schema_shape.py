@@ -49,9 +49,14 @@ class ShapeFieldTests(unittest.TestCase):
     def test_every_kind_a_tk_tool_makes_is_listed(self):
         self.assertLessEqual({s["kind"] for s in tool_shapes()}, set(schema.SHAPE_KINDS))
 
-    def test_every_property_row_is_listed(self):
-        for key, _label, _kind in properties.ROWS:
-            self.assertIn(key, schema.SHAPE_FIELDS)
+    def test_every_property_row_writes_only_listed_keys(self):
+        typed = {"color": "#102030", "width": "2", "face": "Arial", "points": "12", "flag": "true",
+                 "choice": "center", "place": "5", "extent": "20", "pointlist": "0, 0\n10, 10",
+                 "jump": "P2", "name": "Shape", "text": "Words"}
+        shape = tools.new_shape("button", 0, 0, 50, 50, set())
+        for key, _label, kind in properties.ROWS:  # in pane order: the page comes before its book and label
+            self.assertTrue(properties.write(shape, key, typed[kind]), key)
+            self.assertLessEqual(set(shape), set(schema.SHAPE_FIELDS), key)
 
     def test_every_shape_field_round_trips(self):
         self.assertEqual(set(SHAPE), set(schema.SHAPE_FIELDS))
