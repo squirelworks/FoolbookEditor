@@ -350,8 +350,12 @@ class Editor:
         self._refresh_list()
 
     def _del_page(self):
-        from author.document import delete_page
-        self.current = delete_page(self.book, self.current)
+        from author.document import LastPage, delete_page
+        try:
+            self.current = delete_page(self.book, self.current)
+        except LastPage as exc:
+            self.status.config(text=str(exc))
+            return
         self._refresh_list()
 
     def _preview(self):

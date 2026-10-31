@@ -70,11 +70,21 @@ def add_page(book: dict, index: int | None = None) -> int:
     return at
 
 
+class LastPage(ValueError):
+    """A book keeps at least one page. The reader cannot show a book with none."""
+
+
 def delete_page(book: dict, index: int) -> int:
-    """Drop a page. The last page stays. Returns the index to show."""
+    """Drop a page. Returns the index to show.
+
+    Deleting the only page is refused with ``LastPage``. No blank page is
+    made in its place. The caller says so; this function does not ask.
+    """
     found = book.get("pages") or []
-    if len(found) <= 1 or not (0 <= index < len(found)):
+    if not (0 <= index < len(found)):
         return index if found else 0
+    if len(found) <= 1:
+        raise LastPage("A book keeps at least one page. Add a page before deleting this one.")
     del found[index]
     return min(index, len(found) - 1)
 
