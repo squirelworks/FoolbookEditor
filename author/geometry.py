@@ -68,13 +68,16 @@ def hit(shapes: list[dict], x: float, y: float, layer: str | None = None) -> int
 
     Array order is paint order, so the last match wins. When ``layer`` is
     named, only shapes on that layer can be hit: background shapes are hit
-    only when the background is what the tools work on.
+    only when the background is what the tools work on. A locked shape is
+    never hit; the click goes to whatever is under it.
     """
     for index in range(len(shapes) - 1, -1, -1):
         shape = shapes[index]
         if not isinstance(shape, dict):
             continue
         if layer and (shape.get("layer") or "page") != layer:
+            continue
+        if shape.get("locked") is True:
             continue
         if contains(shape, x, y):
             return index
@@ -97,6 +100,8 @@ def marquee(shapes: list[dict], x0: float, y0: float, x1: float, y1: float, laye
         if not isinstance(shape, dict):
             continue
         if layer and (shape.get("layer") or "page") != layer:
+            continue
+        if shape.get("locked") is True:
             continue
         if intersects(box, bounds(shape)):
             found.append(index)
@@ -397,3 +402,13 @@ def ungroup(shapes: list[dict], index: int) -> list[int]:
             child["layer"] = made["layer"]
     shapes[index:index + 1] = children
     return list(range(index, index + len(children)))
+
+
+def set_locked(shapes: list[dict], indices: list[int], locked: bool) -> None:
+    """Lock or unlock shapes. Unlocked shapes do not carry the key at all."""
+    for index in dict.fromkeys(indices):
+        if 0 <= index < len(shapes) and isinstance(shapes[index], dict):
+            if locked:
+                shapes[index]["locked"] = True
+            else:
+                shapes[index].pop("locked", None)

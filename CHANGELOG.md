@@ -21,6 +21,7 @@
 - Front and Back now go all the way on the object's layer. Forward and Backward move it one place.
 - Group puts the selected objects into one group object that moves as one. Foolbook paints its children (Foolbook#48).
 - Ungroup puts a group's objects back on the page where it was, in order. A group inside it stays a group.
+- Lock keeps an object from being picked on the stage. The object list can still select it, and the Lock menu unlocks it. locked: true is kept in the file.
 
 ## 0.4.0 — 2026-10-24
 
