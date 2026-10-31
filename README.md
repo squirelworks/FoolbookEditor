@@ -14,7 +14,7 @@ python3 -m pip install -e .
 python3 -m foolbookeditor
 ```
 
-`pip install -e .` brings Foolbook with it, at the commit `pyproject.toml` pins. A pull request that needs a newer reader function bumps that pin and says which function. The window needs Tk. On Debian and Ubuntu that is `sudo apt install python3-tk`.
+`pip install -e .` brings Foolbook with it, from Foolbook's main branch. It is not pinned to one commit, because a commit pin freezes the editor on a reader main has moved past. A release tag (`@v1.0.8`) is the other choice, once a tag carries every reader function the editor uses. `pip install -e . --upgrade` picks up a newer main. The window needs Tk. On Debian and Ubuntu that is `sudo apt install python3-tk`.
 
 ```bash
 python3 -m foolbookeditor --selftest    # save and load a book, no window
@@ -22,7 +22,11 @@ python3 -m foolbookeditor --selftest    # save and load a book, no window
 
 Every pull request runs the self test before it goes up.
 
+Save compresses by default, as Foolbook packs a book. The Compress box turns it off. A book opened from an uncompressed file, such as a web editor download, is saved uncompressed until the box is ticked.
+
 ## Use
+
+A book always has at least one page. Deleting the only page is refused, and the status line says so. The editor does not make a blank page in its place. The reader cannot show a book with no pages.
 
 ```bash
 python3 -m foolbookeditor --fbk path/to/book.tbk    # write book.fbk beside it
@@ -76,6 +80,46 @@ Undo (Ctrl+Z) and Redo (Ctrl+Y or Ctrl+Shift+Z) step through up to 50 changes to
 
 Cut (Ctrl+X), Copy (Ctrl+C) and Paste (Ctrl+V) use the editor's own clipboard; the system clipboard is a later change. On the stage they act on the selected objects. A pasted object lands 8 right and 8 down, and each further paste 8 more; a name already on the page gets a number. With the page list focused, Copy and Paste act on the whole page, and a pasted page whose id is taken gets a new one. In a text box the keys edit the text as usual.
 
+## Tools
+
+Help in the editor opens the section below for the tool in use.
+
+### Select
+
+The pointer. Click an object to select it, drag it to move it, or drag one of its corner squares to resize it. The opposite corner stays where it was. Only objects on the layer chosen with Page and Background can be picked.
+
+### Button
+
+Drag to place a button, or click to place one at 90 by 28. It starts out labelled with its name. Its script is edited in the object pane.
+
+### Field
+
+Drag to place a text field, or click to place one at 160 by 36. The words come from the object's text.
+
+### Rectangle
+
+Drag to place a rectangle, or click to place one at 100 by 60. Fill and Line set its colours.
+
+### Line
+
+Drag from one end to the other.
+
+### Ellipse
+
+Drag the box the ellipse fits in, or click to place one at 80 by 60.
+
+### Polygon
+
+Drag to place a polygon in the box you drag.
+
+### Arc
+
+Drag the box the arc's ellipse fits in.
+
+### Picture
+
+Drag the box, then choose a PNG, GIF, BMP, or JPEG. The picture is stored in the book, so the book stays one file.
+
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash
@@ -84,6 +128,12 @@ python3 examples/welcome.py /path/to/Foolbook/foolbook/books
 
 That writes the two books a new Foolbook install opens: Using Foolbook and First Light.
 
+
+## Backgrounds live on the page, for now
+
+A background shape is stored on each page that shows it, with `layer: background`, because that is what the web editor stores and what the reader opens today. It is not lifted to a shared background page in this phase. Do not "clean this up" by moving them; a shared background page is a later item with its own pull request, and old books with `layer` will still paint.
+
+The reader paints in array order and does not read `layer`, so Save writes a page's background shapes ahead of its page shapes. Order inside each layer is kept. The book in the editor is not reordered.
 
 ## Quizzes
 
