@@ -69,6 +69,13 @@ def unpack(blob: bytes) -> dict:
     return require().unpack(blob)
 
 
+def is_toolbook(path: str | Path) -> bool:
+    """True when the bytes are ToolBook, whatever the name says."""
+    require()
+    from toolbook.format import is_toolbook as sniff
+    return sniff(path)
+
+
 def is_office(path: str | Path) -> bool:
     return require().is_office(path)
 

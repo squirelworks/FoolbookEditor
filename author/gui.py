@@ -843,15 +843,13 @@ class Editor:
             self._load(Path(p))
 
     def _load(self, path: Path):
-        from foolbookeditor.core import is_office, read, to_book
-        suffix = path.suffix.lower()
-        if is_office(path):
-            self.book = to_book(path)
-        elif suffix in {".tbk", ".sbk"}:
-            self.book = read(path)
-        else:
+        from author.files import save_path_for
+        try:
             self.book = load_book(path)
-        self.path = path
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Foolbook Editor", f"{path.name}: {exc}")
+            return
+        self.path = save_path_for(path)
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
