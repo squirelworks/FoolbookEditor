@@ -31,7 +31,11 @@ _SIZE = {
     "pie": (80, 60),
     "picture": (120, 80),
     "hotspot": (80, 60),
+    "icon": (32, 32),
 }
+
+# An icon is always 32 by 32. A drag places it but does not size it.
+ICON = 32
 
 _KIND = {
     "button": "button",
@@ -47,6 +51,7 @@ _KIND = {
     "pie": "pie",
     "picture": "image",
     "hotspot": "hotspot",
+    "icon": "image",
 }
 _LABEL = {
     "button": "Button",
@@ -62,6 +67,7 @@ _LABEL = {
     "pie": "Pie",
     "picture": "Picture",
     "hotspot": "Hotspot",
+    "icon": "Icon",
 }
 
 
@@ -185,6 +191,9 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
             [int(left), int(top + height)],
         ]
         shape["fill"] = "#c0c0c0"
+    elif tool == "icon":
+        shape["w"] = shape["h"] = ICON
+        shape["preset"] = "icon"
     elif tool == "curve":
         # Open, so nothing to fill. Foolbook draws it through the points.
         shape["outline"] = INK
