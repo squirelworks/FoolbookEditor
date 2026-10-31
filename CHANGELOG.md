@@ -3,6 +3,7 @@
 ## 2026-10-31
 
 - A book dropped on the program's icon or shortcut opens: the first file among the arguments is opened, and flags, folders and missing paths are skipped. A packaged macOS app answers `::tk::mac::OpenDocument`. The README says that a drop on the open window does nothing on any platform, since stock Tk has no drop target. Test: `tests/test_drop.py`.
+- A book the web editor downloaded (`FBK1`, a zero flags byte, plain JSON) opens under its own name and saves again with the same shapes. An `FBK1` or `FSK1` file that holds only zero bytes after the header, which the web Download wrote before the site fixed it, is refused with a message saying to download it again; the window shows that message and keeps the book it had. Test: `tests/test_web_download.py`.
 - A new page gets `shapes: []`, not `widgets: []`; the reader draws `shapes` and never reads `widgets`. `schema.md` and `author/schema.py` write down the twelve page fields, and a test saves, opens and reads a page with every one of them. The three shipped templates are rebuilt by `python -m author.templates`. Test: `tests/test_schema_page.py`.
 - `move_page` is tested at the ends: the first page, the last page, and a one-page book. Moving past an end does nothing. No behavior changed.
 - Page ids are unique in a book, without regard to case, as the reader finds them. `rename_page` refuses a rename onto another page's id and the status line says so. The casing typed is kept. A new page's id no longer collides with an id in another case.
