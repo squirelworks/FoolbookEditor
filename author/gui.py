@@ -119,6 +119,14 @@ class Editor:
         ttk.Button(tools, text="Pattern", command=self._pattern).pack(side="left")
         self.grid = tk.BooleanVar(value=False)
         ttk.Checkbutton(tools, text="Grid 8", variable=self.grid, command=self._preview).pack(side="left", padx=(8, 0))
+        aligner = ttk.Menubutton(tools, text="Align")
+        menu = tk.Menu(aligner, tearoff=False)
+        menu.add_command(label="To the first selected object", state="disabled")
+        from author.geometry import ALIGN
+        for how in ALIGN:
+            menu.add_command(label=how.capitalize(), command=lambda h=how: self._align(h))
+        aligner["menu"] = menu
+        aligner.pack(side="left", padx=(8, 0))
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
@@ -906,8 +914,10 @@ class Editor:
         if not sel or not self._rows:
             return
         self._apply_script()
-        self._object = sel[0]
-        self._chosen = [self._rows[at]["index"] for at in sel]
+        # Keep the order things were chosen in. The first one is the reference.
+        picked = [self._rows[at]["index"] for at in sel]
+        self._chosen = [i for i in self._chosen if i in picked] + [i for i in picked if i not in self._chosen]
+        self._object = next(at for at, row in enumerate(self._rows) if row["index"] == self._chosen[0])
         row = self._rows[self._object]
         left, top, right, bottom = row["bounds"]
         size = ""
@@ -1460,9 +1470,20 @@ class Editor:
         self._draw_thumbs()
         return "break"
 
+    def _align(self, how: str):
+        pages = self.book.get("pages") or []
+        if len(self._chosen) < 2 or not (0 <= self.current < len(pages)):
+            self.status.config(text="Align needs two or more selected objects")
+            return
+        from author.geometry import align
+        align(pages[self.current].get("shapes") or [], self._chosen, how)
+        self._preview()
+        self._draw_thumbs()
+
     def _choose(self, indices: list[int]):
         """Select these shapes in the object list. The first one is the one edited."""
         self.objects.selection_clear(0, "end")
+        self._chosen = list(indices)
         rows = [row for row, item in enumerate(self._rows) if item["index"] in indices]
         for row in rows:
             self.objects.selection_set(row)
