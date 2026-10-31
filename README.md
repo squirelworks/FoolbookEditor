@@ -14,7 +14,7 @@ python3 -m pip install -e .
 python3 -m foolbookeditor
 ```
 
-`pip install -e .` brings Foolbook with it, at the commit `pyproject.toml` pins. A pull request that needs a newer reader function bumps that pin and says which function. The window needs Tk. On Debian and Ubuntu that is `sudo apt install python3-tk`.
+`pip install -e .` brings Foolbook with it, from Foolbook's main branch. It is not pinned to one commit, because a commit pin freezes the editor on a reader main has moved past. A release tag (`@v1.0.8`) is the other choice, once a tag carries every reader function the editor uses. `pip install -e . --upgrade` picks up a newer main. The window needs Tk. On Debian and Ubuntu that is `sudo apt install python3-tk`.
 
 ```bash
 python3 -m foolbookeditor --selftest    # save and load a book, no window
