@@ -38,8 +38,34 @@ class Editor:
         if path and path.exists():
             self._load(path)
         else:
-            self._new()
+            self._new(ask=False)
+            if path is None:
+                self._start([])
         self.root.mainloop()
+
+    def _start(self, recent: list[str]):
+        """The start window. New book keeps the blank book already showing."""
+        from author.start import OPEN, start_choices
+        win = tk.Toplevel(self.root)
+        win.title("Foolbook Author")
+        win.transient(self.root)
+        frame = ttk.Frame(win, padding=16)
+        frame.pack(fill="both", expand=True)
+
+        def pick(label: str, chosen: Path | None):
+            win.destroy()
+            if chosen is not None:
+                self._load(chosen)
+            elif label == OPEN:
+                self._open()
+            else:
+                self._new()
+
+        for label, chosen in start_choices(recent):
+            text = label if chosen is None else f"{label}: {chosen.name}"
+            ttk.Button(frame, text=text, command=lambda l=label, c=chosen: pick(l, c)).pack(fill="x", pady=2)
+        win.bind("<Escape>", lambda _e: win.destroy())
+        win.grab_set()
 
     def _build(self):
         # toolbar
@@ -96,7 +122,18 @@ class Editor:
         row = ttk.Frame(left)
         row.pack(fill="x", pady=4)
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
-        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left", padx=4)
+        from author.commands import SHORTCUTS
+        self.root.bind(SHORTCUTS["add_page"][1], lambda _e: self._add_page())
+        self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
+        self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
+        self.root.bind(SHORTCUTS["page_up"][1], lambda _e: self._reorder("page_up"))
+        self.root.bind(SHORTCUTS["page_down"][1], lambda _e: self._reorder("page_down"))
+        ttk.Button(row, text="Duplicate", command=self._duplicate_page).pack(side="left", padx=4)
+        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left")
+        order = ttk.Frame(left)
+        order.pack(fill="x")
+        ttk.Button(order, text="Up", command=lambda: self._reorder("page_up")).pack(side="left")
+        ttk.Button(order, text="Down", command=lambda: self._reorder("page_down")).pack(side="left", padx=4)
 
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
@@ -136,6 +173,10 @@ class Editor:
         ttk.Label(form, text="Back").grid(row=0, column=4, sticky="w")
         self.back = ttk.Entry(form, width=10)
         self.back.grid(row=0, column=5, sticky="w", padx=4)
+        ttk.Label(form, text="Background").grid(row=0, column=6, sticky="w")
+        self.uses = ttk.Combobox(form, width=14, state="readonly")
+        self.uses.grid(row=0, column=7, sticky="w", padx=4)
+        self.uses.bind("<<ComboboxSelected>>", self._on_uses)
 
         ttk.Label(center, text="Text  (blank line = new paragraph; lines starting with - or * are a list)").pack(anchor="w", pady=(6, 0))
         self.text = tk.Text(center, height=4, wrap="word")
@@ -163,12 +204,58 @@ class Editor:
         except tk.TclError:
             return
 
-    def _new(self):
-        self.book = {
-            "id": "new",
-            "title": "New book",
-            "pages": [{"id": "P0", "text": ["New slide"], "items": [], "widgets": []}],
-        }
+    def _new(self, ask: bool = True):
+        from author.document import new_book
+        if not ask:
+            self._open_new(new_book())
+            return
+        self._ask_new()
+
+    def _ask_new(self):
+        """Page size and background colour, then the stage."""
+        from author.document import PAGE_SIZE, new_book
+        win = tk.Toplevel(self.root)
+        win.title("New book")
+        win.transient(self.root)
+        form = ttk.Frame(win, padding=12)
+        form.pack(fill="both", expand=True)
+        fields = {}
+        for row, (label, value) in enumerate((
+            ("Width", PAGE_SIZE[0]),
+            ("Height", PAGE_SIZE[1]),
+            ("Background", "#ffffff"),
+        )):
+            ttk.Label(form, text=label).grid(row=row, column=0, sticky="w")
+            var = tk.StringVar(value=str(value))
+            ttk.Entry(form, textvariable=var, width=10).grid(row=row, column=1, sticky="w", pady=2)
+            fields[label] = var
+        error = ttk.Label(form, text="", foreground="#a00000", wraplength=240)
+        error.grid(row=3, column=0, columnspan=2, sticky="w")
+
+        def make():
+            try:
+                size = (int(fields["Width"].get()), int(fields["Height"].get()))
+            except ValueError:
+                error.config(text="Width and height are whole numbers.")
+                return
+            try:
+                book = new_book(size, fields["Background"].get())
+            except ValueError as exc:
+                error.config(text=str(exc))
+                return
+            win.destroy()
+            self._open_new(book)
+
+        buttons = ttk.Frame(form)
+        buttons.grid(row=4, column=0, columnspan=2, sticky="e", pady=(8, 0))
+        ttk.Button(buttons, text="Cancel", command=win.destroy).pack(side="right")
+        ttk.Button(buttons, text="Create", command=make).pack(side="right", padx=4)
+        win.bind("<Return>", lambda _e: make())
+        win.bind("<Escape>", lambda _e: win.destroy())
+        win.grab_set()
+
+    def _open_new(self, book: dict):
+        self.book = book
         self.path = None
         self.current = 0
         self._refresh_list()
@@ -289,7 +376,29 @@ class Editor:
         self.back.insert(0, items.get("back") or "")
         self.text.delete("1.0", "end")
         self.text.insert("1.0", "\n\n".join(p.get("text") or []))
+        self._fill_uses(p)
         self._fill_objects(p)
+        self._preview()
+
+    def _fill_uses(self, page: dict):
+        from author.document import background_of
+        names = [str(p.get("id") or "") for p in self.book.get("pages") or [] if p.get("background")]
+        self.uses.config(values=["(none)"] + names, state="disabled" if page.get("background") else "readonly")
+        found = background_of(self.book, page)
+        self.uses.set(found.get("id") if found else "(none)")
+
+    def _on_uses(self, _evt=None):
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        from author.document import clear_background, set_background
+        page = pages[self.current]
+        chosen = self.uses.get()
+        if chosen == "(none)":
+            clear_background(page)
+        else:
+            set_background(self.book, page, chosen)
+        self._fitted = None
         self._preview()
 
     def _fill_objects(self, page: dict):
@@ -344,12 +453,32 @@ class Editor:
 
     def _add_page(self):
         self._apply()
-        from author.document import add_page
-        self.current = add_page(self.book)
+        from author.commands import add_page
+        self.current = add_page(self.book, self.current)
+        self._refresh_list()
+
+    def _duplicate_page(self):
+        self._apply()
+        self._apply_script()
+        from author.commands import duplicate_page
+        self.current = duplicate_page(self.book, self.current)
+        self._refresh_list()
+
+    def _reorder(self, command: str):
+        self._apply()
+        self._apply_script()
+        from author import commands
+        self.current = getattr(commands, command)(self.book, self.current)
         self._refresh_list()
 
     def _del_page(self):
-        from author.document import delete_page
+        from author.commands import delete_page, delete_question
+        question = delete_question(self.book, self.current)
+        if question is None:
+            self.status.config(text="A book keeps its last page")
+            return
+        if not messagebox.askyesno("Delete page", question, parent=self.root):
+            return
         self.current = delete_page(self.book, self.current)
         self._refresh_list()
 
@@ -359,7 +488,7 @@ class Editor:
         if 0 <= self.current < len(pages):
             page = pages[self.current]
         from author.stage import paint
-        paint(self.canvas, page or {})
+        paint(self.canvas, page or {}, self.book)
         self._draw_handles()
         self._draw_draft()
 
