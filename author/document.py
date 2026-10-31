@@ -4,11 +4,14 @@ The editor holds the same book dict Foolbook reads. foolbook.core writes it.
 This module only mutates the dict.
 
 A page is text, items (jumps), an optional script, an optional quiz,
-and widgets dropped on the slide. That is the scaffold. Groups,
-backgrounds, and pictures are not in it yet.
+and widgets dropped on the slide. A page with `"background": true` is a
+shared background, and a page names the one it uses in `uses`. Groups
+are not in it yet.
 """
 
 from __future__ import annotations
+
+import copy
 
 
 WIDGET_KINDS = ("text", "box", "button")
@@ -18,6 +21,43 @@ _WIDGET = {
     "box": {"w": 100, "h": 60},
     "button": {"w": 80, "h": 24, "label": "Button"},
 }
+
+
+PAGE_SIZE = (640, 480)
+PAGE_MIN = 64
+_HEX = "0123456789abcdef"
+
+
+def new_book(size: tuple[int, int] = PAGE_SIZE, color: str = "#ffffff") -> dict:
+    """A one-page book of that size on paper of that colour.
+
+    The paper is a page-sized rect on the background layer, the same
+    shape the reader already paints first and does not treat as a control.
+    The reader draws page text only when a page has no shapes, so the
+    new page carries no placeholder words.
+    """
+    w, h = int(size[0]), int(size[1])
+    if w < PAGE_MIN or h < PAGE_MIN:
+        raise ValueError(f"A page is at least {PAGE_MIN} by {PAGE_MIN}, not {w} by {h}.")
+    color = color.strip().lower()
+    if len(color) != 7 or color[0] != "#" or any(c not in _HEX for c in color[1:]):
+        raise ValueError(f"The background colour is #rrggbb, not {color!r}.")
+    book = blank_book()
+    page = book["pages"][0]
+    page["size"] = [w, h]
+    page["text"] = []
+    page["shapes"] = [{
+        "kind": "rect",
+        "name": "paper",
+        "x": 0,
+        "y": 0,
+        "w": w,
+        "h": h,
+        "fill": color,
+        "outline": "",
+        "layer": "background",
+    }]
+    return book
 
 
 def blank_book() -> dict:
@@ -62,6 +102,21 @@ def add_page(book: dict, index: int | None = None) -> int:
         at = len(found)
     found.insert(at, blank_page(fresh_id(book)))
     return at
+
+
+def duplicate_page(book: dict, index: int) -> int:
+    """Copy a page, shapes and scripts and all, to right after it.
+
+    The copy gets a fresh id. Nothing in it is shared with the original.
+    Returns where the copy landed, or ``index`` when there is no such page.
+    """
+    found = book.get("pages") or []
+    if not (0 <= index < len(found)):
+        return index
+    twin = copy.deepcopy(found[index])
+    twin["id"] = fresh_id(book)
+    found.insert(index + 1, twin)
+    return index + 1
 
 
 def delete_page(book: dict, index: int) -> int:
@@ -153,3 +208,58 @@ def add_widget(page: dict, kind: str, x: int, y: int) -> dict:
         widget["label"] = spec["label"]
     widgets(page).append(widget)
     return widget
+
+
+def background_page(book: dict, page_id: str) -> dict | None:
+    """The background page with this id, compared without case."""
+    wanted = str(page_id or "").lower()
+    if not wanted:
+        return None
+    for page in book.get("pages") or []:
+        if page.get("background") and str(page.get("id") or "").lower() == wanted:
+            return page
+    return None
+
+
+def background_of(book: dict, page: dict) -> dict | None:
+    """The shared background this page uses, or None."""
+    return background_page(book, page.get("uses") or "")
+
+
+def set_background(book: dict, page: dict, page_id: str) -> None:
+    """Give a page a shared background. The name must be a background page."""
+    if page.get("background"):
+        raise ValueError(f"{page.get('id')} is a background and cannot use another")
+    found = background_page(book, page_id)
+    if found is None:
+        raise ValueError(f"no background called {page_id}")
+    page["uses"] = found.get("id")
+
+
+def clear_background(page: dict) -> None:
+    page.pop("uses", None)
+
+
+def backgrounds(book: dict) -> list[dict]:
+    """The shared backgrounds, in book order."""
+    return [page for page in book.get("pages") or [] if page.get("background")]
+
+
+def add_background(book: dict) -> dict:
+    """A new, empty shared background at the end of the book."""
+    used = {str(p.get("id") or "").lower() for p in book.get("pages") or []}
+    n = 1
+    while True:
+        candidate = "Background" if n == 1 else f"Background {n}"
+        if candidate.lower() not in used:
+            break
+        n += 1
+    page = {"id": candidate, "background": True, "shapes": []}
+    pages(book).append(page)
+    return page
+
+
+def page_label(page: dict) -> str:
+    """How the page list names a page. A background says so."""
+    name = page.get("id") or "?"
+    return f"{name} (background)" if page.get("background") else name
