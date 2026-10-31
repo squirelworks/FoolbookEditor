@@ -25,6 +25,7 @@
 - The title bar shows a star while the book differs from its file. Close, New, and Open ask before dropping changes. The flag is `is_dirty(saved, current)`, which compares what Save would write, so envelope keys do not count.
 - Recent lists the last five books opened or saved, kept in the user's config folder. Opening one that is gone drops it from the list and says so.
 - A book dropped on the program's icon opens: on Windows and Linux through the command line, on macOS through the open-document event. Dropping on the open window does not work on any platform with stock Tk, and the README says so.
+- A generated 200-page book with 20 shapes a page opens in the editor in about 0.012 s and in the reader in about 0.02 s, well under two seconds. A test holds it under two seconds. No optimization.
 
 ## 0.4.0 — 2026-10-24
 
