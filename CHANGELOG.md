@@ -20,6 +20,7 @@
 - Save writes a page's background shapes ahead of its page shapes. The reader paints in array order, so a background shape added after a page shape (a web editor book) was drawn on top of it. Backgrounds stay on the page, tagged `layer: background`; `schema.md` says why.
 - Open sniffs the bytes. A ToolBook file renamed `.fbk` opens as ToolBook, and an `.fbk` named `.tbk` opens as a Foolbook book. Save after opening a renamed ToolBook file asks for a name instead of writing over it. A file that will not open says why instead of stopping the window.
 - A book the web editor downloaded (`FBK1`, flags 0, plain JSON, no `_magic`) opens under the name the browser gave it, and keeps its shapes through a desktop save. A download with the header and no book after it, which the web editor's Download wrote until the site fixes it, says so instead of a JSON error.
+- Save writes compressed or uncompressed. Compressed stays the default, matching Foolbook's `pack`. A Compress box turns it off, and a book opened from an uncompressed file saves uncompressed.
 
 ## 0.4.0 — 2026-10-24
 

@@ -33,6 +33,7 @@ class Editor:
         self.path: Path | None = path
         self.current = 0
         self.tool = tk.StringVar(value="select")
+        self.compress = tk.BooleanVar(value=True)
         self._build()
         if path and path.exists():
             self._load(path)
@@ -48,6 +49,7 @@ class Editor:
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
+        ttk.Checkbutton(bar, text="Compress", variable=self.compress).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
@@ -181,7 +183,9 @@ class Editor:
         except (OSError, ValueError) as exc:
             messagebox.showerror("Foolbook Editor", f"{path.name}: {exc}")
             return
+        from author.files import is_compressed
         self.path = save_path_for(path)
+        self.compress.set(is_compressed(path))
         self.current = 0
         self._refresh_list()
         self.status.config(text=str(path.name))
@@ -192,7 +196,7 @@ class Editor:
             self._save_as()
             return
         try:
-            self.path = save_book(self.path, self.book)
+            self.path = save_book(self.path, self.book, compress=self.compress.get())
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
@@ -209,7 +213,7 @@ class Editor:
             return
         self.path = Path(p)
         try:
-            self.path = save_book(self.path, self.book)
+            self.path = save_book(self.path, self.book, compress=self.compress.get())
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return

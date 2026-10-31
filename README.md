@@ -24,6 +24,8 @@ Every pull request runs the self test before it goes up.
 
 ## Use
 
+Save compresses by default, as Foolbook packs a book. The Compress box turns it off. A book opened from an uncompressed file, such as a web editor download, is saved uncompressed until the box is ticked.
+
 A book always has at least one page. Deleting the only page is refused, and the status line says so. The editor does not make a blank page in its place. The reader cannot show a book with no pages.
 
 ```bash
