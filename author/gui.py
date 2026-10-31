@@ -77,9 +77,12 @@ class Editor:
         ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
+        ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
+        ttk.Button(bar, text="Menu bar", command=self._menubar).pack(side="left", padx=2)
+        ttk.Button(bar, text="Book", command=self._book_properties).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle"), ("roundrect", "Rounded")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
@@ -102,6 +105,7 @@ class Editor:
             ("pie", "Pie"),
             ("picture", "Picture"),
             ("hotspot", "Hotspot"),
+            ("icon", "Icon"),
         ):
             ttk.Radiobutton(tools, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
@@ -113,6 +117,23 @@ class Editor:
         ttk.Button(tools, text="Pattern", command=self._pattern).pack(side="left")
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="Viewer").pack(side="left")
+        self.viewer_buttons = {}
+        for name, label in (("previous", "Previous"), ("next", "Next"), ("page", "Page number")):
+            var = tk.BooleanVar(value=False)
+            self.viewer_buttons[name] = var
+            ttk.Checkbutton(tools, text=label, variable=var, command=self._set_viewer).pack(side="left", padx=2)
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="System book").pack(side="left")
+        self.system = ttk.Entry(tools, width=16)
+        self.system.pack(side="left", padx=2)
+        self.system.bind("<Return>", self._set_system)
+        self.system.bind("<FocusOut>", self._set_system)
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        # Colours the book already uses. Click for fill, right-click for line.
+        self.swatches = ttk.Frame(tools)
+        self.swatches.pack(side="left")
 
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=4, pady=4)
@@ -167,6 +188,35 @@ class Editor:
         self.oscript.pack(fill="both", expand=True)
         self.oscript.bind("<Tab>", self._script_tab)
         ttk.Button(objects, text="Apply script", command=self._apply_script).pack(anchor="e", pady=4)
+        # Actions run on a click when the object has no script.
+        ttk.Label(objects, text="Actions").pack(anchor="w")
+        self.action_list = tk.Listbox(objects, height=5, exportselection=False)
+        self.action_list.pack(fill="x")
+        row = ttk.Frame(objects)
+        row.pack(fill="x", pady=2)
+        from author.actions import DOS
+        self.action_do = ttk.Combobox(row, values=DOS, width=8, state="readonly")
+        self.action_do.set("goto")
+        self.action_do.pack(side="left")
+        self.action_target = ttk.Entry(row, width=10)
+        self.action_target.pack(side="left", padx=2)
+        self.action_text = ttk.Entry(row, width=10)
+        self.action_text.pack(side="left")
+        ttk.Button(row, text="Add", width=4, command=self._add_action).pack(side="left", padx=2)
+        ttk.Button(row, text="Remove", width=7, command=self._remove_action).pack(side="left")
+        ttk.Button(row, text="Write script", command=self._write_script).pack(side="left", padx=2)
+        # Drag one of these onto an object on the page to add it there.
+        from author.actions import DOS as _dos
+        ttk.Label(objects, text="Drag an action onto an object:").pack(anchor="w")
+        rows = [ttk.Frame(objects), ttk.Frame(objects)]
+        for frame in rows:
+            frame.pack(fill="x")
+        for n, do in enumerate(_dos):
+            chip = tk.Label(rows[n * 2 // len(_dos)], text=do, relief="raised", borderwidth=1, padx=3, cursor="hand2")
+            chip.pack(side="left", padx=1)
+            chip.bind("<ButtonRelease-1>", lambda evt, do=do: self._drop_action(do, evt.x_root, evt.y_root))
+        self.action_note = ttk.Label(objects, text="", wraplength=240)
+        self.action_note.pack(anchor="w")
         self._rows: list[dict] = []
         self._object = None
         self._drag = None
@@ -311,6 +361,59 @@ class Editor:
         except tk.TclError:
             return
 
+    def _book_properties(self):
+        from .bookprops import properties, set_properties
+        win = tk.Toplevel(self.root)
+        win.title("Book properties")
+        win.transient(self.root)
+        values = properties(self.book)
+        entries = {}
+        for row, (key, label) in enumerate((("title", "Title"), ("author", "Author"),
+                                            ("size", "Page size"), ("firstPage", "First page"))):
+            ttk.Label(win, text=label).grid(row=row, column=0, sticky="w", padx=6, pady=2)
+            if key == "firstPage":
+                ids = [""] + [str(p.get("id") or "") for p in self.book.get("pages") or []]
+                entry = ttk.Combobox(win, values=ids, width=30)
+            else:
+                entry = ttk.Entry(win, width=32)
+            entry.insert(0, values[key])
+            entry.grid(row=row, column=1, padx=6, pady=2)
+            entries[key] = entry
+
+        def apply():
+            try:
+                set_properties(self.book, *(entries[k].get() for k in ("title", "author", "size", "firstPage")))
+            except ValueError as exc:
+                messagebox.showerror("Book properties", str(exc), parent=win)
+                return
+            self.status.config(text=self.book.get("title") or "")
+            win.destroy()
+
+        ttk.Button(win, text="Apply", command=apply).grid(row=4, column=1, sticky="e", padx=6, pady=6)
+        self._book_window = win
+        self._book_entries = entries
+
+    def _menubar(self):
+        from .menubar import render, set_menubar
+        win = tk.Toplevel(self.root)
+        win.title("Menu bar")
+        win.transient(self.root)
+        ttk.Label(win, text="A menu at the margin, its items indented. Label -> page, or Label: one line of script.").pack(anchor="w", padx=6, pady=4)
+        box = tk.Text(win, width=60, height=14, font=("TkFixedFont", 10))
+        box.pack(fill="both", expand=True, padx=6)
+        box.insert("1.0", render(self.book.get("menubar") or []))
+
+        def apply():
+            try:
+                set_menubar(self.book, box.get("1.0", "end"))
+            except ValueError as exc:
+                messagebox.showerror("Menu bar", str(exc), parent=win)
+                return
+            win.destroy()
+
+        ttk.Button(win, text="Apply", command=apply).pack(anchor="e", padx=6, pady=4)
+        self._menubar_window = win
+
     def _new(self, ask: bool = True):
         from author.document import new_book
         if not ask:
@@ -427,7 +530,7 @@ class Editor:
         p = filedialog.askopenfilename(
             title="Open book",
             filetypes=[
-                ("Foolbook", "*.fbk *.json *.tbk *.sbk"),
+                ("Foolbook", "*.fbk *.fsk *.json *.tbk *.sbk"),
                 ("Office", "*.pdf *.ppt *.pptx *.doc *.docx *.odt"),
                 ("All", "*.*"),
             ],
@@ -447,7 +550,31 @@ class Editor:
         self.path = path
         self.current = 0
         self._refresh_list()
-        self.status.config(text=str(path.name))
+        from author.document import handler_names
+        found = handler_names(self.book)
+        note = f"  {len(found)} handlers" if path.suffix.lower() == ".fsk" else ""
+        self.status.config(text=str(path.name) + note)
+
+    def _import(self):
+        p = filedialog.askopenfilename(title="Import a ToolBook book", filetypes=[("ToolBook", "*.tbk"), ("All", "*.*")])
+        if p:
+            self._import_from(Path(p))
+
+    def _import_from(self, src: Path):
+        """The .tbk is only read. Save writes an .fbk beside it."""
+        from author.importer import import_book, report_text
+        self.book, lines = import_book(src)
+        self.path = src.with_suffix(".fbk")
+        self.current = 0
+        self._refresh_list()
+        self.status.config(text=f"Imported {src.name}. Save writes {self.path.name}")
+        win = tk.Toplevel(self.root)
+        win.title(f"Import report: {src.name}")
+        box = tk.Text(win, width=90, height=24, wrap="word")
+        box.pack(fill="both", expand=True)
+        box.insert("1.0", report_text(lines))
+        box.config(state="disabled")
+        self.report = box
 
     def _save(self):
         self._apply()
@@ -522,7 +649,33 @@ class Editor:
         except NotImplementedError as exc:
             messagebox.showinfo("Foolbook Editor", str(exc))
 
+    def _set_viewer(self):
+        from author.document import set_viewer, viewer_of
+        current = viewer_of(self.book) or {}
+        chosen = [name for name, var in self.viewer_buttons.items() if var.get()]
+        set_viewer(self.book, current.get("name") or "Main", current.get("size") or [640, 480], chosen)
+
+    def _set_system(self, _evt=None):
+        from author.document import clear_system, set_system
+        name = self.system.get().strip()
+        if not name:
+            clear_system(self.book)
+            return
+        try:
+            set_system(self.book, name)
+        except ValueError as exc:
+            self.status.config(text=str(exc))
+
+    def _show_viewer(self):
+        from author.document import system_of, viewer_of
+        self.system.delete(0, "end")
+        self.system.insert(0, system_of(self.book) or "")
+        asked = set((viewer_of(self.book) or {}).get("buttons") or [])
+        for name, var in self.viewer_buttons.items():
+            var.set(name in asked)
+
     def _refresh_list(self):
+        self._show_viewer()
         self.pages.delete(0, "end")
         from author.document import page_label
         for p in self.book.get("pages") or []:
@@ -609,11 +762,85 @@ class Editor:
         self.oscript.delete("1.0", "end")
         self.oscript.insert("1.0", row["script"])
         self._show_properties()
+        self._show_actions()
 
     def _script_tab(self, _evt=None):
         from author.properties import SCRIPT_TAB
         self.oscript.insert("insert", SCRIPT_TAB)
         return "break"
+
+    def _show_actions(self):
+        from author.actions import describe, note
+        shape, _index = self._selected()
+        self.action_list.delete(0, "end")
+        for action in (shape or {}).get("actions") or []:
+            self.action_list.insert("end", describe(action))
+        self.action_note.config(text=note(shape or {}))
+
+    def _add_action(self):
+        from author.actions import add, make
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        try:
+            action = make(self.action_do.get(), self.action_target.get(), self.action_text.get())
+        except ValueError as exc:
+            self.action_note.config(text=str(exc))
+            return
+        add(shape, action)
+        self._show_actions()
+
+    def _remove_action(self):
+        from author.actions import remove
+        shape, _index = self._selected()
+        picked = self.action_list.curselection()
+        if shape is None or not picked:
+            return
+        remove(shape, picked[0])
+        self._show_actions()
+
+    def _drop_action(self, do: str, x_root: int, y_root: int):
+        from author.actions import ARGS, drop, make
+        from author.tools import page_point
+        view = getattr(self.canvas, "_author_view", None)
+        pages = self.book.get("pages") or []
+        if not view or not view.get("scale") or not (0 <= self.current < len(pages)):
+            return
+        x, y = x_root - self.canvas.winfo_rootx(), y_root - self.canvas.winfo_rooty()
+        if not (0 <= x < self.canvas.winfo_width() and 0 <= y < self.canvas.winfo_height()):
+            return
+        target = self.action_target.get()
+        if ARGS[do] and not target.strip():
+            from tkinter import simpledialog
+            target = simpledialog.askstring(do, f"{do}: which {ARGS[do][0]}?", parent=self.root) or ""
+        try:
+            action = make(do, target, self.action_text.get())
+        except ValueError as exc:
+            self.action_note.config(text=str(exc))
+            return
+        px, py = page_point(view, x, y)
+        placed = drop(pages[self.current], px, py, action, self.layer.get())
+        if placed is None:
+            self.action_note.config(text="Drop an action on an object.")
+            return
+        for row, item in enumerate(self._rows):
+            if item["index"] == placed:
+                self.objects.selection_clear(0, "end")
+                self.objects.selection_set(row)
+                self._on_object()
+                break
+
+    def _write_script(self):
+        from author.actions import write_script
+        shape, _index = self._selected()
+        if shape is None or not shape.get("actions"):
+            return
+        pages = self.book.get("pages") or []
+        script = write_script(shape, pages[self.current].get("shapes") or [])
+        self._rows[self._object]["script"] = script
+        self.oscript.delete("1.0", "end")
+        self.oscript.insert("1.0", script)
+        self._show_actions()
 
     def _apply_script(self):
         pages = self.book.get("pages") or []
@@ -626,6 +853,7 @@ class Editor:
         from author.catalog import set_object_script
         set_object_script(pages[self.current], self._rows[self._object]["index"], self.oscript.get("1.0", "end"))
         self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
+        self._show_actions()
 
     def _apply(self):
         pages = self.book.get("pages") or []
@@ -690,6 +918,7 @@ class Editor:
             page = pages[self.current]
         from author.stage import paint
         paint(self.canvas, page or {}, self.book)
+        self._palette()
         self._draw_handles()
         self._draw_draft()
 
@@ -794,9 +1023,9 @@ class Editor:
             return
         names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
         shape = new_shape(tool, x0, y0, x1, y1, names, self.layer.get())
-        if tool == "picture":
+        if tool in ("picture", "icon"):
             chosen = filedialog.askopenfilename(
-                title="Picture",
+                title=shape["name"],
                 filetypes=[("Pictures", "*.png *.gif *.bmp *.jpg *.jpeg"), ("All", "*.*")],
             )
             if not chosen:
@@ -948,6 +1177,23 @@ class Editor:
         if not color:
             return
         shape[which] = color
+        self._preview()
+
+    def _palette(self):
+        from author.palette import used_colours
+        for old in self.swatches.winfo_children():
+            old.destroy()
+        for colour in used_colours(self.book):
+            swatch = tk.Label(self.swatches, bg=colour, width=2, relief="ridge", borderwidth=1)
+            swatch.pack(side="left", padx=1)
+            swatch.bind("<Button-1>", lambda _e, c=colour: self._use_colour("fill", c))
+            swatch.bind("<Button-3>", lambda _e, c=colour: self._use_colour("outline", c))
+
+    def _use_colour(self, which: str, colour: str):
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        shape[which] = colour
         self._preview()
 
     def _pattern(self):
