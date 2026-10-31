@@ -2,6 +2,10 @@
 
 ## 2026-10-31
 
+- Foolbook is pinned to commit 8f6761b, which adds `engine.loader.flatten_groups`. A group made with Group now opens in Foolbook with its children on the page, clickable and in paint order. Before, the pinned reader drew it as one empty shape. Test: `author/test_reader_groups.py`.
+
+## 2026-10-31
+
 - Find lists every page text and shape text that holds a word or phrase, with how many times, and Replace all changes them and says how many. The search is plain text, never a regular expression. Match case is off unless ticked.
 
 ## 2026-10-31
