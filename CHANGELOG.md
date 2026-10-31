@@ -21,6 +21,7 @@
 - Add puts the new page right after the current page, not at the end. Ctrl+M does the same.
 - With no book named, Author opens a start window: New book, Open book, and up to five recent books that are still on disk.
 - New book asks for a page size, 640 by 480 unless changed, and a background colour, then opens the stage. The colour is a page-sized `paper` rect on the background layer, which the reader already paints first.
+- Template starts a new book from a copy of `blank`, `title-and-button`, or `question-and-four-choices` in `templates/`. `python3 -m author.templates` writes those three files. Save asks for a new name, so a template is never written over.
 - The README says how to install the editor: a venv, `pip install -e .`, and `python3 -m foolbookeditor`.
 - Foolbook is pinned to commit 031e8d8, not to a floating main. A pull request that needs a newer reader bumps the pin and names the function.
 - `python3 -m foolbookeditor --selftest` builds a book in memory, saves it, loads it, and checks the page id, one shape, and one script. No window.

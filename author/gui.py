@@ -72,6 +72,7 @@ class Editor:
         bar = ttk.Frame(self.root, padding=4)
         bar.pack(fill="x")
         ttk.Button(bar, text="New", command=self._new).pack(side="left")
+        ttk.Button(bar, text="Template", command=self._template).pack(side="left", padx=(2, 0))
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
@@ -252,6 +253,33 @@ class Editor:
         ttk.Button(buttons, text="Cancel", command=win.destroy).pack(side="right")
         ttk.Button(buttons, text="Create", command=make).pack(side="right", padx=4)
         win.bind("<Return>", lambda _e: make())
+        win.bind("<Escape>", lambda _e: win.destroy())
+        win.grab_set()
+
+    def _template(self):
+        """A new book copied from a template. The template file is not opened."""
+        from author.templates import from_template, names
+        win = tk.Toplevel(self.root)
+        win.title("New from template")
+        win.transient(self.root)
+        frame = ttk.Frame(win, padding=12)
+        frame.pack(fill="both", expand=True)
+        found = names()
+        listing = tk.Listbox(frame, height=max(3, len(found)), exportselection=False)
+        for name in found:
+            listing.insert("end", name)
+        listing.pack(fill="both", expand=True)
+
+        def make():
+            sel = listing.curselection()
+            if not sel:
+                return
+            book = from_template(found[sel[0]])
+            win.destroy()
+            self._open_new(book)
+
+        ttk.Button(frame, text="Create", command=make).pack(anchor="e", pady=(8, 0))
+        listing.bind("<Double-Button-1>", lambda _e: make())
         win.bind("<Escape>", lambda _e: win.destroy())
         win.grab_set()
 
