@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31
+
+- Spelling lists words in page text, fields, and buttons that are not in a small list of ordinary English words (`author/words.txt`, written for this editor, under 600 words). Selecting one goes to its page. Add to book stores the word in the book's `words` so it is not flagged again. Nothing is shelled out to.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.
