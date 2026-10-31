@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .formats import save_book, load as load_book
+from .files import FutureBook, open_book as load_book, save as save_book
 
 try:
     import tkinter as tk
@@ -34,25 +34,185 @@ class Editor:
         self.current = 0
         from author.tools import DEFAULT_TOOL
         self.tool = tk.StringVar(value=DEFAULT_TOOL)
+        from author.history import History
+        from author.clipboard import Clipboard
+        self.history = History(self.book)
+        self.clipboard = Clipboard()
+        # Every command that can change the book commits to the history after it
+        # runs. A commit that changed nothing is not an undo step.
+        for name in self._CHANGES:
+            setattr(self, name, self._committing(getattr(self, name)))
         self._build()
         if path and path.exists():
             self._load(path)
         else:
-            self._new()
+            self._new(ask=False)
+            if path is None:
+                self._start([])
         self.root.mainloop()
+
+    _CHANGES = (
+        "_apply", "_apply_script", "_add_page", "_duplicate_page", "_del_page", "_reorder",
+        "_on_release", "_nudge", "_align", "_distribute", "_group", "_ungroup",
+        "_lock", "_unlock_all", "_color", "_restack", "_clip", "_delete_shapes",
+    )
+
+    def _committing(self, command):
+        def run(*args, **kwargs):
+            result = command(*args, **kwargs)
+            self.history.commit(self.book)
+            return result
+        return run
+
+    def _clip(self, event, command: str):
+        """Cut, copy, or paste. The page list copies pages; the stage copies objects.
+
+        A text box keeps these keys for its own text.
+        """
+        if isinstance(event.widget, (tk.Entry, ttk.Entry, tk.Text)):
+            return None
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return "break"
+        page = pages[self.current]
+        if event.widget is self.pages:
+            if command == "paste":
+                at = self.clipboard.paste_page(self.book, self.current)
+                if at is None:
+                    self.status.config(text="The clipboard holds objects, not a page")
+                    return "break"
+                self.current = at
+                self._refresh_list()
+            elif command == "copy":
+                self.clipboard.copy_page(self.book, self.current)
+                self.status.config(text=f"Copied page {page.get('id')}")
+            else:
+                self.status.config(text="Delete removes a page; Cut is for objects")
+            return "break"
+        if command == "paste":
+            landed = self.clipboard.paste_shapes(page)
+            if not landed:
+                self.status.config(text="The clipboard holds a page, not objects" if self.clipboard.kind else "Nothing to paste")
+                return "break"
+            self._fill_objects(page)
+            self._choose(landed)
+        elif self._chosen:
+            self._apply_script()
+            chosen = list(self._chosen)
+            if command == "cut":
+                count = self.clipboard.cut_shapes(page, chosen)
+                self._fill_objects(page)
+                self._choose([])
+            else:
+                count = self.clipboard.copy_shapes(page, chosen)
+            self.status.config(text=f"{'Cut' if command == 'cut' else 'Copied'} {count} object{'s' if count != 1 else ''}")
+        self._draw_thumbs()
+        return "break"
+
+    def _delete_shapes(self, event=None):
+        """Delete the chosen objects. A text box keeps the key for its own text."""
+        if event is not None and isinstance(event.widget, (tk.Entry, ttk.Entry, tk.Text, tk.Listbox)):
+            return None
+        pages = self.book.get("pages") or []
+        if not self._chosen or not (0 <= self.current < len(pages)):
+            return "break"
+        from author.commands import delete_shapes
+        page = pages[self.current]
+        count = delete_shapes(page, list(self._chosen))
+        self._fill_objects(page)
+        self._choose([])
+        self._preview()
+        self._draw_thumbs()
+        self.status.config(text=f"Deleted {count} object{'s' if count != 1 else ''}")
+        return "break"
+
+    def _shape_menu(self, evt):
+        """The shape under the pointer is chosen, then its menu opens."""
+        self._select_at(evt.x, evt.y)
+        if not self._chosen:
+            return
+        from author.commands import shape_menu
+        stage = type("Stage", (), {"widget": self.canvas})()
+        run = {
+            "shape_properties": lambda: self.objects.focus_set(),
+            "shape_script": lambda: self.oscript.focus_set(),
+            "forward": lambda: self._restack("forward"),
+            "backward": lambda: self._restack("backward"),
+            "cut": lambda: self._clip(stage, "cut"),
+            "copy": lambda: self._clip(stage, "copy"),
+            "delete_shapes": lambda: self._delete_shapes(),
+        }
+        menu = tk.Menu(self.root, tearoff=False)
+        for label, command, key in shape_menu():
+            menu.add_command(label=label, accelerator=key, command=run[command])
+        try:
+            menu.tk_popup(evt.x_root, evt.y_root)
+        finally:
+            menu.grab_release()
+
+    def _undo(self):
+        self._apply()
+        self._apply_script()
+        self._restore(self.history.undo(), "Nothing to undo")
+        return "break"
+
+    def _redo(self):
+        self._restore(self.history.redo(), "Nothing to redo")
+        return "break"
+
+    def _restore(self, book: dict | None, nothing: str):
+        if book is None:
+            self.status.config(text=nothing)
+            return
+        self.book = book
+        self.current = max(0, min(self.current, len(book.get("pages") or []) - 1))
+        self._refresh_list()
+
+    def _start(self, recent: list[str]):
+        """The start window. New book keeps the blank book already showing."""
+        from author.start import OPEN, start_choices
+        win = tk.Toplevel(self.root)
+        win.title("Foolbook Author")
+        win.transient(self.root)
+        frame = ttk.Frame(win, padding=16)
+        frame.pack(fill="both", expand=True)
+
+        def pick(label: str, chosen: Path | None):
+            win.destroy()
+            if chosen is not None:
+                self._load(chosen)
+            elif label == OPEN:
+                self._open()
+            else:
+                self._new()
+
+        for label, chosen in start_choices(recent):
+            text = label if chosen is None else f"{label}: {chosen.name}"
+            ttk.Button(frame, text=text, command=lambda l=label, c=chosen: pick(l, c)).pack(fill="x", pady=2)
+        win.bind("<Escape>", lambda _e: win.destroy())
+        win.grab_set()
 
     def _build(self):
         # toolbar
         bar = ttk.Frame(self.root, padding=4)
         bar.pack(fill="x")
         ttk.Button(bar, text="New", command=self._new).pack(side="left")
+        ttk.Button(bar, text="Template", command=self._template).pack(side="left", padx=(2, 0))
         ttk.Button(bar, text="Open", command=self._open).pack(side="left", padx=2)
+        ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
+        ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
+        ttk.Button(bar, text="Proof PNGs", command=self._proof).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
+        ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
+        ttk.Button(bar, text="Menu bar", command=self._menubar).pack(side="left", padx=2)
+        ttk.Button(bar, text="Book", command=self._book_properties).pack(side="left", padx=2)
+        ttk.Button(bar, text="Spelling", command=self._spelling).pack(side="left", padx=2)
+        ttk.Button(bar, text="Find", command=self._find_replace).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
-        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("label", "Label"), ("check", "Check"), ("radio", "Radio"), ("list", "List"), ("combo", "Combo"), ("media", "Media"), ("box", "Rectangle")):
+        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("label", "Label"), ("check", "Check"), ("radio", "Radio"), ("list", "List"), ("combo", "Combo"), ("media", "Media"), ("box", "Rectangle"), ("roundrect", "Rounded")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(bar, text="Bold", command=lambda: self._wrap("**")).pack(side="left")
@@ -67,8 +227,13 @@ class Editor:
             ("line", "Line"),
             ("ellipse", "Ellipse"),
             ("polygon", "Polygon"),
+            ("curve", "Curve"),
             ("arc", "Arc"),
+            ("chord", "Chord"),
+            ("pie", "Pie"),
             ("picture", "Picture"),
+            ("hotspot", "Hotspot"),
+            ("icon", "Icon"),
         ):
             ttk.Radiobutton(tools, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
@@ -79,8 +244,50 @@ class Editor:
         ttk.Button(tools, text="Fit", command=self._fit).pack(side="left", padx=(2, 0))
         ttk.Button(tools, text="Record", command=self._record).pack(side="left", padx=(2, 0))
         ttk.Button(tools, text="Line", command=lambda: self._color("outline")).pack(side="left", padx=2)
+        ttk.Button(tools, text="Pattern", command=self._pattern).pack(side="left")
+        self.grid = tk.BooleanVar(value=False)
+        ttk.Checkbutton(tools, text="Grid 8", variable=self.grid, command=self._preview).pack(side="left", padx=(8, 0))
+        aligner = ttk.Menubutton(tools, text="Align")
+        menu = tk.Menu(aligner, tearoff=False)
+        menu.add_command(label="To the first selected object", state="disabled")
+        from author.geometry import ALIGN
+        for how in ALIGN:
+            menu.add_command(label=how.capitalize(), command=lambda h=how: self._align(h))
+        menu.add_separator()
+        menu.add_command(label="Distribute across (3 or more)", command=lambda: self._distribute("horizontal"))
+        menu.add_command(label="Distribute down (3 or more)", command=lambda: self._distribute("vertical"))
+        aligner["menu"] = menu
+        aligner.pack(side="left", padx=(8, 0))
+        locker = ttk.Menubutton(tools, text="Lock")
+        lock_menu = tk.Menu(locker, tearoff=False)
+        lock_menu.add_command(label="Lock selected", command=lambda: self._lock(True))
+        lock_menu.add_command(label="Unlock selected (pick it in the object list)", command=lambda: self._lock(False))
+        lock_menu.add_command(label="Unlock all on this page", command=self._unlock_all)
+        locker["menu"] = lock_menu
+        locker.pack(side="left", padx=(8, 0))
+        ttk.Button(tools, text="Group", command=self._group).pack(side="left", padx=(8, 0))
+        ttk.Button(tools, text="Ungroup", command=self._ungroup).pack(side="left", padx=2)
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
+        ttk.Button(tools, text="Forward", command=lambda: self._restack("forward")).pack(side="left")
+        ttk.Button(tools, text="Backward", command=lambda: self._restack("backward")).pack(side="left", padx=2)
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="Viewer").pack(side="left")
+        self.viewer_buttons = {}
+        for name, label in (("previous", "Previous"), ("next", "Next"), ("page", "Page number")):
+            var = tk.BooleanVar(value=False)
+            self.viewer_buttons[name] = var
+            ttk.Checkbutton(tools, text=label, variable=var, command=self._set_viewer).pack(side="left", padx=2)
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="System book").pack(side="left")
+        self.system = ttk.Entry(tools, width=16)
+        self.system.pack(side="left", padx=2)
+        self.system.bind("<Return>", self._set_system)
+        self.system.bind("<FocusOut>", self._set_system)
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        # Colours the book already uses. Click for fill, right-click for line.
+        self.swatches = ttk.Frame(tools)
+        self.swatches.pack(side="left")
 
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=4, pady=4)
@@ -90,13 +297,60 @@ class Editor:
         left = ttk.Frame(body, width=160)
         body.add(left, weight=0)
         ttk.Label(left, text="Pages").pack(anchor="w")
-        self.pages = tk.Listbox(left, exportselection=False, width=18)
+        self.pages = tk.Listbox(left, exportselection=False, width=18, height=8)
         self.pages.pack(fill="both", expand=True)
         self.pages.bind("<<ListboxSelect>>", self._on_select)
+        # Right click is Button-2 on macOS Tk and Button-3 elsewhere.
+        right = "<Button-2>" if self.root.tk.call("tk", "windowingsystem") == "aqua" else "<Button-3>"
+        self.pages.bind(right, self._page_menu)
+        # One small drawing per page. A click on one shows that page.
+        strip = ttk.Frame(left)
+        strip.pack(fill="both", expand=True, pady=(4, 0))
+        self.thumbs = tk.Canvas(strip, width=120, height=200, bg="#e8e8e8", highlightthickness=0)
+        thumb_bar = ttk.Scrollbar(strip, orient="vertical", command=self.thumbs.yview)
+        self.thumbs.configure(yscrollcommand=thumb_bar.set)
+        thumb_bar.pack(side="right", fill="y")
+        self.thumbs.pack(side="left", fill="both", expand=True)
+        self.thumbs.bind("<ButtonRelease-1>", self._on_thumb)
         row = ttk.Frame(left)
         row.pack(fill="x", pady=4)
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
-        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left", padx=4)
+        from author.commands import SHORTCUTS
+        self.root.bind(SHORTCUTS["add_page"][1], lambda _e: self._add_page())
+        for key in SHORTCUTS["undo"][1:]:
+            self.root.bind(key, lambda _e: self._undo())
+        for key in SHORTCUTS["redo"][1:]:
+            self.root.bind(key, lambda _e: self._redo())
+        for command in ("cut", "copy", "paste"):
+            self.root.bind(SHORTCUTS[command][1], lambda e, c=command: self._clip(e, c))
+        self.root.bind(SHORTCUTS["delete_shapes"][1], self._delete_shapes)
+        self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
+        self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
+        self.root.bind(SHORTCUTS["go_to_page"][1], lambda _e: (self.goto.focus_set(), self.goto.select_range(0, "end")))
+        for key in ("Left", "Right", "Up", "Down"):
+            self.root.bind(f"<{key}>", lambda e, k=key: self._nudge(e, k, False))
+            self.root.bind(f"<Shift-{key}>", lambda e, k=key: self._nudge(e, k, True))
+        for command in ("first_page", "previous_page", "next_page", "last_page"):
+            self.root.bind(SHORTCUTS[command][1], lambda _e, c=command: self._browse(c))
+        self.root.bind(SHORTCUTS["page_up"][1], lambda _e: self._reorder("page_up"))
+        self.root.bind(SHORTCUTS["page_down"][1], lambda _e: self._reorder("page_down"))
+        ttk.Button(row, text="Duplicate", command=self._duplicate_page).pack(side="left", padx=4)
+        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left")
+        order = ttk.Frame(left)
+        order.pack(fill="x")
+        browse = ttk.Frame(left)
+        browse.pack(fill="x", pady=(4, 0))
+        for command, label in (("first_page", "|<"), ("previous_page", "<"), ("next_page", ">"), ("last_page", ">|")):
+            ttk.Button(browse, text=label, width=3, command=lambda c=command: self._browse(c)).pack(side="left")
+        goto = ttk.Frame(left)
+        goto.pack(fill="x", pady=(4, 0))
+        ttk.Label(goto, text="Go to").pack(side="left")
+        self.goto = ttk.Entry(goto, width=10)
+        self.goto.pack(side="left", padx=4, fill="x", expand=True)
+        self.goto.bind("<Return>", lambda _e: self._go_to())
+        ttk.Button(order, text="Up", command=lambda: self._reorder("page_up")).pack(side="left")
+        ttk.Button(order, text="Down", command=lambda: self._reorder("page_down")).pack(side="left", padx=4)
+        ttk.Button(left, text="New background", command=self._add_background).pack(anchor="w")
 
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
@@ -107,22 +361,58 @@ class Editor:
         self.canvas.bind("<B1-Motion>", self._on_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_release)
         self.canvas.bind("<Configure>", self._on_canvas_resize)
+        # Right click is Button-2 on macOS Tk and Button-3 elsewhere.
+        right = "<Button-2>" if self.root.tk.call("tk", "windowingsystem") == "aqua" else "<Button-3>"
+        self.canvas.bind(right, self._shape_menu)
 
         # objects on the selected page. Author shows them. Reader may hide some.
         objects = ttk.Frame(body, width=260)
         body.add(objects, weight=0)
         ttk.Label(objects, text="Objects").pack(anchor="w")
-        self.objects = tk.Listbox(objects, exportselection=False, width=28)
+        self.objects = tk.Listbox(objects, exportselection=False, width=28, selectmode="extended")
         self.objects.pack(fill="both", expand=True)
         self.objects.bind("<<ListboxSelect>>", self._on_object)
         self.object_meta = ttk.Label(objects, text="", wraplength=200)
         self.object_meta.pack(anchor="w", pady=4)
-        ttk.Label(objects, text="Object script").pack(anchor="w")
-        self.oscript = tk.Text(objects, height=12, wrap="word")
+        self._build_properties(objects)
+        ttk.Label(objects, text="Script (the object's, or the page's when no object is chosen)").pack(anchor="w")
+        self.oscript = tk.Text(objects, height=12, wrap="none", font="TkFixedFont", undo=True)
         self.oscript.pack(fill="both", expand=True)
+        self.oscript.bind("<Tab>", self._script_tab)
         ttk.Button(objects, text="Apply script", command=self._apply_script).pack(anchor="e", pady=4)
+        # Actions run on a click when the object has no script.
+        ttk.Label(objects, text="Actions").pack(anchor="w")
+        self.action_list = tk.Listbox(objects, height=5, exportselection=False)
+        self.action_list.pack(fill="x")
+        row = ttk.Frame(objects)
+        row.pack(fill="x", pady=2)
+        from author.actions import DOS
+        self.action_do = ttk.Combobox(row, values=DOS, width=8, state="readonly")
+        self.action_do.set("goto")
+        self.action_do.pack(side="left")
+        self.action_target = ttk.Entry(row, width=10)
+        self.action_target.pack(side="left", padx=2)
+        self.action_text = ttk.Entry(row, width=10)
+        self.action_text.pack(side="left")
+        ttk.Button(row, text="Add", width=4, command=self._add_action).pack(side="left", padx=2)
+        ttk.Button(row, text="Remove", width=7, command=self._remove_action).pack(side="left")
+        ttk.Button(row, text="Write script", command=self._write_script).pack(side="left", padx=2)
+        # Drag one of these onto an object on the page to add it there.
+        from author.actions import DOS as _dos
+        ttk.Label(objects, text="Drag an action onto an object:").pack(anchor="w")
+        rows = [ttk.Frame(objects), ttk.Frame(objects)]
+        for frame in rows:
+            frame.pack(fill="x")
+        for n, do in enumerate(_dos):
+            chip = tk.Label(rows[n * 2 // len(_dos)], text=do, relief="raised", borderwidth=1, padx=3, cursor="hand2")
+            chip.pack(side="left", padx=1)
+            chip.bind("<ButtonRelease-1>", lambda evt, do=do: self._drop_action(do, evt.x_root, evt.y_root))
+        self.action_note = ttk.Label(objects, text="", wraplength=240)
+        self.action_note.pack(anchor="w")
         self._rows: list[dict] = []
         self._object = None
+        # Shape indices that are selected, in the order they were chosen.
+        self._chosen: list[int] = []
         self._drag = None
 
         form = ttk.Frame(center)
@@ -136,6 +426,19 @@ class Editor:
         ttk.Label(form, text="Back").grid(row=0, column=4, sticky="w")
         self.back = ttk.Entry(form, width=10)
         self.back.grid(row=0, column=5, sticky="w", padx=4)
+        ttk.Label(form, text="Background").grid(row=0, column=6, sticky="w")
+        self.uses = ttk.Combobox(form, width=14, state="readonly")
+        self.uses.grid(row=0, column=7, sticky="w", padx=4)
+        self.uses.bind("<<ComboboxSelected>>", self._on_uses)
+        ttk.Label(form, text="Transition").grid(row=0, column=6, sticky="w")
+        self.transition = ttk.Combobox(form, values=("none", "dissolve", "wipe"), width=9)
+        self.transition.grid(row=0, column=7, sticky="w", padx=4)
+        ttk.Label(form, text="Size").grid(row=0, column=6, sticky="w")
+        self.page_w = ttk.Entry(form, width=5)
+        self.page_w.grid(row=0, column=7, sticky="w", padx=(4, 0))
+        ttk.Label(form, text="x").grid(row=0, column=8)
+        self.page_h = ttk.Entry(form, width=5)
+        self.page_h.grid(row=0, column=9, sticky="w")
 
         ttk.Label(center, text="Text  (blank line = new paragraph; lines starting with - or * are a list)").pack(anchor="w", pady=(6, 0))
         self.text = tk.Text(center, height=4, wrap="word")
@@ -143,8 +446,115 @@ class Editor:
         self.text.bind("<KeyRelease>", lambda e: self._preview())
 
         ttk.Button(center, text="Apply", command=self._apply).pack(anchor="e", pady=4)
+        # Typing becomes one undo step when the box loses focus, not one per key.
+        for box in (self.pid, self.next, self.back, self.page_w, self.page_h, self.text):
+            box.bind("<FocusOut>", lambda _e: self._apply(), add="+")
+        self.oscript.bind("<FocusOut>", lambda _e: self._apply_script(), add="+")
         self.root.bind("<Escape>", self._on_escape)
+        self.canvas.bind("<Double-Button-1>", self._finish_draft)
+        self.root.bind("<Return>", self._finish_draft)
+        self._draft = None
+        # Choosing another tool drops a polygon that was not closed.
+        self.tool.trace_add("write", lambda *_args: setattr(self, "_draft", None))
         self.root.after_idle(self._split)
+
+    def _build_properties(self, parent):
+        """One row per property. Return or leaving the box applies it. Bad text puts the old value back."""
+        from author.properties import CHOICES, ROWS
+        # A classic frame holds the pane so Undock can hand it to the window manager.
+        self.props_holder = tk.Frame(parent)
+        self.props_holder.pack(fill="x", pady=4)
+        self.props = ttk.LabelFrame(self.props_holder, text="Properties", padding=4)
+        self.props.pack(fill="both", expand=True)
+        ttk.Button(self.props_holder, text="Undock", command=self._toggle_properties).pack(anchor="e")
+        self.props.columnconfigure(1, weight=1)
+        self._prop_vars: dict[str, tk.StringVar] = {}
+        self._prop_texts: dict[str, tk.Text] = {}
+        for row, (key, label, kind) in enumerate(ROWS):
+            ttk.Label(self.props, text=label).grid(row=row, column=0, sticky="w")
+            var = tk.StringVar()
+            if kind == "flag":
+                box = ttk.Checkbutton(self.props, variable=var, onvalue="true", offvalue="false",
+                                      command=lambda k=key: self._set_property(k))
+                box.grid(row=row, column=1, sticky="w", padx=4, pady=1)
+            elif kind == "pointlist":
+                text = tk.Text(self.props, height=4, width=18, font="TkFixedFont", wrap="none")
+                text.grid(row=row, column=1, sticky="we", padx=4, pady=1)
+                text.bind("<FocusOut>", lambda _e, k=key: self._set_property(k))
+                self._prop_texts[key] = text
+            elif kind == "choice":
+                pick = ttk.Combobox(self.props, textvariable=var, values=CHOICES[key], state="readonly", width=16)
+                pick.grid(row=row, column=1, sticky="we", padx=4, pady=1)
+                pick.bind("<<ComboboxSelected>>", lambda _e, k=key: self._set_property(k))
+            else:
+                entry = ttk.Entry(self.props, textvariable=var, width=18)
+                entry.grid(row=row, column=1, sticky="we", padx=4, pady=1)
+                entry.bind("<Return>", lambda _e, k=key: self._set_property(k))
+                entry.bind("<FocusOut>", lambda _e, k=key: self._set_property(k))
+            self._prop_vars[key] = var
+        self._build_well(len(ROWS))
+        from author.sheet import Sheet
+        self.sheet = Sheet(self.root, self.props_holder, "Properties")
+
+    def _toggle_properties(self):
+        """The same Properties pane, in its own window or back in Author."""
+        docked = self.sheet.toggle()
+        for child in self.props_holder.winfo_children():
+            if isinstance(child, ttk.Button):
+                child.config(text="Undock" if docked else "Dock")
+
+    def _build_well(self, row: int):
+        """Eight plain colours. A click sets the fill, a right-click the outline."""
+        from author.properties import WELL
+        ttk.Label(self.props, text="Colours").grid(row=row, column=0, sticky="w")
+        well = ttk.Frame(self.props)
+        well.grid(row=row, column=1, sticky="w", padx=4, pady=2)
+        for at, color in enumerate(WELL):
+            swatch = tk.Label(well, bg=color, width=2, relief="solid", borderwidth=1, name=f"well{color[1:]}")
+            swatch.grid(row=0, column=at, padx=1)
+            swatch.bind("<Button-1>", lambda _e, c=color: self._pick_color("fill", c))
+            swatch.bind("<Button-3>", lambda _e, c=color: self._pick_color("outline", c))
+        ttk.Button(well, text="No fill", width=7, command=lambda: self._pick_color("fill", "")).grid(
+            row=0, column=len(WELL), padx=(4, 0)
+        )
+
+    def _pick_color(self, key: str, color: str):
+        self._prop_vars[key].set(color)
+        self._set_property(key)
+
+    def _show_properties(self):
+        from author.properties import read
+        shape, _index = self._selected()
+        for key, var in self._prop_vars.items():
+            var.set(read(shape, key) if shape is not None else "")
+        for key, text in self._prop_texts.items():
+            text.delete("1.0", "end")
+            text.insert("1.0", read(shape, key) if shape is not None else "")
+
+    def _set_property(self, key: str):
+        shape, index = self._selected()
+        if shape is None:
+            return
+        from author.properties import read, write
+        page = (self.book.get("pages") or [])[self.current]
+        if key in self._prop_texts:
+            text = self._prop_texts[key]
+            changed = write(shape, key, text.get("1.0", "end"), page)
+            text.delete("1.0", "end")
+            text.insert("1.0", read(shape, key))
+        else:
+            changed = write(shape, key, self._prop_vars[key].get(), page)
+            self._prop_vars[key].set(read(shape, key))
+        if not changed:
+            self.status.config(text=f"{key} kept: that value cannot be used")
+            return
+        if key == "name" and self._object is not None:
+            row = self._rows[self._object]
+            row["name"] = shape.get("name") or ""
+            self.objects.delete(self._object)
+            self.objects.insert(self._object, f"{row['kind']}  {row['name']}{' hidden' if row['hidden'] else ''}")
+            self.objects.selection_set(self._object)
+        self._preview()
 
     def _split(self):
         """Keep the picture on screen. The side panes do not take the window."""
@@ -152,28 +562,279 @@ class Editor:
         if width < 400:
             self.root.after(50, self._split)
             return
+        from author import settings
+        left, right = settings.sashes(settings.load().get("panes"), width)
         try:
-            self.body.sashpos(0, 180)
-            self.body.sashpos(1, width - 280)
+            self.body.sashpos(0, left)
+            self.body.sashpos(1, right)
         except tk.TclError:
             return
+        self.body.bind("<ButtonRelease-1>", self._keep_panes, add="+")
+        self.root.protocol("WM_DELETE_WINDOW", self._close)
 
-    def _new(self):
-        self.book = {
-            "id": "new",
-            "title": "New book",
-            "pages": [{"id": "P0", "text": ["New slide"], "items": [], "widgets": []}],
-        }
+    def _keep_panes(self, _evt=None):
+        """The sashes are where the user left them, next time too."""
+        from author import settings
+        try:
+            settings.update(panes=[self.body.sashpos(0), self.body.sashpos(1)])
+        except tk.TclError:
+            pass
+
+    def _close(self):
+        self._keep_panes()
+        self.root.destroy()
+
+    def _book_properties(self):
+        from .bookprops import properties, set_properties
+        win = tk.Toplevel(self.root)
+        win.title("Book properties")
+        win.transient(self.root)
+        values = properties(self.book)
+        entries = {}
+        for row, (key, label) in enumerate((("title", "Title"), ("author", "Author"),
+                                            ("size", "Page size"), ("firstPage", "First page"))):
+            ttk.Label(win, text=label).grid(row=row, column=0, sticky="w", padx=6, pady=2)
+            if key == "firstPage":
+                ids = [""] + [str(p.get("id") or "") for p in self.book.get("pages") or []]
+                entry = ttk.Combobox(win, values=ids, width=30)
+            else:
+                entry = ttk.Entry(win, width=32)
+            entry.insert(0, values[key])
+            entry.grid(row=row, column=1, padx=6, pady=2)
+            entries[key] = entry
+
+        def apply():
+            try:
+                set_properties(self.book, *(entries[k].get() for k in ("title", "author", "size", "firstPage")))
+            except ValueError as exc:
+                messagebox.showerror("Book properties", str(exc), parent=win)
+                return
+            self.status.config(text=self.book.get("title") or "")
+            win.destroy()
+
+        ttk.Button(win, text="Apply", command=apply).grid(row=4, column=1, sticky="e", padx=6, pady=6)
+        self._book_window = win
+        self._book_entries = entries
+
+    def _spelling(self):
+        from .spelling import add_word, check
+        win = tk.Toplevel(self.root)
+        win.title("Spelling")
+        win.transient(self.root)
+        found = tk.Listbox(win, width=50, height=14, exportselection=False)
+        found.pack(fill="both", expand=True, padx=6, pady=6)
+        rows: list[tuple[str, str, str]] = []
+
+        def refill():
+            rows[:] = check(self.book)
+            found.delete(0, "end")
+            for pid, name, word in rows:
+                found.insert("end", f"{word}    {pid}{'  ' + name if name else ''}")
+            win.title(f"Spelling: {len(rows)} unknown" if rows else "Spelling: no unknown words")
+
+        def go(_evt=None):
+            picked = found.curselection()
+            if not picked:
+                return
+            ids = [str(p.get("id") or "") for p in self.book.get("pages") or []]
+            pid = rows[picked[0]][0]
+            if pid in ids:
+                self.current = ids.index(pid)
+                self.pages.selection_clear(0, "end")
+                self.pages.selection_set(self.current)
+                self._show(self.current)
+
+        def learn():
+            picked = found.curselection()
+            if picked:
+                add_word(self.book, rows[picked[0]][2])
+                refill()
+
+        found.bind("<<ListboxSelect>>", go)
+        ttk.Button(win, text="Add to book", command=learn).pack(anchor="e", padx=6, pady=(0, 6))
+        refill()
+        self._spelling_window = win
+        self._spelling_list = found
+
+    def _find_replace(self):
+        from .findreplace import find, replace_all
+        win = tk.Toplevel(self.root)
+        win.title("Find and replace")
+        win.transient(self.root)
+        ttk.Label(win, text="Find").grid(row=0, column=0, sticky="w", padx=6, pady=2)
+        needle = ttk.Entry(win, width=30)
+        needle.grid(row=0, column=1, padx=6, pady=2)
+        ttk.Label(win, text="Replace with").grid(row=1, column=0, sticky="w", padx=6, pady=2)
+        replacement = ttk.Entry(win, width=30)
+        replacement.grid(row=1, column=1, padx=6, pady=2)
+        case = tk.BooleanVar(value=False)
+        ttk.Checkbutton(win, text="Match case", variable=case).grid(row=2, column=1, sticky="w", padx=6)
+        hits = tk.Listbox(win, width=44, height=10)
+        hits.grid(row=3, column=0, columnspan=2, padx=6, pady=4)
+        result = ttk.Label(win, text="")
+        result.grid(row=4, column=0, columnspan=2, sticky="w", padx=6)
+
+        def look():
+            hits.delete(0, "end")
+            found = find(self.book, needle.get(), case.get())
+            for pid, where, count in found:
+                hits.insert("end", f"{pid}  {where}  ({count})")
+            result.config(text=f"{sum(c for _p, _w, c in found)} found")
+
+        def swap():
+            count = replace_all(self.book, needle.get(), replacement.get(), case.get())
+            result.config(text=f"{count} replaced")
+            hits.delete(0, "end")
+            if 0 <= self.current < len(self.book.get("pages") or []):
+                self._show(self.current)
+
+        row = ttk.Frame(win)
+        row.grid(row=5, column=0, columnspan=2, sticky="e", padx=6, pady=6)
+        ttk.Button(row, text="Find", command=look).pack(side="left")
+        ttk.Button(row, text="Replace all", command=swap).pack(side="left", padx=4)
+        self._find_window = win
+        self._find_parts = {"needle": needle, "replacement": replacement, "case": case,
+                            "hits": hits, "result": result, "find": look, "replace": swap}
+
+    def _menubar(self):
+        from .menubar import render, set_menubar
+        win = tk.Toplevel(self.root)
+        win.title("Menu bar")
+        win.transient(self.root)
+        ttk.Label(win, text="A menu at the margin, its items indented. Label -> page, or Label: one line of script.").pack(anchor="w", padx=6, pady=4)
+        box = tk.Text(win, width=60, height=14, font=("TkFixedFont", 10))
+        box.pack(fill="both", expand=True, padx=6)
+        box.insert("1.0", render(self.book.get("menubar") or []))
+
+        def apply():
+            try:
+                set_menubar(self.book, box.get("1.0", "end"))
+            except ValueError as exc:
+                messagebox.showerror("Menu bar", str(exc), parent=win)
+                return
+            win.destroy()
+
+        ttk.Button(win, text="Apply", command=apply).pack(anchor="e", padx=6, pady=4)
+        self._menubar_window = win
+
+    def _new(self, ask: bool = True):
+        from author.document import new_book
+        if not ask:
+            self._open_new(new_book())
+            return
+        self._ask_new()
+
+    def _ask_new(self):
+        """Page size and background colour, then the stage."""
+        from author.document import PAGE_SIZE, new_book
+        win = tk.Toplevel(self.root)
+        win.title("New book")
+        win.transient(self.root)
+        form = ttk.Frame(win, padding=12)
+        form.pack(fill="both", expand=True)
+        fields = {}
+        for row, (label, value) in enumerate((
+            ("Width", PAGE_SIZE[0]),
+            ("Height", PAGE_SIZE[1]),
+            ("Background", "#ffffff"),
+        )):
+            ttk.Label(form, text=label).grid(row=row, column=0, sticky="w")
+            var = tk.StringVar(value=str(value))
+            ttk.Entry(form, textvariable=var, width=10).grid(row=row, column=1, sticky="w", pady=2)
+            fields[label] = var
+        error = ttk.Label(form, text="", foreground="#a00000", wraplength=240)
+        error.grid(row=3, column=0, columnspan=2, sticky="w")
+
+        def make():
+            try:
+                size = (int(fields["Width"].get()), int(fields["Height"].get()))
+            except ValueError:
+                error.config(text="Width and height are whole numbers.")
+                return
+            try:
+                book = new_book(size, fields["Background"].get())
+            except ValueError as exc:
+                error.config(text=str(exc))
+                return
+            win.destroy()
+            self._open_new(book)
+
+        buttons = ttk.Frame(form)
+        buttons.grid(row=4, column=0, columnspan=2, sticky="e", pady=(8, 0))
+        ttk.Button(buttons, text="Cancel", command=win.destroy).pack(side="right")
+        ttk.Button(buttons, text="Create", command=make).pack(side="right", padx=4)
+        win.bind("<Return>", lambda _e: make())
+        win.bind("<Escape>", lambda _e: win.destroy())
+        win.grab_set()
+
+    def _template(self):
+        """A new book copied from a template. The template file is not opened."""
+        from author.templates import from_template, names
+        win = tk.Toplevel(self.root)
+        win.title("New from template")
+        win.transient(self.root)
+        frame = ttk.Frame(win, padding=12)
+        frame.pack(fill="both", expand=True)
+        found = names()
+        listing = tk.Listbox(frame, height=max(3, len(found)), exportselection=False)
+        for name in found:
+            listing.insert("end", name)
+        listing.pack(fill="both", expand=True)
+
+        def make():
+            sel = listing.curselection()
+            if not sel:
+                return
+            book = from_template(found[sel[0]])
+            win.destroy()
+            self._open_new(book)
+
+        ttk.Button(frame, text="Create", command=make).pack(anchor="e", pady=(8, 0))
+        listing.bind("<Double-Button-1>", lambda _e: make())
+        win.bind("<Escape>", lambda _e: win.destroy())
+        win.grab_set()
+
+    def _catalog(self):
+        """The books in a folder. Double-click opens one."""
+        from author.shelf import list_books
+        folder = filedialog.askdirectory(title="Catalog folder")
+        if not folder:
+            return
+        rows = list_books(folder)
+        win = tk.Toplevel(self.root)
+        win.title(f"Catalog: {Path(folder).name}")
+        tree = ttk.Treeview(win, columns=("title", "pages", "file"), show="headings", height=min(20, max(4, len(rows))))
+        for column, label, width in (("title", "Title", 260), ("pages", "Pages", 60), ("file", "File", 200)):
+            tree.heading(column, text=label)
+            tree.column(column, width=width, anchor="e" if column == "pages" else "w")
+        for index, row in enumerate(rows):
+            title = row["error"] or row["title"]
+            tree.insert("", "end", iid=str(index), values=(title, row["pages"], row["file"]))
+        tree.pack(fill="both", expand=True, padx=8, pady=8)
+
+        def open_row(_evt=None):
+            sel = tree.selection()
+            if not sel or rows[int(sel[0])]["error"]:
+                return
+            win.destroy()
+            self._load(rows[int(sel[0])]["path"])
+
+        tree.bind("<Double-Button-1>", open_row)
+        tree.bind("<Return>", open_row)
+
+    def _open_new(self, book: dict):
+        self.book = book
         self.path = None
         self.current = 0
         self._refresh_list()
+        self.history.reset(self.book)
         self.status.config(text="New book")
 
     def _open(self):
         p = filedialog.askopenfilename(
             title="Open book",
             filetypes=[
-                ("Foolbook", "*.fbk *.json *.tbk *.sbk"),
+                ("Foolbook", "*.fbk *.fsk *.json *.tbk *.sbk"),
                 ("Office", "*.pdf *.ppt *.pptx *.doc *.docx *.odt"),
                 ("All", "*.*"),
             ],
@@ -193,14 +854,44 @@ class Editor:
         self.path = path
         self.current = 0
         self._refresh_list()
-        self.status.config(text=str(path.name))
+        self.history.reset(self.book)
+        from author.document import handler_names
+        found = handler_names(self.book)
+        note = f"  {len(found)} handlers" if path.suffix.lower() == ".fsk" else ""
+        self.status.config(text=str(path.name) + note)
+
+    def _import(self):
+        p = filedialog.askopenfilename(title="Import a ToolBook book", filetypes=[("ToolBook", "*.tbk"), ("All", "*.*")])
+        if p:
+            self._import_from(Path(p))
+
+    def _import_from(self, src: Path):
+        """The .tbk is only read. Save writes an .fbk beside it."""
+        from author.importer import import_book, report_text
+        self.book, lines = import_book(src)
+        self.path = src.with_suffix(".fbk")
+        self.current = 0
+        self._refresh_list()
+        self.history.reset(self.book)
+        self.status.config(text=f"Imported {src.name}. Save writes {self.path.name}")
+        win = tk.Toplevel(self.root)
+        win.title(f"Import report: {src.name}")
+        box = tk.Text(win, width=90, height=24, wrap="word")
+        box.pack(fill="both", expand=True)
+        box.insert("1.0", report_text(lines))
+        box.config(state="disabled")
+        self.report = box
 
     def _save(self):
         self._apply()
         if not self.path:
             self._save_as()
             return
-        save_book(self.path, self.book)
+        try:
+            save_book(self.path, self.book)
+        except FutureBook as exc:
+            messagebox.showerror("Foolbook Editor", str(exc))
+            return
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
     def _save_as(self):
@@ -213,9 +904,28 @@ class Editor:
         if not p:
             return
         self.path = Path(p)
-        save_book(self.path, self.book)
+        try:
+            save_book(self.path, self.book)
+        except FutureBook as exc:
+            messagebox.showerror("Foolbook Editor", str(exc))
+            return
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
+
+    def _publish(self):
+        """A folder with the .fbk, its linked files, and a README. No installer."""
+        self._apply()
+        folder = filedialog.askdirectory(title="Publish into this folder")
+        if not folder:
+            return
+        from author.publish import publish
+        source = self.path.parent if self.path else None
+        name = self.path.with_suffix(".fbk").name if self.path else ""
+        written, missing = publish(self.book, folder, source=source, name=name)
+        note = f"Published {len(written)} files to {folder}"
+        if missing:
+            note += f". Not found: {', '.join(missing)}"
+        self.status.config(text=note)
 
     def _export(self):
         """Save as a book, a TBX folder, a ToolBook shell, or an office file."""
@@ -245,6 +955,17 @@ class Editor:
         note = "folder" if dest.is_dir() else dest.name
         self.status.config(text=f"Exported {note}")
 
+    def _proof(self):
+        """One PNG per page, drawn the way the stage draws it, into a folder."""
+        self._apply()
+        folder = filedialog.askdirectory(title="Folder for the page pictures")
+        if not folder:
+            return
+        from author.proof import export_pngs
+        base = self.path.parent if self.path else None
+        written = export_pngs(self.book, folder, base=base)
+        self.status.config(text=f"Wrote {len(written)} page pictures")
+
     def _export_executable(self):
         """ToolBook-style self-running book. Scaffold only."""
         from author.executable import export_executable
@@ -253,13 +974,63 @@ class Editor:
         except NotImplementedError as exc:
             messagebox.showinfo("Foolbook Editor", str(exc))
 
+    def _set_viewer(self):
+        from author.document import set_viewer, viewer_of
+        current = viewer_of(self.book) or {}
+        chosen = [name for name, var in self.viewer_buttons.items() if var.get()]
+        set_viewer(self.book, current.get("name") or "Main", current.get("size") or [640, 480], chosen)
+
+    def _set_system(self, _evt=None):
+        from author.document import clear_system, set_system
+        name = self.system.get().strip()
+        if not name:
+            clear_system(self.book)
+            return
+        try:
+            set_system(self.book, name)
+        except ValueError as exc:
+            self.status.config(text=str(exc))
+
+    def _show_viewer(self):
+        from author.document import system_of, viewer_of
+        self.system.delete(0, "end")
+        self.system.insert(0, system_of(self.book) or "")
+        asked = set((viewer_of(self.book) or {}).get("buttons") or [])
+        for name, var in self.viewer_buttons.items():
+            var.set(name in asked)
+
     def _refresh_list(self):
+        self._show_viewer()
         self.pages.delete(0, "end")
+        from author.document import page_label
         for p in self.book.get("pages") or []:
-            self.pages.insert("end", p.get("id") or "?")
+            self.pages.insert("end", page_label(p))
+        self._draw_thumbs()
         if self.book.get("pages"):
             self.pages.selection_set(self.current)
             self._show(self.current)
+
+    _THUMB_STEP = 96
+
+    def _draw_thumbs(self):
+        from author.thumbs import draw, miniature
+        self.thumbs.delete("all")
+        pages = self.book.get("pages") or []
+        for index, page in enumerate(pages):
+            top = 4 + index * self._THUMB_STEP
+            if index == self.current:
+                self.thumbs.create_rectangle(2, top - 2, 102, top + 90, fill="#a8c4e0", outline="")
+            draw(self.thumbs, miniature(page), 4, top, f"thumb{index}")
+            self.thumbs.create_text(4, top + 74, text=page.get("id") or "?", anchor="nw", font=("TkDefaultFont", 8))
+        self.thumbs.configure(scrollregion=(0, 0, 110, 8 + len(pages) * self._THUMB_STEP))
+
+    def _on_thumb(self, evt):
+        index = int(self.thumbs.canvasy(evt.y) - 4) // self._THUMB_STEP
+        if not (0 <= index < len(self.book.get("pages") or [])) or index == self.current:
+            return
+        self.pages.selection_clear(0, "end")
+        self.pages.selection_set(index)
+        self._on_select()
 
     def _on_select(self, _evt=None):
         sel = self.pages.curselection()
@@ -269,6 +1040,7 @@ class Editor:
         self._apply_script()
         self.current = sel[0]
         self._show(self.current)
+        self._draw_thumbs()
 
     def _show(self, idx: int):
         pages = self.book.get("pages") or []
@@ -282,19 +1054,49 @@ class Editor:
         self.next.insert(0, items.get("next") or "")
         self.back.delete(0, "end")
         self.back.insert(0, items.get("back") or "")
+        self.transition.set(p.get("transition") or "none")
+        from author.stage import page_size
+        width, height = page_size(p)
+        self.page_w.delete(0, "end")
+        self.page_w.insert(0, str(width))
+        self.page_h.delete(0, "end")
+        self.page_h.insert(0, str(height))
         self.text.delete("1.0", "end")
         self.text.insert("1.0", "\n\n".join(p.get("text") or []))
+        self._fill_uses(p)
         self._fill_objects(p)
+        self._preview()
+
+    def _fill_uses(self, page: dict):
+        from author.document import background_of
+        names = [str(p.get("id") or "") for p in self.book.get("pages") or [] if p.get("background")]
+        self.uses.config(values=["(none)"] + names, state="disabled" if page.get("background") else "readonly")
+        found = background_of(self.book, page)
+        self.uses.set(found.get("id") if found else "(none)")
+
+    def _on_uses(self, _evt=None):
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        from author.document import clear_background, set_background
+        page = pages[self.current]
+        chosen = self.uses.get()
+        if chosen == "(none)":
+            clear_background(page)
+        else:
+            set_background(self.book, page, chosen)
+        self._fitted = None
         self._preview()
 
     def _fill_objects(self, page: dict):
         from author.catalog import objects_of, page_script
         self._rows = objects_of(page, self.layer.get())
         self._object = None
+        self._chosen = []
         self.objects.delete(0, "end")
         for row in self._rows:
             name = row["name"] or "(unnamed)"
-            mark = " hidden" if row["hidden"] else ""
+            mark = (" hidden" if row["hidden"] else "") + (" locked" if row.get("locked") else "")
             self.objects.insert("end", f"{row['kind']}  {name}{mark}")
         script = page_script(page)
         self.oscript.delete("1.0", "end")
@@ -306,56 +1108,259 @@ class Editor:
         if not sel or not self._rows:
             return
         self._apply_script()
-        self._object = sel[0]
+        # Keep the order things were chosen in. The first one is the reference.
+        picked = [self._rows[at]["index"] for at in sel]
+        self._chosen = [i for i in self._chosen if i in picked] + [i for i in picked if i not in self._chosen]
+        self._object = next(at for at, row in enumerate(self._rows) if row["index"] == self._chosen[0])
         row = self._rows[self._object]
         left, top, right, bottom = row["bounds"]
-        self.object_meta.config(text=f"{row['kind']}  {row['name'] or '(unnamed)'}  {left}, {top}, {right}, {bottom}")
+        size = ""
+        shape, _index = self._selected()
+        if shape and shape.get("pixels"):
+            size = f"  ({shape['pixels'][0]} x {shape['pixels'][1]} pixels)"
+        self.object_meta.config(text=f"{row['kind']}  {row['name'] or '(unnamed)'}  {left}, {top}, {right}, {bottom}{size}")
         self.oscript.delete("1.0", "end")
         self.oscript.insert("1.0", row["script"])
+        self._show_properties()
+        self._show_actions()
 
-    def _apply_script(self):
-        if self._object is None:
+    def _script_tab(self, _evt=None):
+        from author.properties import SCRIPT_TAB
+        self.oscript.insert("insert", SCRIPT_TAB)
+        return "break"
+
+    def _show_actions(self):
+        from author.actions import describe, note
+        shape, _index = self._selected()
+        self.action_list.delete(0, "end")
+        for action in (shape or {}).get("actions") or []:
+            self.action_list.insert("end", describe(action))
+        self.action_note.config(text=note(shape or {}))
+
+    def _add_action(self):
+        from author.actions import add, make
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        try:
+            action = make(self.action_do.get(), self.action_target.get(), self.action_text.get())
+        except ValueError as exc:
+            self.action_note.config(text=str(exc))
+            return
+        add(shape, action)
+        self._show_actions()
+
+    def _remove_action(self):
+        from author.actions import remove
+        shape, _index = self._selected()
+        picked = self.action_list.curselection()
+        if shape is None or not picked:
+            return
+        remove(shape, picked[0])
+        self._show_actions()
+
+    def _drop_action(self, do: str, x_root: int, y_root: int):
+        from author.actions import ARGS, drop, make
+        from author.tools import page_point
+        view = getattr(self.canvas, "_author_view", None)
+        pages = self.book.get("pages") or []
+        if not view or not view.get("scale") or not (0 <= self.current < len(pages)):
+            return
+        x, y = x_root - self.canvas.winfo_rootx(), y_root - self.canvas.winfo_rooty()
+        if not (0 <= x < self.canvas.winfo_width() and 0 <= y < self.canvas.winfo_height()):
+            return
+        target = self.action_target.get()
+        if ARGS[do] and not target.strip():
+            from tkinter import simpledialog
+            target = simpledialog.askstring(do, f"{do}: which {ARGS[do][0]}?", parent=self.root) or ""
+        try:
+            action = make(do, target, self.action_text.get())
+        except ValueError as exc:
+            self.action_note.config(text=str(exc))
+            return
+        px, py = page_point(view, x, y)
+        placed = drop(pages[self.current], px, py, action, self.layer.get())
+        if placed is None:
+            self.action_note.config(text="Drop an action on an object.")
+            return
+        for row, item in enumerate(self._rows):
+            if item["index"] == placed:
+                self.objects.selection_clear(0, "end")
+                self.objects.selection_set(row)
+                self._on_object()
+                break
+
+    def _write_script(self):
+        from author.actions import write_script
+        shape, _index = self._selected()
+        if shape is None or not shape.get("actions"):
             return
         pages = self.book.get("pages") or []
+        script = write_script(shape, pages[self.current].get("shapes") or [])
+        self._rows[self._object]["script"] = script
+        self.oscript.delete("1.0", "end")
+        self.oscript.insert("1.0", script)
+        self._show_actions()
+
+    def _apply_script(self):
+        pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
+            return
+        if self._object is None:
+            from author.catalog import set_page_script
+            set_page_script(pages[self.current], self.oscript.get("1.0", "end"))
             return
         from author.catalog import set_object_script
         set_object_script(pages[self.current], self._rows[self._object]["index"], self.oscript.get("1.0", "end"))
         self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
+        self._show_actions()
 
     def _apply(self):
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
         p = pages[self.current]
-        from author.document import set_id, set_nav, set_text, text_from_editor
+        from author.document import set_id, set_nav, set_size, set_text, set_transition, text_from_editor
+        from author.stage import page_size
+        if (self.page_w.get().strip(), self.page_h.get().strip()) != tuple(str(n) for n in page_size(p)):
+            if not set_size(p, self.page_w.get().strip(), self.page_h.get().strip()):
+                width, height = page_size(p)
+                self.page_w.delete(0, "end")
+                self.page_w.insert(0, str(width))
+                self.page_h.delete(0, "end")
+                self.page_h.insert(0, str(height))
+                self.status.config(text="Size is two whole numbers above zero")
         set_id(p, self.pid.get())
+        set_transition(p, self.transition.get())
         set_text(p, text_from_editor(self.text.get("1.0", "end")))
         set_nav(p, self.next.get(), self.back.get())
+        from author.document import page_label
         self.pages.delete(self.current)
-        self.pages.insert(self.current, p["id"])
+        self.pages.insert(self.current, page_label(p))
         self.pages.selection_set(self.current)
         self._preview()
+        self._draw_thumbs()
 
     def _add_page(self):
         self._apply()
-        from author.document import add_page
-        self.current = add_page(self.book)
+        from author.commands import add_page
+        self.current = add_page(self.book, self.current)
+        self._refresh_list()
+
+    def _duplicate_page(self):
+        self._apply()
+        self._apply_script()
+        from author.commands import duplicate_page
+        self.current = duplicate_page(self.book, self.current)
+        self._refresh_list()
+
+    def _page_menu(self, evt):
+        """The page under the pointer becomes current, then its menu opens."""
+        if not self.book.get("pages"):
+            return
+        index = self.pages.nearest(evt.y)
+        if index != self.current:
+            self.pages.selection_clear(0, "end")
+            self.pages.selection_set(index)
+            self._on_select()
+        from author.commands import page_menu
+        run = {
+            "add_page": self._add_page,
+            "duplicate_page": self._duplicate_page,
+            "delete_page": self._del_page,
+            "page_properties": self._page_properties,
+        }
+        menu = tk.Menu(self.root, tearoff=False)
+        for label, command, key in page_menu():
+            menu.add_command(label=label, accelerator=key, command=run[command])
+        try:
+            menu.tk_popup(evt.x_root, evt.y_root)
+        finally:
+            menu.grab_release()
+
+    def _page_properties(self):
+        self.pid.focus_set()
+        self.pid.select_range(0, "end")
+
+    def _browse(self, command: str):
+        from author import commands
+        index = getattr(commands, command)(self.book, self.current)
+        if index == self.current:
+            return
+        self.pages.selection_clear(0, "end")
+        self.pages.selection_set(index)
+        self.pages.see(index)
+        self._on_select()
+
+    def _go_to(self):
+        from author.commands import go_to_page
+        index, note = go_to_page(self.book, self.current, self.goto.get())
+        if note:
+            self.status.config(text=note)
+        if index == self.current:
+            return
+        self.pages.selection_clear(0, "end")
+        self.pages.selection_set(index)
+        self.pages.see(index)
+        self._on_select()
+
+    def _reorder(self, command: str):
+        self._apply()
+        self._apply_script()
+        from author import commands
+        self.current = getattr(commands, command)(self.book, self.current)
+        self._refresh_list()
+
+    def _add_background(self):
+        self._apply()
+        from author.document import add_background
+        add_background(self.book)
+        self.current = len(self.book["pages"]) - 1
         self._refresh_list()
 
     def _del_page(self):
-        from author.document import delete_page
+        from author.commands import delete_page, delete_question
+        question = delete_question(self.book, self.current)
+        if question is None:
+            self.status.config(text="A book keeps its last page")
+            return
+        if not messagebox.askyesno("Delete page", question, parent=self.root):
+            return
         self.current = delete_page(self.book, self.current)
         self._refresh_list()
 
     def _preview(self):
+        if getattr(self, "_typing", None) is not None:
+            # A field is being typed into. Redrawing now would take the box away.
+            return
         page = None
         pages = self.book.get("pages") or []
         if 0 <= self.current < len(pages):
             page = pages[self.current]
         from author.stage import paint
-        paint(self.canvas, page or {})
+        paint(self.canvas, page or {}, self.book)
+        self._palette()
+        if self.grid.get():
+            self._draw_grid(page or {})
         self._draw_handles()
+        self._draw_draft()
+
+    def _draw_grid(self, page: dict):
+        """A dot at every grid crossing on the page, under the handles."""
+        view = getattr(self.canvas, "_author_view", None)
+        if not view or not view.get("scale"):
+            return
+        from author.geometry import GRID
+        from author.stage import page_size
+        from author.tools import window_point
+        width, height = page_size(page)
+        step = GRID
+        while step * view["scale"] < 6:
+            step *= 2
+        for gx in range(0, width + 1, step):
+            for gy in range(0, height + 1, step):
+                sx, sy = window_point(view, gx, gy)
+                self.canvas.create_line(sx, sy, sx + 1, sy, fill="#9a9a9a", tags=("grid",))
 
     def _draw_handles(self):
         if self.tool.get() != "select" or self._object is None:
@@ -363,12 +1368,20 @@ class Editor:
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
-        from author.tools import corners, window_point
+        from author.geometry import bounds, handles
+        from author.tools import window_point
         shape, _index = self._selected()
         view = getattr(self.canvas, "_author_view", None)
         if shape is None or not view:
             return
-        for x, y in corners(shape).values():
+        shapes = pages[self.current].get("shapes") or []
+        for index in self._chosen:
+            if 0 <= index < len(shapes) and len(self._chosen) > 1:
+                x, y, w, h = bounds(shapes[index])
+                sx0, sy0 = window_point(view, x, y)
+                sx1, sy1 = window_point(view, x + w, y + h)
+                self.canvas.create_rectangle(sx0 - 2, sy0 - 2, sx1 + 2, sy1 + 2, outline="#3070c0", dash=(3, 2))
+        for x, y in handles(shape).values():
             sx, sy = window_point(view, x, y)
             self.canvas.create_rectangle(sx - 4, sy - 4, sx + 4, sy + 4, fill="#ffffff", outline="#000000")
 
@@ -390,22 +1403,42 @@ class Editor:
         view = getattr(self.canvas, "_author_view", None)
         if page is None or not view or not view.get("scale"):
             return
-        from author.tools import handle_at, opposite, page_point, snapshot
+        import copy
+        from author.geometry import handles
+        from author.tools import page_point, snapshot, window_point
         if self._object is not None:
             current, index = self._selected()
-            corner = handle_at(view, current, evt.x, evt.y) if current else None
-            if corner and current is not None:
-                ax, ay = opposite(current, corner)
-                self._drag = {"mode": "size", "index": index, "ax": ax, "ay": ay, "snap": snapshot(current)}
+            grabbed = None
+            for name, (hx, hy) in (handles(current).items() if current else ()):
+                sx, sy = window_point(view, hx, hy)
+                if abs(sx - evt.x) <= 6 and abs(sy - evt.y) <= 6:
+                    grabbed = name
+                    break
+            if grabbed and current is not None:
+                self._drag = {"mode": "size", "index": index, "handle": grabbed, "before": copy.deepcopy(current)}
                 return
+        px, py = page_point(view, evt.x, evt.y)
+        from author.stage import hit
+        self.canvas.focus_set()
+        under = hit(view["shapes"], px, py, self.layer.get())
+        if under is not None and under in self._chosen and len(self._chosen) > 1:
+            # Pressing on one of several selected objects drags them all.
+            shapes = page.get("shapes") or []
+            snaps = {i: snapshot(shapes[i]) for i in self._chosen if 0 <= i < len(shapes)}
+            self._drag = {"mode": "move-all", "px": px, "py": py, "snaps": snaps}
+            return
+        if under is None:
+            # Empty page under the pointer: drag a box to choose.
+            self._choose([])
+            self._drag = {"mode": "marquee", "wx": evt.x, "wy": evt.y}
+            return
         self._select_at(evt.x, evt.y)
         current, index = self._selected()
         if current is None:
             return
-        px, py = page_point(view, evt.x, evt.y)
-        from author.stage import hit
         if hit(view["shapes"], px, py, self.layer.get()) != index:
             return
+        self.canvas.focus_set()
         self._drag = {"mode": "move", "index": index, "px": px, "py": py, "snap": snapshot(current)}
 
     def _on_drag(self, evt):
@@ -416,8 +1449,18 @@ class Editor:
         pages = self.book.get("pages") or []
         if not view or not (0 <= self.current < len(pages)):
             return
-        from author.tools import move_shape, page_point, resize_shape
+        if drag["mode"] == "marquee":
+            self.canvas.delete("marquee")
+            self.canvas.create_rectangle(drag["wx"], drag["wy"], evt.x, evt.y, outline="#3070c0", dash=(4, 2), tags=("marquee",))
+            return
+        from author.tools import move_shape, page_point
         shapes = pages[self.current].get("shapes") or []
+        if drag["mode"] == "move-all":
+            px, py = page_point(view, evt.x, evt.y)
+            for index, snap in drag["snaps"].items():
+                move_shape(shapes[index], snap, px - drag["px"], py - drag["py"])
+            self._preview()
+            return
         if not (0 <= drag["index"] < len(shapes)):
             return
         shape = shapes[drag["index"]]
@@ -425,7 +1468,8 @@ class Editor:
         if drag["mode"] == "move":
             move_shape(shape, drag["snap"], px - drag["px"], py - drag["py"])
         else:
-            resize_shape(shape, drag["snap"], drag["ax"], drag["ay"], px, py)
+            from author.geometry import resize
+            resize(shape, drag["before"], drag["handle"], px, py)
         self._preview()
 
     def _on_release(self, evt):
@@ -433,7 +1477,21 @@ class Editor:
         down = getattr(self, "_down", None)
         self._down = None
         if tool == "select":
-            self._drag = None
+            drag, self._drag = self._drag, None
+            if drag and drag["mode"] == "marquee":
+                self.canvas.delete("marquee")
+                view = getattr(self.canvas, "_author_view", None)
+                if view and view.get("scale"):
+                    from author.geometry import marquee
+                    from author.tools import page_point
+                    x0, y0 = page_point(view, drag["wx"], drag["wy"])
+                    x1, y1 = page_point(view, evt.x, evt.y)
+                    self._choose(marquee(view["shapes"], x0, y0, x1, y1, self.layer.get()))
+            elif drag:
+                if self.grid.get():
+                    self._snap_drag(drag, evt)
+                self._draw_thumbs()
+                self._show_properties()
             return
         self._drag = None
         if down is None:
@@ -441,25 +1499,49 @@ class Editor:
         view = getattr(self.canvas, "_author_view", None)
         if not view or not view.get("scale"):
             return
-        from author.catalog import place_shape
-        from author.tools import new_shape, page_point
+        from author.tools import POINT_TOOLS, PointDraft, new_shape, page_point
         x0, y0 = page_point(view, down[0], down[1])
         x1, y1 = page_point(view, evt.x, evt.y)
+        if self.grid.get():
+            from author.geometry import snap_point
+            x0, y0 = snap_point(x0, y0)
+            x1, y1 = snap_point(x1, y1)
+        if evt.state & 0x0001:
+            # Shift: a square box, or a line at 0, 45, or 90 degrees.
+            from author.geometry import constrain_box, constrain_line
+            x1, y1 = (constrain_line if tool == "line" else constrain_box)(x0, y0, x1, y1)
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
         page = pages[self.current]
+        if tool in POINT_TOOLS:
+            if self._draft is None or self._draft.tool != tool:
+                self._draft = PointDraft(tool)
+            self._draft.add(x1, y1)
+            self._preview()
+            return
         names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
         shape = new_shape(tool, x0, y0, x1, y1, names, self.layer.get())
-        if tool == "picture":
+        if tool in ("picture", "icon"):
             chosen = filedialog.askopenfilename(
-                title="Picture",
+                title=shape["name"],
                 filetypes=[("Pictures", "*.png *.gif *.bmp *.jpg *.jpeg"), ("All", "*.*")],
             )
             if not chosen:
                 return
-            import base64
-            shape["data"] = base64.b64encode(Path(chosen).read_bytes()).decode("ascii")
+            from author.picture import PictureRefused, picture_fields
+            embed = messagebox.askyesno(
+                "Picture",
+                "Keep the picture inside the book?\n\nNo links the file beside the book instead.",
+                parent=self.root,
+            )
+            try:
+                shape.update(picture_fields(chosen, embed=embed, book=self.path))
+            except PictureRefused as exc:
+                messagebox.showinfo("Picture", str(exc), parent=self.root)
+                return
+            if "pixels" in shape and abs(x1 - x0) < 8 and abs(y1 - y0) < 8:
+                shape["w"], shape["h"] = shape["pixels"]
         elif tool == "media":
             chosen = filedialog.askopenfilename(
                 title="Media clip",
@@ -469,6 +1551,10 @@ class Editor:
                 return
             from author.tools import media_src
             shape["src"] = media_src(chosen, str(self.path) if self.path else None)
+        self._place(page, shape)
+
+    def _place(self, page: dict, shape: dict):
+        from author.catalog import place_shape
         placed = place_shape(page, shape)
         self._fill_objects(page)
         for row, item in enumerate(self._rows):
@@ -480,10 +1566,221 @@ class Editor:
                 break
         self._fitted = None
         self._preview()
+        self._draw_thumbs()
+        if (shape.get("kind") or "") == "text":
+            self._edit_text(placed)
 
     def _on_escape(self, _evt=None):
         from author.tools import after_escape
-        self.tool.set(after_escape(self.tool.get()))
+        self.tool.set(after_escape(self.tool.get(), self._draft))
+        self._draft = None
+        self._preview()
+
+    def _finish_draft(self, _evt=None):
+        """Close the polygon or curve being clicked out. Too few points leaves nothing."""
+        draft = self._draft
+        if draft is None:
+            if _evt is not None and getattr(_evt, "widget", None) is self.canvas and self.tool.get() == "select":
+                self._type_into(_evt.x, _evt.y)
+            return None
+        self._draft = None
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return "break"
+        page = pages[self.current]
+        names = {shape.get("name") or "" for shape in page.get("shapes") or [] if isinstance(shape, dict)}
+        shape = draft.finish(names, self.layer.get())
+        if shape is None:
+            self._preview()
+            return "break"
+        self._place(page, shape)
+        return "break"
+
+    def _type_into(self, wx: float, wy: float):
+        """Double-click a field with Select and type into it, on the page. Several lines are fine."""
+        view = getattr(self.canvas, "_author_view", None)
+        if not view or not view.get("scale"):
+            return
+        from author.stage import hit
+        from author.tools import page_point
+        px, py = page_point(view, wx, wy)
+        index = hit(view["shapes"], px, py, self.layer.get())
+        pages = self.book.get("pages") or []
+        if index is None or not (0 <= self.current < len(pages)):
+            return
+        shape = (pages[self.current].get("shapes") or [])[index]
+        if (shape.get("kind") or "") != "text":
+            return
+        self._edit_text(index)
+
+    def _edit_text(self, index: int):
+        view = getattr(self.canvas, "_author_view", None)
+        pages = self.book.get("pages") or []
+        if not view or not (0 <= self.current < len(pages)):
+            return
+        page = pages[self.current]
+        shape = page["shapes"][index]
+        from author.tools import bounds_of, window_point
+        x, y, w, h = bounds_of(shape)
+        left, top = window_point(view, x, y)
+        right, bottom = window_point(view, x + w, y + h)
+        box = tk.Text(self.canvas, wrap="word", undo=True, borderwidth=1, relief="solid")
+        box.insert("1.0", str(shape.get("text") or ""))
+        window = self.canvas.create_window(left, top, anchor="nw", window=box,
+                                           width=max(40, right - left), height=max(24, bottom - top))
+
+        def done(_evt=None):
+            if not box.winfo_exists():
+                return
+            from author.catalog import set_object_text
+            set_object_text(page, index, box.get("1.0", "end"))
+            self.canvas.delete(window)
+            box.destroy()
+            self._typing = None
+            self._preview()
+
+        box.bind("<FocusOut>", done)
+        box.bind("<Escape>", done)
+        box.focus_set()
+        self._typing = box
+
+    def _draw_draft(self):
+        draft = self._draft
+        view = getattr(self.canvas, "_author_view", None)
+        if draft is None or not draft.points or not view:
+            return
+        from author.tools import window_point
+        flat = []
+        for x, y in draft.points:
+            flat.extend(window_point(view, x, y))
+        if len(flat) >= 4:
+            self.canvas.create_line(*flat, fill="#071428", dash=(4, 2))
+        for x, y in draft.points:
+            sx, sy = window_point(view, x, y)
+            self.canvas.create_rectangle(sx - 2, sy - 2, sx + 2, sy + 2, outline="#071428")
+
+    def _nudge(self, event, key: str, shift: bool):
+        """Arrow keys move the selection, unless a text box has the keys."""
+        if isinstance(event.widget, (tk.Entry, ttk.Entry, tk.Text, tk.Listbox)):
+            return None
+        pages = self.book.get("pages") or []
+        if not self._chosen or not (0 <= self.current < len(pages)):
+            return None
+        from author.geometry import arrow_step, nudge
+        dx, dy = arrow_step(key, shift)
+        nudge(pages[self.current].get("shapes") or [], self._chosen, dx, dy)
+        self._preview()
+        self._draw_thumbs()
+        return "break"
+
+    def _align(self, how: str):
+        pages = self.book.get("pages") or []
+        if len(self._chosen) < 2 or not (0 <= self.current < len(pages)):
+            self.status.config(text="Align needs two or more selected objects")
+            return
+        from author.geometry import align
+        align(pages[self.current].get("shapes") or [], self._chosen, how)
+        self._preview()
+        self._draw_thumbs()
+
+    def _lock(self, locked: bool):
+        pages = self.book.get("pages") or []
+        if not self._chosen or not (0 <= self.current < len(pages)):
+            self.status.config(text="Select an object in the object list first")
+            return
+        from author.geometry import set_locked
+        page = pages[self.current]
+        chosen = list(self._chosen)
+        set_locked(page.get("shapes") or [], chosen, locked)
+        self._fill_objects(page)
+        self._choose([] if locked else chosen)
+        self.status.config(text="Locked" if locked else "Unlocked")
+
+    def _unlock_all(self):
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        from author.geometry import set_locked
+        page = pages[self.current]
+        shapes = page.get("shapes") or []
+        set_locked(shapes, list(range(len(shapes))), False)
+        self._fill_objects(page)
+        self._preview()
+        self.status.config(text="Nothing on this page is locked")
+
+    def _group(self):
+        pages = self.book.get("pages") or []
+        if len(self._chosen) < 2 or not (0 <= self.current < len(pages)):
+            self.status.config(text="Group needs two or more selected objects")
+            return
+        self._apply_script()
+        from author.geometry import group
+        page = pages[self.current]
+        at = group(page.get("shapes") or [], self._chosen)
+        if at is None:
+            self.status.config(text="Group needs objects on one layer")
+            return
+        self._fill_objects(page)
+        self._choose([at])
+        self._draw_thumbs()
+
+    def _ungroup(self):
+        shape, index = self._selected()
+        pages = self.book.get("pages") or []
+        if shape is None or (shape.get("kind") or "") != "group":
+            self.status.config(text="Ungroup needs a selected group")
+            return
+        self._apply_script()
+        from author.geometry import ungroup
+        page = pages[self.current]
+        back = ungroup(page.get("shapes") or [], index)
+        self._fill_objects(page)
+        self._choose(back)
+        self._draw_thumbs()
+
+    def _distribute(self, axis: str):
+        pages = self.book.get("pages") or []
+        if len(self._chosen) < 3 or not (0 <= self.current < len(pages)):
+            self.status.config(text="Distribute needs three or more selected objects")
+            return
+        from author.geometry import distribute
+        distribute(pages[self.current].get("shapes") or [], self._chosen, axis)
+        self._preview()
+        self._draw_thumbs()
+
+    def _choose(self, indices: list[int]):
+        """Select these shapes in the object list. The first one is the one edited."""
+        self.objects.selection_clear(0, "end")
+        self._chosen = list(indices)
+        rows = [row for row, item in enumerate(self._rows) if item["index"] in indices]
+        for row in rows:
+            self.objects.selection_set(row)
+        if rows:
+            self.objects.see(rows[0])
+            self._on_object()
+            self._preview()
+        else:
+            self._apply_script()
+            self._object = None
+            self._chosen = []
+            self._preview()
+
+    def _snap_drag(self, drag: dict, evt):
+        """The grid applies once, when the button comes up, so a drag does not jitter."""
+        pages = self.book.get("pages") or []
+        view = getattr(self.canvas, "_author_view", None)
+        if not view or not (0 <= self.current < len(pages)):
+            return
+        shapes = pages[self.current].get("shapes") or []
+        from author.geometry import resize, snap_move, snap_point
+        from author.tools import page_point
+        if drag["mode"] == "move-all":
+            snap_move(shapes, list(drag["snaps"]))
+        elif drag["mode"] == "move":
+            snap_move(shapes, [drag["index"]])
+        elif drag["mode"] == "size" and 0 <= drag["index"] < len(shapes):
+            px, py = snap_point(*page_point(view, evt.x, evt.y))
+            resize(shapes[drag["index"]], drag["before"], drag["handle"], px, py)
         self._preview()
 
     def _selected(self):
@@ -513,6 +1810,35 @@ class Editor:
         if not color:
             return
         shape[which] = color
+        self._preview()
+
+    def _palette(self):
+        from author.palette import used_colours
+        for old in self.swatches.winfo_children():
+            old.destroy()
+        for colour in used_colours(self.book):
+            swatch = tk.Label(self.swatches, bg=colour, width=2, relief="ridge", borderwidth=1)
+            swatch.pack(side="left", padx=1)
+            swatch.bind("<Button-1>", lambda _e, c=colour: self._use_colour("fill", c))
+            swatch.bind("<Button-3>", lambda _e, c=colour: self._use_colour("outline", c))
+
+    def _use_colour(self, which: str, colour: str):
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        shape[which] = colour
+        self._preview()
+
+    def _pattern(self):
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        from author.patterns import next_pattern
+        name = next_pattern(shape)
+        if name is None:
+            self.status.config(text="Only a rectangle takes a pattern")
+            return
+        self.status.config(text=f"Pattern: {name}")
         self._preview()
 
     def _fit(self):

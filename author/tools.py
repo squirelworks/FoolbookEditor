@@ -14,6 +14,8 @@ DEFAULT_TOOL = "select"
 # A new rectangle is paper with an ink outline until the property pane says otherwise.
 PAPER = "#f7f4ee"
 INK = "#071428"
+# Corner radius of a new rounded rectangle, in page pixels.
+RADIUS = 8
 
 # Radios placed one after another answer the same question until the property pane renames the group.
 RADIO_GROUP = "choice"
@@ -31,12 +33,21 @@ _SIZE = {
     "combo": (140, 22),
     "media": (200, 44),
     "box": (100, 60),
+    "roundrect": (100, 60),
     "line": (80, 8),
     "ellipse": (80, 60),
     "polygon": (80, 60),
+    "curve": (80, 60),
     "arc": (80, 60),
+    "chord": (80, 60),
+    "pie": (80, 60),
     "picture": (120, 80),
+    "hotspot": (80, 60),
+    "icon": (32, 32),
 }
+
+# An icon is always 32 by 32. A drag places it but does not size it.
+ICON = 32
 
 _KIND = {
     "button": "button",
@@ -48,11 +59,17 @@ _KIND = {
     "combo": "combo",
     "media": "media",
     "box": "rect",
+    "roundrect": "roundrect",
     "line": "line",
     "ellipse": "ellipse",
     "polygon": "polygon",
+    "curve": "curve",
     "arc": "arc",
+    "chord": "chord",
+    "pie": "pie",
     "picture": "image",
+    "hotspot": "hotspot",
+    "icon": "image",
 }
 _LABEL = {
     "button": "Button",
@@ -64,17 +81,66 @@ _LABEL = {
     "combo": "Combo",
     "media": "Media",
     "box": "Rectangle",
+    "roundrect": "RoundedRectangle",
     "line": "Line",
     "ellipse": "Ellipse",
     "polygon": "Polygon",
+    "curve": "Curve",
     "arc": "Arc",
+    "chord": "Chord",
+    "pie": "Pie",
     "picture": "Picture",
+    "hotspot": "Hotspot",
+    "icon": "Icon",
 }
 
 
-def after_escape(tool: str) -> str:
-    """Escape puts the pointer back to Select, whatever tool was chosen."""
+# The start angle and sweep a new arc is placed with.
+ANGLES = {"arc": (0, 180), "pie": (0, 90), "chord": (0, 180)}
+
+# Tools that are clicked out one point at a time, and the fewest points each keeps.
+POINT_TOOLS = {"polygon": 3, "curve": 2}
+
+
+def after_escape(tool: str, draft: "PointDraft | None" = None) -> str:
+    """Escape puts the pointer back to Select, whatever tool was chosen.
+
+    A shape still being clicked out is dropped first, and the tool stays.
+    The caller clears the draft. Nothing of it is left on the page.
+    """
+    if draft is not None and draft.points:
+        return tool
     return DEFAULT_TOOL
+
+
+class PointDraft:
+    """A polygon or curve being clicked out. One click is one point.
+
+    Double-click or Enter closes it. Escape drops it.
+    """
+
+    def __init__(self, tool: str):
+        if tool not in POINT_TOOLS:
+            raise ValueError(f"{tool} is not clicked out")
+        self.tool = tool
+        self.points: list[list[int]] = []
+
+    def add(self, x: float, y: float) -> None:
+        point = [int(x), int(y)]
+        # The second click of a double-click lands on the first.
+        if self.points and self.points[-1] == point:
+            return
+        self.points.append(point)
+
+    def finish(self, names: set[str], layer: str = "page") -> dict | None:
+        """The shape, or None when there are too few points to keep."""
+        if len(self.points) < POINT_TOOLS[self.tool]:
+            return None
+        xs = [pt[0] for pt in self.points]
+        ys = [pt[1] for pt in self.points]
+        shape = new_shape(self.tool, min(xs), min(ys), max(xs), max(ys), names, layer)
+        shape["points"] = [list(pt) for pt in self.points]
+        return shape
 
 
 def page_point(view: dict, x: float, y: float) -> tuple[float, float]:
@@ -157,6 +223,13 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
     elif tool == "box":
         shape["fill"] = PAPER
         shape["outline"] = INK
+    elif tool == "roundrect":
+        shape["fill"] = PAPER
+        shape["outline"] = INK
+        shape["radius"] = RADIUS
+    elif tool == "hotspot":
+        # Never filled. The outline is only for Author. Foolbook does not draw it.
+        shape["outline"] = INK
     elif tool == "polygon":
         shape["points"] = [
             [int(left), int(top)],
@@ -165,8 +238,18 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
             [int(left), int(top + height)],
         ]
         shape["fill"] = "#c0c0c0"
-    elif tool == "arc":
-        shape["ends"] = [[int(left), int(top + height / 2)], [int(left + width), int(top + height / 2)]]
+    elif tool == "icon":
+        shape["w"] = shape["h"] = ICON
+        shape["preset"] = "icon"
+    elif tool == "curve":
+        # Open, so nothing to fill. Foolbook draws it through the points.
+        shape["outline"] = INK
+    elif tool in ANGLES:
+        # Degrees: zero is east, a positive sweep turns counterclockwise. Foolbook reads the same.
+        shape["start"], shape["sweep"] = ANGLES[tool]
+        shape["outline"] = INK
+        if tool != "arc":
+            shape["fill"] = PAPER
     return shape
 
 
