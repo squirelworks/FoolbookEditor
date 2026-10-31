@@ -29,6 +29,7 @@
 
 ## 2026-10-31
 
+- A menu bar: File, Edit, Insert, Arrange, Book, Help. It is built from `author/menus.py`, and every item runs a command the window already has. Help for this tool opens the tool's README section in a window, not a website. Test: `author/test_menus.py`.
 - Drag an action from the Actions pane onto an object on the page and it is added to that object's list. Goto, show, hide, set text, and play take their page or shape from the box beside the list, or ask.
 - Write script puts the script an action list stands for into the object script, so the author can see it and edit it. The action list stays. A play action has no script line and the script says so in a comment.
 - The Actions pane builds an action list on the selected object (go to page, next, previous, show, hide, set text, play), one `do` plus its arguments each. Foolbook runs them on a click. When the object also has a script, the pane says the script runs, not the actions.

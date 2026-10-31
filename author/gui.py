@@ -193,6 +193,7 @@ class Editor:
         win.grab_set()
 
     def _build(self):
+        self._menus()
         # toolbar
         bar = ttk.Frame(self.root, padding=4)
         bar.pack(fill="x")
@@ -573,6 +574,48 @@ class Editor:
             self.objects.insert(self._object, f"{row['kind']}  {row['name']}{' hidden' if row['hidden'] else ''}")
             self.objects.selection_set(self._object)
         self._preview()
+
+    def _menus(self):
+        """File, Edit, Insert, Arrange, Book, Help, from author.menus."""
+        from author.menus import MENUS
+        bar = tk.Menu(self.root, tearoff=False)
+        for name, entries in MENUS:
+            menu = tk.Menu(bar, tearoff=False)
+            for entry in entries:
+                if entry is None:
+                    menu.add_separator()
+                    continue
+                label, command = entry
+                menu.add_command(label=label, command=lambda c=command: self._run(c))
+            bar.add_cascade(label=name, menu=menu)
+        self.root.config(menu=bar)
+        self.menubar = bar
+
+    def _run(self, command: str):
+        if command.startswith("tool:"):
+            self.tool.set(command[5:])
+        elif command.startswith("layer:"):
+            self.layer.set(command[6:])
+            self._relayer()
+        else:
+            getattr(self, command)()
+
+    def _front(self):
+        self._restack("front")
+
+    def _back(self):
+        self._restack("back")
+
+    def _help_tool(self):
+        from author.menus import TOOL_TITLES, tool_help
+        tool = self.tool.get()
+        win = tk.Toplevel(self.root)
+        win.title(f"Help: {TOOL_TITLES.get(tool, tool)}")
+        box = tk.Text(win, width=72, height=12, wrap="word")
+        box.pack(fill="both", expand=True)
+        box.insert("1.0", tool_help(tool))
+        box.config(state="disabled")
+        self.help_text = box
 
     def _split(self):
         """Keep the picture on screen. The side panes do not take the window."""
