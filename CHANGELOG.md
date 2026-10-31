@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- The Part A click-through: a headless Foolbook opens A Small Garden, the shared background is under the first page, Next goes to the quiz, a wrong answer shows the wrong feedback and stays, the right answer goes to the last page, and the book's score is 1 of 1. Test: `author/test_clickthrough.py`. It passes once Foolbook has `engine.engine.click` and `engine.choice` (the quiz-choice-index and quiz-book-score PRs) and #24 (shared backgrounds).
 - A demo book, A Small Garden, ships with the editor and opens as an unsaved copy when no path is given. It has three pages on a shared background, a picture, a quiz, and a Next button. `examples/demo.py` makes it with the editor's own model calls, and a test regenerates it and compares it with the shipped file. Test: `author/test_demo.py`.
 - Every five minutes, a book with unsaved changes gets a recovery copy in the user config directory (`foolbookeditor/recovery/`), never beside the book. Saving removes it. Opening a book whose recovery copy is newer than the file asks which one to open. Test: `author/test_recovery.py` checks the copy's contents.
 - Save writes the book to a temporary file beside it (`.name.saving.fbk`) and only then replaces the old file in one step. If the write or the replace fails, the temporary file is removed and the previous book is untouched. Test: `author/test_safesave.py`, which makes the replace step fail.
