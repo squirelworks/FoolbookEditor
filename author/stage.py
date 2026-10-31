@@ -95,26 +95,29 @@ def hit(shapes: list[dict], x: float, y: float, layer: str | None = None) -> int
     return geometry_hit(shapes, x, y, layer)
 
 
-def paint(canvas, page: dict, book: dict | None = None) -> None:
+def paint(canvas, page: dict, book: dict | None = None, zoom: float | None = None) -> None:
     """Draw one page into the editor's canvas, fitted to that canvas.
 
     Only the page's own shapes can be hit. A shared background is drawn under them.
+    A zoom of None fits the page to the canvas. A number draws it at that size and scrolls.
     """
     from engine.graphics import draw
-    from engine.place import fit_view, place_window
+    from engine.place import place_window
+    from author.view import placed
 
     canvas.delete("all")
     shapes = shown(page)
     width = canvas.winfo_width()
     height = canvas.winfo_height()
     if width < 20 or height < 20:
-        canvas.after(50, lambda: paint(canvas, page, book))
+        canvas.after(50, lambda: paint(canvas, page, book, zoom))
         return
     # A group is painted as its children. Hit tests still see the group.
     from author.geometry import flatten
     drawn = shown(dict(page, shapes=flatten(page.get("shapes") or [])), book)
     box = view_box(page, drawn)
-    scale, dx, dy, ox, oy = fit_view(box, width, height)
+    scale, dx, dy, ox, oy, region_w, region_h = placed(box, zoom, width, height)
+    canvas.configure(scrollregion=(0, 0, region_w, region_h))
     draw(canvas, place_window(drawn, scale, box[0], box[1], dx, dy))
     # The page edge. A shape past it is kept in the file and drawn past the line.
     pw, ph = page_size(page)

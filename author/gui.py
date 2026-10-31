@@ -272,6 +272,12 @@ class Editor:
         ttk.Button(tools, text="Backward", command=lambda: self._restack("backward")).pack(side="left", padx=2)
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="Zoom").pack(side="left")
+        self.zoom = ttk.Combobox(tools, width=6, state="readonly", values=["Fit", "50%", "100%", "200%"])
+        self.zoom.set("Fit")
+        self.zoom.pack(side="left", padx=2)
+        self.zoom.bind("<<ComboboxSelected>>", lambda _e: self._preview())
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Label(tools, text="Viewer").pack(side="left")
         self.viewer_buttons = {}
         for name, label in (("previous", "Previous"), ("next", "Next"), ("page", "Page number")):
@@ -359,11 +365,19 @@ class Editor:
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
         body.add(center, weight=3)
-        self.canvas = tk.Canvas(center, bg="white", width=640, height=480, highlightthickness=0)
+        stage = ttk.Frame(center)
+        stage.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(stage, bg="white", width=640, height=480, highlightthickness=0)
+        across = ttk.Scrollbar(stage, orient="horizontal", command=self.canvas.xview)
+        down = ttk.Scrollbar(stage, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(xscrollcommand=across.set, yscrollcommand=down.set)
+        down.pack(side="right", fill="y")
+        across.pack(side="bottom", fill="x")
         self.canvas.pack(fill="both", expand=True)
-        self.canvas.bind("<ButtonPress-1>", self._on_press)
-        self.canvas.bind("<B1-Motion>", self._on_drag)
-        self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        # A pointer position is a window pixel. Scrolled, the drawing is somewhere else.
+        self.canvas.bind("<ButtonPress-1>", lambda e: self._on_press(self._scrolled(e)))
+        self.canvas.bind("<B1-Motion>", lambda e: self._on_drag(self._scrolled(e)))
+        self.canvas.bind("<ButtonRelease-1>", lambda e: self._on_release(self._scrolled(e)))
         self.canvas.bind("<Configure>", self._on_canvas_resize)
         # Right click is Button-2 on macOS Tk and Button-3 elsewhere.
         right = "<Button-2>" if self.root.tk.call("tk", "windowingsystem") == "aqua" else "<Button-3>"
@@ -892,28 +906,28 @@ class Editor:
             self._save_as()
             return
         try:
-            save_book(self.path, self.book)
+            self.path = save_book(self.path, self.book)
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
-        self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
+        self.status.config(text=f"Saved {self.path.name}")
 
     def _save_as(self):
         self._apply()
         p = filedialog.asksaveasfilename(
             title="Save book",
             defaultextension=".fbk",
-            filetypes=[("Foolbook book", "*.fbk"), ("JSON", "*.json")],
+            filetypes=[("Foolbook book", "*.fbk"), ("System book", "*.fsk"), ("JSON", "*.json")],
         )
         if not p:
             return
         self.path = Path(p)
         try:
-            save_book(self.path, self.book)
+            self.path = save_book(self.path, self.book)
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
-        self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
+        self.status.config(text=f"Saved {self.path.name}")
 
 
     def _publish(self):
@@ -932,7 +946,7 @@ class Editor:
         self.status.config(text=note)
 
     def _export(self):
-        """Save as a book, a TBX folder, a ToolBook shell, or an office file."""
+        """Export. Not Save. Writes a TBX folder, a ToolBook shell, or an office file."""
         self._apply()
         p = filedialog.asksaveasfilename(
             title="Export",
@@ -1216,7 +1230,12 @@ class Editor:
             set_page_script(pages[self.current], self.oscript.get("1.0", "end"))
             return
         from author.catalog import set_object_script
-        set_object_script(pages[self.current], self._rows[self._object]["index"], self.oscript.get("1.0", "end"))
+        source = self.oscript.get("1.0", "end")
+        set_object_script(pages[self.current], self._rows[self._object]["index"], source)
+        from author.scripts import warning
+        note = warning(source)
+        if note:
+            self.status.config(text=note)
         self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
         self._show_actions()
 
@@ -1343,7 +1362,8 @@ class Editor:
         if 0 <= self.current < len(pages):
             page = pages[self.current]
         from author.stage import paint
-        paint(self.canvas, page or {}, self.book)
+        from author.view import ZOOMS
+        paint(self.canvas, page or {}, self.book, ZOOMS.get(self.zoom.get()))
         self._palette()
         if self.grid.get():
             self._draw_grid(page or {})
@@ -1411,6 +1431,11 @@ class Editor:
         for x, y in handles(shape).values():
             sx, sy = window_point(view, x, y)
             self.canvas.create_rectangle(sx - 4, sy - 4, sx + 4, sy + 4, fill="#ffffff", outline="#000000")
+
+    def _scrolled(self, evt):
+        evt.x = int(self.canvas.canvasx(evt.x))
+        evt.y = int(self.canvas.canvasy(evt.y))
+        return evt
 
     def _on_canvas_resize(self, event):
         if event.widget is not self.canvas or event.width < 20 or event.height < 20:

@@ -2,11 +2,18 @@
 
 ## 2026-10-31
 
+- Save is not Export. Save writes `.fbk`, `.fsk`, or `.json`. A book opened from a `.tbk`, an `.sbk`, or an office file is saved beside it as `.fbk` (or `.fsk`), and the original is not written. Saving an `.fsk` keeps it a system book; it was written as an `.fbk`. The status line names the file written. Export stays its own button. The extension picks the kind whatever its case, no extension saves as `.fbk`, a system book saved as `.fbk` becomes a book, and an empty system book is still a valid `FSK1` file. Tests: `tests/test_save_target.py`, `tests/test_save_as_kind.py`.
+- Apply script on an object shows a warning in the status line when a line uses a word Foolbook does not run, with the line number. The script is still kept. The words come from Foolbook's `engine/subset.py` table through `foolbook.core.unknown_words`. Tested in `author/test_scripts.py`.
+- Foolbook comes from its main branch, not commit 031e8d8. The pin froze the editor on a reader main has moved past: at that commit the system-book test fails, and at the v1.0.8 tag eight tests fail. A release tag is the other allowed form. Test: `tests/test_pin.py`.
+
+## 2026-10-31
+
 - Naming a system book writes OpenScript the reader runs: the book script's `enterBook` gets `if "shared.fsk" is not in sysBooks` / `push "shared.fsk" onto sysBooks` / `end if`, as a ToolBook course does. Before, only a `system` key was stored, and Foolbook does not read it, so the system book's handlers never ran. A new name replaces the push, and clearing it takes the push out and leaves the rest of the script. `system` stays as the editor's own record. Test: `author/test_system_book.py`.
 - Find lists every page text and shape text that holds a word or phrase, with how many times, and Replace all changes them and says how many. The search is plain text, never a regular expression. Match case is off unless ticked.
 
 ## 2026-10-31
 
+- Zoom: Fit (as before), 50%, 100%, 200%. At a fixed zoom, a page smaller than the stage sits in the middle and a larger one scrolls. A click on a scrolled stage still lands on the right object. Zoom is view-only and stored coordinates never change. Test: `author/test_view.py` (`to_page(x, y, zoom)`).
 - Spelling lists words in page text, fields, and buttons that are not in a small list of ordinary English words (`author/words.txt`, written for this editor, under 600 words). Selecting one goes to its page. Add to book stores the word in the book's `words` so it is not flagged again. Nothing is shelled out to.
 
 ## 2026-10-31
