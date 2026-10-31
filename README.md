@@ -142,6 +142,8 @@ A quiz is data on the page, `page["quiz"]`: `version` (1), `question`, `choices`
 
 Drag and drop, by platform. Dropping a book onto the open window does nothing anywhere: stock Tk has no drop target, and the editor does not add a dependency for it. Dropping a book onto the program's icon or shortcut opens it on Windows and Linux, because that starts the program with the path. On macOS, dropping onto the Dock icon of a packaged app opens it through `::tk::mac::OpenDocument`. Running from a terminal on macOS has no icon to drop on.
 
+Recent, beside Open, lists the last five books opened or saved, newest first, and the start window offers the ones still on disk. The list is kept under `recent` in the editor's settings file in the user's config folder (`~/.config/foolbookeditor/settings.json`, or `%APPDATA%\foolbookeditor` on Windows), not in the repository. Choosing a book that is gone takes it off the list, and the status line says so.
+
 Foolbook runs a small part of OpenScript. These are the lines a script in this editor can count on today. Anything else is kept in the file and shown in the script pane, but the reader does not act on it.
 
 | Script | What the reader does |
