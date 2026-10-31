@@ -137,6 +137,17 @@ def is_compressed(path: str | Path) -> bool:
     return True
 
 
+def is_dirty(saved: dict | None, current: dict) -> bool:
+    """True when ``current`` would write something other than ``saved`` did.
+
+    Compared as written, so the envelope keys do not count. ``saved`` is
+    None for a book never saved or opened.
+    """
+    if saved is None:
+        return True
+    return payload(saved) != payload(current)
+
+
 # What Save writes. Anything else is Export.
 SAVE_SUFFIXES = (".fbk", ".fsk", ".json")
 

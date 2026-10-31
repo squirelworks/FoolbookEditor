@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- The title bar shows a star while the book differs from its file. Close, New, and Open ask before dropping changes. The flag is `is_dirty(saved, current)`, which compares what Save would write, so envelope keys do not count.
 - Save writes compressed or uncompressed. Compressed stays the default, matching Foolbook's `pack`. A Compress box turns it off, and a book opened from an uncompressed file saves uncompressed.
 - Open sniffs the bytes. A ToolBook file renamed `.fbk` opens as ToolBook, and an `.fbk` named `.tbk` opens as a Foolbook book. Save after opening a renamed ToolBook file asks for a name instead of writing over it. A file that will not open says why instead of stopping the window.
 - Save writes a page's background shapes ahead of its page shapes. The reader paints in array order, so a background shape added after a page shape (a web editor book) was drawn on top of it. Backgrounds stay on the page, tagged `layer: background`; `schema.md` says why.
