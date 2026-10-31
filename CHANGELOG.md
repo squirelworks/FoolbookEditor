@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31
+
+- Find lists every page text and shape text that holds a word or phrase, with how many times, and Replace all changes them and says how many. The search is plain text, never a regular expression. Match case is off unless ticked.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.
