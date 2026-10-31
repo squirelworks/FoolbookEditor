@@ -6,6 +6,7 @@
 - With no book named, Author opens a start window: New book, Open book, and up to five recent books that are still on disk.
 - New book asks for a page size, 640 by 480 unless changed, and a background colour, then opens the stage. The colour is a page-sized `paper` rect on the background layer, which the reader already paints first.
 - Template starts a new book from a copy of `blank`, `title-and-button`, or `question-and-four-choices` in `templates/`. `python3 -m author.templates` writes those three files. Save asks for a new name, so a template is never written over.
+- Catalog lists the `.fbk` and `.fsk` books in a folder you pick: title, page count, and file name. A book that will not open is listed and says so. Double-click opens a book.
 
 ## 0.4.0 — 2026-10-24
 
