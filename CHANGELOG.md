@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 2026-10-31
+
+- Author starts on Select, and Escape goes back to Select from any tool.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.

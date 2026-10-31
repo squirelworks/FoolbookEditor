@@ -32,7 +32,8 @@ class Editor:
         self.book: dict = {"id": "new", "title": "New book", "pages": []}
         self.path: Path | None = path
         self.current = 0
-        self.tool = tk.StringVar(value="select")
+        from author.tools import DEFAULT_TOOL
+        self.tool = tk.StringVar(value=DEFAULT_TOOL)
         self._build()
         if path and path.exists():
             self._load(path)
@@ -140,6 +141,7 @@ class Editor:
         self.text.bind("<KeyRelease>", lambda e: self._preview())
 
         ttk.Button(center, text="Apply", command=self._apply).pack(anchor="e", pady=4)
+        self.root.bind("<Escape>", self._on_escape)
         self.root.after_idle(self._split)
 
     def _split(self):
@@ -466,6 +468,11 @@ class Editor:
                 self._on_object()
                 break
         self._fitted = None
+        self._preview()
+
+    def _on_escape(self, _evt=None):
+        from author.tools import after_escape
+        self.tool.set(after_escape(self.tool.get()))
         self._preview()
 
     def _selected(self):

@@ -8,6 +8,9 @@ the size, and the opposite corner stays where it was.
 from __future__ import annotations
 
 
+# The tool Author starts with, and the one Escape returns to.
+DEFAULT_TOOL = "select"
+
 _SIZE = {
     "button": (90, 28),
     "text": (160, 36),
@@ -39,6 +42,11 @@ _LABEL = {
     "arc": "Arc",
     "picture": "Picture",
 }
+
+
+def after_escape(tool: str) -> str:
+    """Escape puts the pointer back to Select, whatever tool was chosen."""
+    return DEFAULT_TOOL
 
 
 def page_point(view: dict, x: float, y: float) -> tuple[float, float]:
