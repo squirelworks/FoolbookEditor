@@ -5,7 +5,7 @@ description = "Editor for Foolbook books. Foolbook is the core."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "foolbook @ git+https://github.com/squirelworks/Foolbook.git@88e375258a2e79efa2399424ffc612cd7ade25d6",
+    "foolbook @ git+https://github.com/squirelworks/Foolbook.git@031e8d81c4ae258f90161df4e0c52189c3f102b6",
 ]
 
 [project.urls]
