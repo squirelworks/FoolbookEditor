@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from author.schema import NOT_WRITTEN
 from foolbookeditor.core import format_version, load, save_book
 
 # Written by Foolbook's save, not by the author. Dropped before a save so
@@ -38,8 +39,11 @@ def check_version(book: dict) -> None:
 
 
 def payload(book: dict) -> dict:
-    """The book without the keys the envelope writer stamps."""
-    return {key: value for key, value in book.items() if key not in ENVELOPE}
+    """The book without the keys the envelope writer stamps, or editor state."""
+    return {
+        key: value for key, value in book.items()
+        if key not in ENVELOPE and key not in NOT_WRITTEN
+    }
 
 
 def open_book(path: str | Path) -> dict:
