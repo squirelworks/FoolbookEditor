@@ -158,8 +158,12 @@ class Editor:
     def _build_properties(self, parent):
         """One row per property. Return or leaving the box applies it. Bad text puts the old value back."""
         from author.properties import CHOICES, ROWS
-        self.props = ttk.LabelFrame(parent, text="Properties", padding=4)
-        self.props.pack(fill="x", pady=4)
+        # A classic frame holds the pane so Undock can hand it to the window manager.
+        self.props_holder = tk.Frame(parent)
+        self.props_holder.pack(fill="x", pady=4)
+        self.props = ttk.LabelFrame(self.props_holder, text="Properties", padding=4)
+        self.props.pack(fill="both", expand=True)
+        ttk.Button(self.props_holder, text="Undock", command=self._toggle_properties).pack(anchor="e")
         self.props.columnconfigure(1, weight=1)
         self._prop_vars: dict[str, tk.StringVar] = {}
         self._prop_texts: dict[str, tk.Text] = {}
@@ -186,6 +190,15 @@ class Editor:
                 entry.bind("<FocusOut>", lambda _e, k=key: self._set_property(k))
             self._prop_vars[key] = var
         self._build_well(len(ROWS))
+        from author.sheet import Sheet
+        self.sheet = Sheet(self.root, self.props_holder, "Properties")
+
+    def _toggle_properties(self):
+        """The same Properties pane, in its own window or back in Author."""
+        docked = self.sheet.toggle()
+        for child in self.props_holder.winfo_children():
+            if isinstance(child, ttk.Button):
+                child.config(text="Undock" if docked else "Dock")
 
     def _build_well(self, row: int):
         """Eight plain colours. A click sets the fill, a right-click the outline."""
