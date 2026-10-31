@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- A menu bar: File, Edit, Insert, Arrange, Book, Help. It is built from `author/menus.py`, and every item runs a command the window already has. Help for this tool opens the tool's README section in a window, not a website. Test: `author/test_menus.py`.
 - The README has a Tools section with one `###` heading per tool (Select, Button, Field, Rectangle, Line, Ellipse, Polygon, Arc, Picture), so Help can open the local section for the tool in use. Test: `author/test_help.py`.
 - A status line at the bottom of the window shows the tool, page id, selected shape, zoom, and Saved or Unsaved changes. Unsaved changes reads the dirty flag from item 22 once that has landed, and says Saved until then. Test: `author/test_status.py`.
 - Zoom: Fit (as before), 50%, 100%, 200%. At a fixed zoom, a page smaller than the stage sits in the middle and a larger one scrolls. A click on a scrolled stage still lands on the right object. Zoom is view-only and stored coordinates never change. Test: `author/test_view.py` (`to_page(x, y, zoom)`).
