@@ -119,7 +119,10 @@ class Editor:
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
         from author.commands import SHORTCUTS
         self.root.bind(SHORTCUTS["add_page"][1], lambda _e: self._add_page())
-        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left", padx=4)
+        self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
+        self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
+        ttk.Button(row, text="Duplicate", command=self._duplicate_page).pack(side="left", padx=4)
+        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left")
 
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
@@ -365,8 +368,21 @@ class Editor:
         self.current = add_page(self.book, self.current)
         self._refresh_list()
 
+    def _duplicate_page(self):
+        self._apply()
+        self._apply_script()
+        from author.commands import duplicate_page
+        self.current = duplicate_page(self.book, self.current)
+        self._refresh_list()
+
     def _del_page(self):
-        from author.document import delete_page
+        from author.commands import delete_page, delete_question
+        question = delete_question(self.book, self.current)
+        if question is None:
+            self.status.config(text="A book keeps its last page")
+            return
+        if not messagebox.askyesno("Delete page", question, parent=self.root):
+            return
         self.current = delete_page(self.book, self.current)
         self._refresh_list()
 

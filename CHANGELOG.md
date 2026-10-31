@@ -1,9 +1,18 @@
 # Changelog
 
+## 2026-10-31
+
+- The README lists the script lines the reader runs: `go to page`, `go to page of book`, `send next`, `send previous`. `author/test_script_subset.py` runs every line in that table through Foolbook.
+- `instructor-map.md` lists the fourteen Instructor jobs, where each one stands, and the work order items that cover it. `author/test_instructor_map.py` keeps every job listed once with a status.
 ## Unreleased — 2026-10-31
 
 - Add puts the new page right after the current page, not at the end. Ctrl+M does the same.
 - With no book named, Author opens a start window: New book, Open book, and up to five recent books that are still on disk.
+- The README says how to install the editor: a venv, `pip install -e .`, and `python3 -m foolbookeditor`.
+- Foolbook is pinned to commit 031e8d8, not to a floating main. A pull request that needs a newer reader bumps the pin and names the function.
+- `python3 -m foolbookeditor --selftest` builds a book in memory, saves it, loads it, and checks the page id, one shape, and one script. No window.
+- Duplicate copies the current page, with its shapes and scripts, under a new id. The copy is the next page. Ctrl+Shift+D does the same.
+- Delete asks before it removes a page, and names the page and how many objects go with it. Ctrl+Shift+Delete does the same.
 
 ## 0.4.0 — 2026-10-24
 
