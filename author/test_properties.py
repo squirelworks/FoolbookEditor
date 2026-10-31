@@ -157,6 +157,25 @@ class PositionSizeTests(unittest.TestCase):
         self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 20, 100, 50))
         self.assertEqual(read(shape, "w"), "100")
 
+class PointsTests(unittest.TestCase):
+    def test_points_are_one_pair_per_line(self):
+        shape = {"kind": "polygon", "points": [[0, 0], [10, 0], [10, 10]]}
+        self.assertEqual(read(shape, "points"), "0, 0\n10, 0\n10, 10")
+
+    def test_typed_points_replace_the_outline_and_the_bounds(self):
+        shape = {"kind": "polygon", "x": 0, "y": 0, "w": 10, "h": 10, "points": [[0, 0], [10, 0], [10, 10]]}
+        self.assertTrue(write(shape, "points", "5, 5\n45 5\n\n25, 35\n"))
+        self.assertEqual(shape["points"], [[5, 5], [45, 5], [25, 35]])
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (5, 5, 40, 30))
+
+    def test_bad_points_leave_the_old_ones(self):
+        shape = {"kind": "polygon", "points": [[0, 0], [10, 0], [10, 10]]}
+        self.assertFalse(write(shape, "points", "0, 0\nten, 0\n10, 10"))
+        self.assertFalse(write(shape, "points", "0, 0, 1\n10, 0\n10, 10"))
+        self.assertFalse(write(shape, "points", "0, 0\n10, 0"))
+        self.assertEqual(shape["points"], [[0, 0], [10, 0], [10, 10]])
+        self.assertTrue(write({"kind": "line"}, "points", "0, 0\n10, 0"))
+
 
 if __name__ == "__main__":
     unittest.main()

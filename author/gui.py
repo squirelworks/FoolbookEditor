@@ -161,6 +161,7 @@ class Editor:
         self.props.pack(fill="x", pady=4)
         self.props.columnconfigure(1, weight=1)
         self._prop_vars: dict[str, tk.StringVar] = {}
+        self._prop_texts: dict[str, tk.Text] = {}
         for row, (key, label, kind) in enumerate(ROWS):
             ttk.Label(self.props, text=label).grid(row=row, column=0, sticky="w")
             var = tk.StringVar()
@@ -168,6 +169,11 @@ class Editor:
                 box = ttk.Checkbutton(self.props, variable=var, onvalue="true", offvalue="false",
                                       command=lambda k=key: self._set_property(k))
                 box.grid(row=row, column=1, sticky="w", padx=4, pady=1)
+            elif kind == "pointlist":
+                text = tk.Text(self.props, height=4, width=18, font="TkFixedFont", wrap="none")
+                text.grid(row=row, column=1, sticky="we", padx=4, pady=1)
+                text.bind("<FocusOut>", lambda _e, k=key: self._set_property(k))
+                self._prop_texts[key] = text
             elif kind == "choice":
                 pick = ttk.Combobox(self.props, textvariable=var, values=CHOICES[key], state="readonly", width=16)
                 pick.grid(row=row, column=1, sticky="we", padx=4, pady=1)
@@ -204,6 +210,9 @@ class Editor:
         shape, _index = self._selected()
         for key, var in self._prop_vars.items():
             var.set(read(shape, key) if shape is not None else "")
+        for key, text in self._prop_texts.items():
+            text.delete("1.0", "end")
+            text.insert("1.0", read(shape, key) if shape is not None else "")
 
     def _set_property(self, key: str):
         shape, index = self._selected()
@@ -211,8 +220,14 @@ class Editor:
             return
         from author.properties import read, write
         page = (self.book.get("pages") or [])[self.current]
-        changed = write(shape, key, self._prop_vars[key].get(), page)
-        self._prop_vars[key].set(read(shape, key))
+        if key in self._prop_texts:
+            text = self._prop_texts[key]
+            changed = write(shape, key, text.get("1.0", "end"), page)
+            text.delete("1.0", "end")
+            text.insert("1.0", read(shape, key))
+        else:
+            changed = write(shape, key, self._prop_vars[key].get(), page)
+            self._prop_vars[key].set(read(shape, key))
         if not changed:
             self.status.config(text=f"{key} kept: that value cannot be used")
             return

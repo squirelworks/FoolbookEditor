@@ -27,7 +27,11 @@ ROWS = [
     ("y", "Top", "place"),
     ("w", "Width", "extent"),
     ("h", "Height", "extent"),
+    ("points", "Points", "pointlist"),
 ]
+
+# The fewest points a shape of that kind keeps. Others need two.
+FEWEST_POINTS = {"polygon": 3}
 
 # The smallest width or height a typed size may give.
 MIN_EXTENT = 4
@@ -57,6 +61,8 @@ def read(shape: dict, key: str) -> str:
     """The value as the pane shows it."""
     if key == "stroke":
         return str(shape.get("stroke", STROKE))
+    if key == "points":
+        return "\n".join(f"{int(pt[0])}, {int(pt[1])}" for pt in shape.get("points") or [] if len(pt) >= 2)
     if _kind(key) in ("place", "extent"):
         from author.tools import bounds_of
         return str(int(dict(zip("xywh", bounds_of(shape)))[key]))
@@ -119,6 +125,15 @@ def write(shape: dict, key: str, raw: str, page: dict | None = None) -> bool:
         if raw.lower() not in CHOICES[key]:
             return False
         shape[key] = raw.lower()
+    elif kind == "pointlist":
+        points = _parse_points(raw)
+        if points is None or len(points) < FEWEST_POINTS.get(shape.get("kind") or "", 2):
+            return False
+        shape["points"] = points
+        xs = [pt[0] for pt in points]
+        ys = [pt[1] for pt in points]
+        shape["x"], shape["y"] = min(xs), min(ys)
+        shape["w"], shape["h"] = max(xs) - min(xs), max(ys) - min(ys)
     elif kind in ("place", "extent"):
         try:
             number = int(raw)
@@ -130,6 +145,22 @@ def write(shape: dict, key: str, raw: str, page: dict | None = None) -> bool:
     else:
         return False
     return True
+
+
+def _parse_points(raw: str) -> list[list[int]] | None:
+    """One "x, y" pair per line. A comma or spaces between. Blank lines are skipped."""
+    points = []
+    for line in raw.splitlines():
+        parts = line.replace(",", " ").split()
+        if not parts:
+            continue
+        if len(parts) != 2:
+            return None
+        try:
+            points.append([int(parts[0]), int(parts[1])])
+        except ValueError:
+            return None
+    return points
 
 
 def _set_bounds(shape: dict, key: str, number: int) -> None:
