@@ -149,6 +149,17 @@ def is_compressed(path: str | Path) -> bool:
     return True
 
 
+def is_dirty(saved: dict | None, current: dict) -> bool:
+    """True when ``current`` would write something other than ``saved`` did.
+
+    Compared as written, so envelope keys and editor state do not count.
+    ``saved`` is None for a book never saved or opened.
+    """
+    if saved is None:
+        return True
+    return payload(saved) != payload(current)
+
+
 def save_path_for(opened: str | Path) -> Path | None:
     """Where Save goes after opening this file, or None to ask (Save as).
 

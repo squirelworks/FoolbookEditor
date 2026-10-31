@@ -22,6 +22,7 @@
 - A book the web editor downloaded (`FBK1`, flags 0, plain JSON, no `_magic`) opens under the name the browser gave it, and keeps its shapes through a desktop save. A download with the header and no book after it, which the web editor's Download wrote until the site fixes it, says so instead of a JSON error.
 - Save writes compressed or uncompressed. Compressed stays the default, matching Foolbook's `pack`. A Compress box turns it off, and a book opened from an uncompressed file saves uncompressed.
 - Save as by extension is tested: `.fbk` writes a book, `.fsk` a system book, no extension a book, and an empty system book is a valid `FSK1` the reader opens. No behavior changed; #22 made it so.
+- The title bar shows a star while the book differs from its file. Close, New, and Open ask before dropping changes. The flag is `is_dirty(saved, current)`, which compares what Save would write, so envelope keys do not count.
 
 ## 0.4.0 — 2026-10-24
 

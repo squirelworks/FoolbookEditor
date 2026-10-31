@@ -34,7 +34,9 @@ class Editor:
         self.current = 0
         self.tool = tk.StringVar(value="select")
         self.compress = tk.BooleanVar(value=True)
+        self.saved: dict | None = None
         self._build()
+        self.root.protocol("WM_DELETE_WINDOW", self._close)
         if path and path.exists():
             self._load(path)
         else:
@@ -156,12 +158,45 @@ class Editor:
         except tk.TclError:
             return
 
+    def _snapshot(self):
+        import copy
+        self.saved = copy.deepcopy(self.book)
+        self._mark()
+
+    def _mark(self):
+        """A star in the title bar while the book differs from the file."""
+        from author.files import is_dirty
+        name = self.path.name if self.path else (self.book.get("title") or "New book")
+        star = "*" if is_dirty(self.saved, self.book) else ""
+        self.root.title(f"{star}{name} - Foolbook Author")
+
+    def _discard_ok(self) -> bool:
+        """Ask before dropping unsaved changes. True means go on."""
+        from author.files import is_dirty
+        self._apply()
+        if not is_dirty(self.saved, self.book):
+            return True
+        answer = messagebox.askyesnocancel("Foolbook Editor", "Save changes to this book first?")
+        if answer is None:
+            return False
+        if answer:
+            self._save()
+            return not is_dirty(self.saved, self.book)
+        return True
+
+    def _close(self):
+        if self._discard_ok():
+            self.root.destroy()
+
     def _new(self):
+        if self.saved is not None and not self._discard_ok():
+            return
         from author.document import blank_book
         self.book = blank_book()
         self.path = None
         self.current = 0
         self._refresh_list()
+        self._snapshot()
         self.status.config(text="New book")
 
     def _open(self):
@@ -173,7 +208,7 @@ class Editor:
                 ("All", "*.*"),
             ],
         )
-        if p:
+        if p and self._discard_ok():
             self._load(Path(p))
 
     def _load(self, path: Path):
@@ -188,6 +223,7 @@ class Editor:
         self.compress.set(is_compressed(path))
         self.current = 0
         self._refresh_list()
+        self._snapshot()
         self.status.config(text=str(path.name))
 
     def _save(self):
@@ -200,6 +236,7 @@ class Editor:
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._snapshot()
         self.status.config(text=f"Saved {self.path.name}")
 
     def _save_as(self):
@@ -217,6 +254,7 @@ class Editor:
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._snapshot()
         self.status.config(text=f"Saved {self.path.name}")
 
 
@@ -361,6 +399,7 @@ class Editor:
         self._refresh_list()
 
     def _preview(self):
+        self._mark()
         page = None
         pages = self.book.get("pages") or []
         if 0 <= self.current < len(pages):
