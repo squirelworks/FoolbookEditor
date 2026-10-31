@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10-31
+
+- Pattern steps the selected rectangle through 8 by 8 fills (checks, horizontal, vertical, diagonal, dots) and back to none. It is stored as `tile`. A `.tbk` export keeps the plain fill colour.
 ## Unreleased — 2026-10-31
 
 - Author starts on Select, and Escape goes back to Select from any tool.

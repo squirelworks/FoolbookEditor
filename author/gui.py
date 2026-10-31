@@ -109,6 +109,7 @@ class Editor:
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(tools, text="Fill", command=lambda: self._color("fill")).pack(side="left")
         ttk.Button(tools, text="Line", command=lambda: self._color("outline")).pack(side="left", padx=2)
+        ttk.Button(tools, text="Pattern", command=self._pattern).pack(side="left")
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
 
@@ -915,6 +916,18 @@ class Editor:
         if not color:
             return
         shape[which] = color
+        self._preview()
+
+    def _pattern(self):
+        shape, _index = self._selected()
+        if shape is None:
+            return
+        from author.patterns import next_pattern
+        name = next_pattern(shape)
+        if name is None:
+            self.status.config(text="Only a rectangle takes a pattern")
+            return
+        self.status.config(text=f"Pattern: {name}")
         self._preview()
 
     def _restack(self, direction: str):
