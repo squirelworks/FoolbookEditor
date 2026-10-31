@@ -22,6 +22,7 @@ ROWS = [
     ("italic", "Italic", "flag"),
     ("underline", "Underline", "flag"),
     ("align", "Align", "choice"),
+    ("visible", "Visible", "flag"),
 ]
 
 # The values a choice row offers.
@@ -49,6 +50,9 @@ def read(shape: dict, key: str) -> str:
     """The value as the pane shows it."""
     if key == "stroke":
         return str(shape.get("stroke", STROKE))
+    if key == "visible":
+        # Missing is shown. Only an explicit false hides the object.
+        return "false" if shape.get("visible") is False else "true"
     if _kind(key) == "flag":
         return "true" if shape.get(key) else "false"
     if key == "align":

@@ -40,6 +40,25 @@ class HotspotStageTests(unittest.TestCase):
         self.assertEqual(row["item"], {"page": "P200"})
         self.assertEqual(page["shapes"][0]["kind"], "hotspot")
 
+class GhostTests(unittest.TestCase):
+    def test_a_hidden_object_is_drawn_ghosted_and_the_book_keeps_it_hidden(self):
+        page = {"shapes": [{"kind": "rect", "name": "Answer", "visible": False, "fill": "#000000",
+                            "outline": "#071428", "x": 0, "y": 0, "w": 10, "h": 10}]}
+        row = shown(page)[0]
+        self.assertTrue(row["ghost"])
+        self.assertEqual(row["fill"], "#b2b2b2")
+        self.assertNotEqual(row["outline"], "#071428")
+        self.assertIs(page["shapes"][0]["visible"], False)
+        self.assertEqual(page["shapes"][0]["fill"], "#000000")
+
+    def test_the_visible_flag_reads_true_when_missing_and_hides_when_false(self):
+        from author.properties import read, write
+        shape = {"kind": "rect"}
+        self.assertEqual(read(shape, "visible"), "true")
+        self.assertTrue(write(shape, "visible", "false"))
+        self.assertIs(shape["visible"], False)
+        self.assertEqual(read(shape, "visible"), "false")
+
 
 if __name__ == "__main__":
     unittest.main()
