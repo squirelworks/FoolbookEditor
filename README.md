@@ -72,6 +72,8 @@ Lock stops an object being picked or caught by a box on the stage, so a click go
 
 Undo (Ctrl+Z) and Redo (Ctrl+Y or Ctrl+Shift+Z) step through up to 50 changes to the book. Each command is one step. Typing in a text box is one step when the box loses focus, not one per character.
 
+Cut (Ctrl+X), Copy (Ctrl+C) and Paste (Ctrl+V) use the editor's own clipboard; the system clipboard is a later change. On the stage they act on the selected objects. A pasted object lands 8 right and 8 down, and each further paste 8 more; a name already on the page gets a number. With the page list focused, Copy and Paste act on the whole page, and a pasted page whose id is taken gets a new one. In a text box the keys edit the text as usual.
+
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash
