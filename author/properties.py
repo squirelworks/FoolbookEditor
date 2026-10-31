@@ -28,6 +28,9 @@ ROWS = [
     ("w", "Width", "extent"),
     ("h", "Height", "extent"),
     ("points", "Points", "pointlist"),
+    ("jump_page", "Go to page", "jump"),
+    ("jump_book", "In book", "jump"),
+    ("jump_label", "Jump label", "jump"),
 ]
 
 # The fewest points a shape of that kind keeps. Others need two.
@@ -76,6 +79,8 @@ def read(shape: dict, key: str) -> str:
         return "true" if shape.get(key) else "false"
     if key == "align":
         return _align_name(shape.get("align"))
+    if _kind(key) == "jump":
+        return str((shape.get("item") or {}).get(key[len("jump_"):]) or "")
     value = shape.get(key)
     return "" if value is None else str(value)
 
@@ -137,6 +142,8 @@ def write(shape: dict, key: str, raw: str, page: dict | None = None) -> bool:
         ys = [pt[1] for pt in points]
         shape["x"], shape["y"] = min(xs), min(ys)
         shape["w"], shape["h"] = max(xs) - min(xs), max(ys) - min(ys)
+    elif kind == "jump":
+        return _set_jump(shape, key[len("jump_"):], raw)
     elif kind in ("place", "extent"):
         try:
             number = int(raw)
@@ -182,6 +189,27 @@ def _set_bounds(shape: dict, key: str, number: int) -> None:
             ]
     for field in ("x", "y", "w", "h"):
         shape[field] = int(box[field])
+
+
+def _set_jump(shape: dict, part: str, raw: str) -> bool:
+    """The item the reader follows on a click: a page, and a book and label with it.
+
+    An empty page takes the jump off. A book or label needs a page first.
+    """
+    item = dict(shape.get("item") or {})
+    if part == "page":
+        if not raw:
+            shape.pop("item", None)
+            return True
+        item["page"] = raw
+    elif not item.get("page"):
+        return False
+    elif raw:
+        item[part] = raw
+    else:
+        item.pop(part, None)
+    shape["item"] = item
+    return True
 
 
 def _align_name(value) -> str:
