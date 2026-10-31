@@ -304,5 +304,42 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(geometry.hit(shapes, 50, 50, "page"), at)
 
 
+class UngroupTests(unittest.TestCase):
+    def shapes(self):
+        return [
+            {"kind": "rect", "name": "paper", "x": 0, "y": 0, "w": 640, "h": 480},
+            {"kind": "button", "name": "A", "x": 10, "y": 10, "w": 90, "h": 28},
+            {"kind": "button", "name": "B", "x": 10, "y": 50, "w": 90, "h": 28},
+            {"kind": "line", "name": "L", "points": [[20, 100], [120, 130]]},
+            {"kind": "text", "name": "top", "x": 300, "y": 300, "w": 10, "h": 10},
+        ]
+
+    def test_children_come_back_in_order_where_the_group_was(self):
+        shapes = self.shapes()
+        at = geometry.group(shapes, [1, 2, 3])
+        geometry.nudge(shapes, [at], 5, 5)
+        self.assertEqual(geometry.ungroup(shapes, at), [1, 2, 3])
+        self.assertEqual([s["name"] for s in shapes], ["paper", "A", "B", "L", "top"])
+        self.assertEqual((shapes[1]["x"], shapes[1]["y"]), (15, 15))
+        self.assertEqual(shapes[3]["points"][0], [25, 105])
+
+    def test_a_group_inside_a_group_comes_back_as_a_group(self):
+        shapes = self.shapes()
+        inner = geometry.group(shapes, [1, 2])
+        outer = geometry.group(shapes, [inner, inner + 1])
+        self.assertEqual([s["name"] for s in shapes], ["paper", "Group2", "top"])
+        self.assertEqual(geometry.ungroup(shapes, outer), [1, 2])
+        self.assertEqual([s["name"] for s in shapes], ["paper", "Group", "L", "top"])
+        self.assertEqual([c["name"] for c in shapes[1]["children"]], ["A", "B"])
+        geometry.ungroup(shapes, 1)
+        self.assertEqual([s["name"] for s in shapes], ["paper", "A", "B", "L", "top"])
+        self.assertEqual(shapes[2]["y"], 50)
+
+    def test_a_shape_that_is_not_a_group_is_left(self):
+        shapes = self.shapes()
+        self.assertEqual(geometry.ungroup(shapes, 1), [])
+        self.assertEqual(len(shapes), 5)
+
+
 if __name__ == "__main__":
     unittest.main()

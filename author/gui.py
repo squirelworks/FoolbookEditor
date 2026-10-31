@@ -131,6 +131,7 @@ class Editor:
         aligner["menu"] = menu
         aligner.pack(side="left", padx=(8, 0))
         ttk.Button(tools, text="Group", command=self._group).pack(side="left", padx=(8, 0))
+        ttk.Button(tools, text="Ungroup", command=self._ungroup).pack(side="left", padx=2)
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Forward", command=lambda: self._restack("forward")).pack(side="left")
         ttk.Button(tools, text="Backward", command=lambda: self._restack("backward")).pack(side="left", padx=2)
@@ -1500,6 +1501,20 @@ class Editor:
             return
         self._fill_objects(page)
         self._choose([at])
+        self._draw_thumbs()
+
+    def _ungroup(self):
+        shape, index = self._selected()
+        pages = self.book.get("pages") or []
+        if shape is None or (shape.get("kind") or "") != "group":
+            self.status.config(text="Ungroup needs a selected group")
+            return
+        self._apply_script()
+        from author.geometry import ungroup
+        page = pages[self.current]
+        back = ungroup(page.get("shapes") or [], index)
+        self._fill_objects(page)
+        self._choose(back)
         self._draw_thumbs()
 
     def _distribute(self, axis: str):
