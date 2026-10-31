@@ -2,6 +2,10 @@
 
 ## 2026-10-31
 
+- Spelling lists words in page text, fields, and buttons that are not in a small list of ordinary English words (`author/words.txt`, written for this editor, under 600 words). Selecting one goes to its page. Add to book stores the word in the book's `words` so it is not flagged again. Nothing is shelled out to.
+
+## 2026-10-31
+
 - A page's Transition is stored as `transition` and ignored. Foolbook changes pages with no animation, and the README says so. "none" stores nothing.
 
 ## 2026-10-31

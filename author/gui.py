@@ -83,6 +83,7 @@ class Editor:
         ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
         ttk.Button(bar, text="Menu bar", command=self._menubar).pack(side="left", padx=2)
         ttk.Button(bar, text="Book", command=self._book_properties).pack(side="left", padx=2)
+        ttk.Button(bar, text="Spelling", command=self._spelling).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle"), ("roundrect", "Rounded")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
@@ -395,6 +396,46 @@ class Editor:
         ttk.Button(win, text="Apply", command=apply).grid(row=4, column=1, sticky="e", padx=6, pady=6)
         self._book_window = win
         self._book_entries = entries
+
+    def _spelling(self):
+        from .spelling import add_word, check
+        win = tk.Toplevel(self.root)
+        win.title("Spelling")
+        win.transient(self.root)
+        found = tk.Listbox(win, width=50, height=14, exportselection=False)
+        found.pack(fill="both", expand=True, padx=6, pady=6)
+        rows: list[tuple[str, str, str]] = []
+
+        def refill():
+            rows[:] = check(self.book)
+            found.delete(0, "end")
+            for pid, name, word in rows:
+                found.insert("end", f"{word}    {pid}{'  ' + name if name else ''}")
+            win.title(f"Spelling: {len(rows)} unknown" if rows else "Spelling: no unknown words")
+
+        def go(_evt=None):
+            picked = found.curselection()
+            if not picked:
+                return
+            ids = [str(p.get("id") or "") for p in self.book.get("pages") or []]
+            pid = rows[picked[0]][0]
+            if pid in ids:
+                self.current = ids.index(pid)
+                self.pages.selection_clear(0, "end")
+                self.pages.selection_set(self.current)
+                self._show(self.current)
+
+        def learn():
+            picked = found.curselection()
+            if picked:
+                add_word(self.book, rows[picked[0]][2])
+                refill()
+
+        found.bind("<<ListboxSelect>>", go)
+        ttk.Button(win, text="Add to book", command=learn).pack(anchor="e", padx=6, pady=(0, 6))
+        refill()
+        self._spelling_window = win
+        self._spelling_list = found
 
     def _menubar(self):
         from .menubar import render, set_menubar
