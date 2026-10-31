@@ -12,6 +12,7 @@
 - Fit steps the selected picture through `fill`, `contain`, and `none`, which is how the reader sits it in its frame. A picture with no `fit` is `fill`. Needs Foolbook#52.
 - Record asks for field names and rows, then places one text field per name and Previous and Next buttons, and stores the rows on the page as `records`. The reader shows one row at a time. Needs Foolbook#53.
 - Media places a clip after you pick a sound file. A file in the book's folder is stored as a path relative to the book. The reader plays it, or says on the page why it cannot. Needs Foolbook#54 and #55.
+- Hotword asks for a word in the selected field and a page, and stores the word's range and the jump in `hotwords`. The range is counted in the text as the reader draws it. Needs Foolbook#57 and #58.
 
 ## 0.4.0 — 2026-10-24
 
