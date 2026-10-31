@@ -103,6 +103,7 @@
 - Lock keeps an object from being picked on the stage. The object list can still select it, and the Lock menu unlocks it. locked: true is kept in the file.
 - Undo and Redo, Ctrl+Z and Ctrl+Y, step through the last 50 changes. Typing in a box is one step when the box loses focus.
 - Cut, Copy and Paste work on the selected objects, or on the page when the page list has focus. A paste lands 8 right and 8 down, and a taken name or page id is renamed.
+- Right click on an object on the stage chooses it and opens Properties, Script, Forward, Backward, Cut, Copy, and Delete. Delete, or the Delete key, removes the chosen objects as one undo step. Properties and Script move to the panes that hold them.
 
 ## 0.4.0 — 2026-10-24
 

@@ -17,6 +17,7 @@ SHORTCUTS = {
     "cut": ("Ctrl+X", "<Control-x>"),
     "copy": ("Ctrl+C", "<Control-c>"),
     "paste": ("Ctrl+V", "<Control-v>"),
+    "delete_shapes": ("Delete", "<Delete>"),
     "duplicate_page": ("Ctrl+Shift+D", "<Control-D>"),
     "delete_page": ("Ctrl+Shift+Delete", "<Control-Shift-Delete>"),
     "page_up": ("Ctrl+Shift+Up", "<Control-Shift-Up>"),
@@ -42,6 +43,32 @@ PAGE_MENU = (
 
 def page_menu() -> list[tuple[str, str, str]]:
     return [(label, command, SHORTCUTS.get(command, ("",))[0]) for label, command in PAGE_MENU]
+
+
+# Right click on a shape on the stage. Label, command, key. Properties and
+# Script move to the panes that already hold them, so they have no key.
+SHAPE_MENU = (
+    ("Properties", "shape_properties"),
+    ("Script", "shape_script"),
+    ("Forward", "forward"),
+    ("Backward", "backward"),
+    ("Cut", "cut"),
+    ("Copy", "copy"),
+    ("Delete", "delete_shapes"),
+)
+
+
+def shape_menu() -> list[tuple[str, str, str]]:
+    return [(label, command, SHORTCUTS.get(command, ("",))[0]) for label, command in SHAPE_MENU]
+
+
+def delete_shapes(page: dict, indices: list[int]) -> int:
+    """Remove those shapes from the page. Returns how many went."""
+    shapes = page.get("shapes") or []
+    gone = sorted({i for i in indices if 0 <= i < len(shapes)}, reverse=True)
+    for index in gone:
+        del shapes[index]
+    return len(gone)
 
 
 def add_page(book: dict, current: int) -> int:

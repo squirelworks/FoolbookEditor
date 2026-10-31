@@ -54,7 +54,7 @@ class Editor:
     _CHANGES = (
         "_apply", "_apply_script", "_add_page", "_duplicate_page", "_del_page", "_reorder",
         "_on_release", "_nudge", "_align", "_distribute", "_group", "_ungroup",
-        "_lock", "_unlock_all", "_color", "_restack", "_clip",
+        "_lock", "_unlock_all", "_color", "_restack", "_clip", "_delete_shapes",
     )
 
     def _committing(self, command):
@@ -108,6 +108,47 @@ class Editor:
             self.status.config(text=f"{'Cut' if command == 'cut' else 'Copied'} {count} object{'s' if count != 1 else ''}")
         self._draw_thumbs()
         return "break"
+
+    def _delete_shapes(self, event=None):
+        """Delete the chosen objects. A text box keeps the key for its own text."""
+        if event is not None and isinstance(event.widget, (tk.Entry, ttk.Entry, tk.Text, tk.Listbox)):
+            return None
+        pages = self.book.get("pages") or []
+        if not self._chosen or not (0 <= self.current < len(pages)):
+            return "break"
+        from author.commands import delete_shapes
+        page = pages[self.current]
+        count = delete_shapes(page, list(self._chosen))
+        self._fill_objects(page)
+        self._choose([])
+        self._preview()
+        self._draw_thumbs()
+        self.status.config(text=f"Deleted {count} object{'s' if count != 1 else ''}")
+        return "break"
+
+    def _shape_menu(self, evt):
+        """The shape under the pointer is chosen, then its menu opens."""
+        self._select_at(evt.x, evt.y)
+        if not self._chosen:
+            return
+        from author.commands import shape_menu
+        stage = type("Stage", (), {"widget": self.canvas})()
+        run = {
+            "shape_properties": lambda: self.objects.focus_set(),
+            "shape_script": lambda: self.oscript.focus_set(),
+            "forward": lambda: self._restack("forward"),
+            "backward": lambda: self._restack("backward"),
+            "cut": lambda: self._clip(stage, "cut"),
+            "copy": lambda: self._clip(stage, "copy"),
+            "delete_shapes": lambda: self._delete_shapes(),
+        }
+        menu = tk.Menu(self.root, tearoff=False)
+        for label, command, key in shape_menu():
+            menu.add_command(label=label, accelerator=key, command=run[command])
+        try:
+            menu.tk_popup(evt.x_root, evt.y_root)
+        finally:
+            menu.grab_release()
 
     def _undo(self):
         self._apply()
@@ -279,6 +320,7 @@ class Editor:
             self.root.bind(key, lambda _e: self._redo())
         for command in ("cut", "copy", "paste"):
             self.root.bind(SHORTCUTS[command][1], lambda e, c=command: self._clip(e, c))
+        self.root.bind(SHORTCUTS["delete_shapes"][1], self._delete_shapes)
         self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
         self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
         self.root.bind(SHORTCUTS["go_to_page"][1], lambda _e: (self.goto.focus_set(), self.goto.select_range(0, "end")))
@@ -316,6 +358,9 @@ class Editor:
         self.canvas.bind("<B1-Motion>", self._on_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_release)
         self.canvas.bind("<Configure>", self._on_canvas_resize)
+        # Right click is Button-2 on macOS Tk and Button-3 elsewhere.
+        right = "<Button-2>" if self.root.tk.call("tk", "windowingsystem") == "aqua" else "<Button-3>"
+        self.canvas.bind(right, self._shape_menu)
 
         # objects on the selected page. Author shows them. Reader may hide some.
         objects = ttk.Frame(body, width=260)
