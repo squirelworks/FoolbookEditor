@@ -84,6 +84,7 @@ class Editor:
         ttk.Button(bar, text="Menu bar", command=self._menubar).pack(side="left", padx=2)
         ttk.Button(bar, text="Book", command=self._book_properties).pack(side="left", padx=2)
         ttk.Button(bar, text="Spelling", command=self._spelling).pack(side="left", padx=2)
+        ttk.Button(bar, text="Find", command=self._find_replace).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle"), ("roundrect", "Rounded")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
@@ -436,6 +437,46 @@ class Editor:
         refill()
         self._spelling_window = win
         self._spelling_list = found
+
+    def _find_replace(self):
+        from .findreplace import find, replace_all
+        win = tk.Toplevel(self.root)
+        win.title("Find and replace")
+        win.transient(self.root)
+        ttk.Label(win, text="Find").grid(row=0, column=0, sticky="w", padx=6, pady=2)
+        needle = ttk.Entry(win, width=30)
+        needle.grid(row=0, column=1, padx=6, pady=2)
+        ttk.Label(win, text="Replace with").grid(row=1, column=0, sticky="w", padx=6, pady=2)
+        replacement = ttk.Entry(win, width=30)
+        replacement.grid(row=1, column=1, padx=6, pady=2)
+        case = tk.BooleanVar(value=False)
+        ttk.Checkbutton(win, text="Match case", variable=case).grid(row=2, column=1, sticky="w", padx=6)
+        hits = tk.Listbox(win, width=44, height=10)
+        hits.grid(row=3, column=0, columnspan=2, padx=6, pady=4)
+        result = ttk.Label(win, text="")
+        result.grid(row=4, column=0, columnspan=2, sticky="w", padx=6)
+
+        def look():
+            hits.delete(0, "end")
+            found = find(self.book, needle.get(), case.get())
+            for pid, where, count in found:
+                hits.insert("end", f"{pid}  {where}  ({count})")
+            result.config(text=f"{sum(c for _p, _w, c in found)} found")
+
+        def swap():
+            count = replace_all(self.book, needle.get(), replacement.get(), case.get())
+            result.config(text=f"{count} replaced")
+            hits.delete(0, "end")
+            if 0 <= self.current < len(self.book.get("pages") or []):
+                self._show(self.current)
+
+        row = ttk.Frame(win)
+        row.grid(row=5, column=0, columnspan=2, sticky="e", padx=6, pady=6)
+        ttk.Button(row, text="Find", command=look).pack(side="left")
+        ttk.Button(row, text="Replace all", command=swap).pack(side="left", padx=4)
+        self._find_window = win
+        self._find_parts = {"needle": needle, "replacement": replacement, "case": case,
+                            "hits": hits, "result": result, "find": look, "replace": swap}
 
     def _menubar(self):
         from .menubar import render, set_menubar
