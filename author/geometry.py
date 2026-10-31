@@ -13,6 +13,10 @@ LINE_SLOP = 3.0
 
 _LINES = {"line", "curve"}
 
+# Arrow keys move the selection by NUDGE page pixels, Shift+arrow by NUDGE_BIG.
+NUDGE = 1
+NUDGE_BIG = 8
+
 
 def bounds(shape: dict) -> tuple[float, float, float, float]:
     """``(x, y, w, h)``. A shape with no width and height uses its points."""
@@ -85,3 +89,26 @@ def marquee(shapes: list[dict], x0: float, y0: float, x1: float, y1: float, laye
         if intersects(box, bounds(shape)):
             found.append(index)
     return found
+
+
+def offset(shape: dict, dx: float, dy: float) -> None:
+    """Move one shape, its points and arc ends included. Size does not change."""
+    if "x" in shape or shape.get("w"):
+        shape["x"] = int(round(float(shape.get("x") or 0) + dx))
+        shape["y"] = int(round(float(shape.get("y") or 0) + dy))
+    for key in ("points", "ends"):
+        if shape.get(key):
+            shape[key] = [[pt[0] + dx, pt[1] + dy] + list(pt[2:]) for pt in shape[key]]
+
+
+def nudge(shapes: list[dict], indices: list[int], dx: float, dy: float) -> None:
+    """Move every selected shape by the same amount."""
+    for index in dict.fromkeys(indices):
+        if 0 <= index < len(shapes) and isinstance(shapes[index], dict):
+            offset(shapes[index], dx, dy)
+
+
+def arrow_step(key: str, shift: bool) -> tuple[int, int]:
+    """``(dx, dy)`` for an arrow key name: Left, Right, Up, Down."""
+    step = NUDGE_BIG if shift else NUDGE
+    return {"Left": (-step, 0), "Right": (step, 0), "Up": (0, -step), "Down": (0, step)}.get(key, (0, 0))
