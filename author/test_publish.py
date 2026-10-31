@@ -35,7 +35,7 @@ class Publish(unittest.TestCase):
             (Path(src) / "art" / "pie.png").write_bytes(b"png")
             written, missing = publish(_book(), out, source=src)
             names = sorted(str(p.relative_to(out)) for p in written)
-            self.assertEqual(names, ["Fractions-1.fbk", "README.txt", "art/pie.png"])
+            self.assertEqual(names, ["Fractions-1.fbk", "README.txt", "art/pie.png", "books.json"])
             self.assertEqual(missing, ["sound/ding.wav"])
             self.assertEqual((Path(out) / "README.txt").read_text().strip(), "Open Fractions-1.fbk with Foolbook.")
             self.assertEqual(load(Path(out) / "Fractions-1.fbk")["title"], "Fractions 1")

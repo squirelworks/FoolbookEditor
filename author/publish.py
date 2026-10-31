@@ -8,11 +8,13 @@ to the book, so the book finds them in the folder the same way.
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 from pathlib import Path
 
 README = "Open {name} with Foolbook.\n"
+CATALOG = "books.json"
 
 
 def _slug(title: str) -> str:
@@ -47,7 +49,25 @@ def publish(book: dict, folder: str | Path, source: str | Path | None = None, na
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(origin, dest)
         written.append(dest)
+    written.append(write_catalog(folder, book, name))
     readme = folder / "README.txt"
     readme.write_text(README.format(name=name), encoding="utf-8")
     written.append(readme)
     return written, missing
+
+
+def write_catalog(folder: str | Path, book: dict, name: str) -> Path:
+    """Add or update this book's line in the folder's books.json: title, file, page count.
+
+    Other books already listed stay, so several books can be published
+    into one folder. A books.json that cannot be read is replaced.
+    """
+    path = Path(folder) / CATALOG
+    try:
+        books = json.loads(path.read_text(encoding="utf-8")).get("books") or []
+    except (OSError, ValueError, AttributeError):
+        books = []
+    books = [b for b in books if isinstance(b, dict) and b.get("file") != name]
+    books.append({"title": str(book.get("title") or ""), "file": name, "pages": len(book.get("pages") or [])})
+    path.write_text(json.dumps({"books": books}, indent=2) + "\n", encoding="utf-8")
+    return path
