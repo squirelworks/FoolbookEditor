@@ -86,7 +86,7 @@ class Editor:
         ttk.Button(bar, text="Spelling", command=self._spelling).pack(side="left", padx=2)
         ttk.Button(bar, text="Find", command=self._find_replace).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
-        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle"), ("roundrect", "Rounded")):
+        for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("label", "Label"), ("box", "Rectangle"), ("roundrect", "Rounded")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(bar, text="Bold", command=lambda: self._wrap("**")).pack(side="left")
@@ -164,6 +164,9 @@ class Editor:
         self.pages = tk.Listbox(left, exportselection=False, width=18, height=8)
         self.pages.pack(fill="both", expand=True)
         self.pages.bind("<<ListboxSelect>>", self._on_select)
+        # Right click is Button-2 on macOS Tk and Button-3 elsewhere.
+        right = "<Button-2>" if self.root.tk.call("tk", "windowingsystem") == "aqua" else "<Button-3>"
+        self.pages.bind(right, self._page_menu)
         # One small drawing per page. A click on one shows that page.
         strip = ttk.Frame(left)
         strip.pack(fill="both", expand=True, pady=(4, 0))
@@ -1062,6 +1065,34 @@ class Editor:
         from author.commands import duplicate_page
         self.current = duplicate_page(self.book, self.current)
         self._refresh_list()
+
+    def _page_menu(self, evt):
+        """The page under the pointer becomes current, then its menu opens."""
+        if not self.book.get("pages"):
+            return
+        index = self.pages.nearest(evt.y)
+        if index != self.current:
+            self.pages.selection_clear(0, "end")
+            self.pages.selection_set(index)
+            self._on_select()
+        from author.commands import page_menu
+        run = {
+            "add_page": self._add_page,
+            "duplicate_page": self._duplicate_page,
+            "delete_page": self._del_page,
+            "page_properties": self._page_properties,
+        }
+        menu = tk.Menu(self.root, tearoff=False)
+        for label, command, key in page_menu():
+            menu.add_command(label=label, accelerator=key, command=run[command])
+        try:
+            menu.tk_popup(evt.x_root, evt.y_root)
+        finally:
+            menu.grab_release()
+
+    def _page_properties(self):
+        self.pid.focus_set()
+        self.pid.select_range(0, "end")
 
     def _browse(self, command: str):
         from author import commands
