@@ -1143,8 +1143,8 @@ class Editor:
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
-        from author.geometry import bounds
-        from author.tools import corners, window_point
+        from author.geometry import bounds, handles
+        from author.tools import window_point
         shape, _index = self._selected()
         view = getattr(self.canvas, "_author_view", None)
         if shape is None or not view:
@@ -1156,7 +1156,7 @@ class Editor:
                 sx0, sy0 = window_point(view, x, y)
                 sx1, sy1 = window_point(view, x + w, y + h)
                 self.canvas.create_rectangle(sx0 - 2, sy0 - 2, sx1 + 2, sy1 + 2, outline="#3070c0", dash=(3, 2))
-        for x, y in corners(shape).values():
+        for x, y in handles(shape).values():
             sx, sy = window_point(view, x, y)
             self.canvas.create_rectangle(sx - 4, sy - 4, sx + 4, sy + 4, fill="#ffffff", outline="#000000")
 
@@ -1178,13 +1178,19 @@ class Editor:
         view = getattr(self.canvas, "_author_view", None)
         if page is None or not view or not view.get("scale"):
             return
-        from author.tools import handle_at, opposite, page_point, snapshot
+        import copy
+        from author.geometry import handles
+        from author.tools import page_point, snapshot, window_point
         if self._object is not None:
             current, index = self._selected()
-            corner = handle_at(view, current, evt.x, evt.y) if current else None
-            if corner and current is not None:
-                ax, ay = opposite(current, corner)
-                self._drag = {"mode": "size", "index": index, "ax": ax, "ay": ay, "snap": snapshot(current)}
+            grabbed = None
+            for name, (hx, hy) in (handles(current).items() if current else ()):
+                sx, sy = window_point(view, hx, hy)
+                if abs(sx - evt.x) <= 6 and abs(sy - evt.y) <= 6:
+                    grabbed = name
+                    break
+            if grabbed and current is not None:
+                self._drag = {"mode": "size", "index": index, "handle": grabbed, "before": copy.deepcopy(current)}
                 return
         px, py = page_point(view, evt.x, evt.y)
         from author.stage import hit
@@ -1222,7 +1228,7 @@ class Editor:
             self.canvas.delete("marquee")
             self.canvas.create_rectangle(drag["wx"], drag["wy"], evt.x, evt.y, outline="#3070c0", dash=(4, 2), tags=("marquee",))
             return
-        from author.tools import move_shape, page_point, resize_shape
+        from author.tools import move_shape, page_point
         shapes = pages[self.current].get("shapes") or []
         if drag["mode"] == "move-all":
             px, py = page_point(view, evt.x, evt.y)
@@ -1237,7 +1243,8 @@ class Editor:
         if drag["mode"] == "move":
             move_shape(shape, drag["snap"], px - drag["px"], py - drag["py"])
         else:
-            resize_shape(shape, drag["snap"], drag["ax"], drag["ay"], px, py)
+            from author.geometry import resize
+            resize(shape, drag["before"], drag["handle"], px, py)
         self._preview()
 
     def _on_release(self, evt):
