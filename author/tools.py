@@ -27,6 +27,7 @@ _SIZE = {
     "polygon": (80, 60),
     "curve": (80, 60),
     "arc": (80, 60),
+    "chord": (80, 60),
     "pie": (80, 60),
     "picture": (120, 80),
 }
@@ -41,6 +42,7 @@ _KIND = {
     "polygon": "polygon",
     "curve": "curve",
     "arc": "arc",
+    "chord": "chord",
     "pie": "pie",
     "picture": "image",
 }
@@ -54,13 +56,14 @@ _LABEL = {
     "polygon": "Polygon",
     "curve": "Curve",
     "arc": "Arc",
+    "chord": "Chord",
     "pie": "Pie",
     "picture": "Picture",
 }
 
 
 # The start angle and sweep a new arc is placed with.
-ANGLES = {"arc": (0, 180), "pie": (0, 90)}
+ANGLES = {"arc": (0, 180), "pie": (0, 90), "chord": (0, 180)}
 
 # Tools that are clicked out one point at a time, and the fewest points each keeps.
 POINT_TOOLS = {"polygon": 3, "curve": 2}

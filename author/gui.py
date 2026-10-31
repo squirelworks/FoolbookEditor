@@ -95,6 +95,7 @@ class Editor:
             ("polygon", "Polygon"),
             ("curve", "Curve"),
             ("arc", "Arc"),
+            ("chord", "Chord"),
             ("pie", "Pie"),
             ("picture", "Picture"),
         ):
