@@ -130,6 +130,7 @@ class Editor:
         menu.add_command(label="Distribute down (3 or more)", command=lambda: self._distribute("vertical"))
         aligner["menu"] = menu
         aligner.pack(side="left", padx=(8, 0))
+        ttk.Button(tools, text="Group", command=self._group).pack(side="left", padx=(8, 0))
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Forward", command=lambda: self._restack("forward")).pack(side="left")
         ttk.Button(tools, text="Backward", command=lambda: self._restack("backward")).pack(side="left", padx=2)
@@ -1483,6 +1484,22 @@ class Editor:
         from author.geometry import align
         align(pages[self.current].get("shapes") or [], self._chosen, how)
         self._preview()
+        self._draw_thumbs()
+
+    def _group(self):
+        pages = self.book.get("pages") or []
+        if len(self._chosen) < 2 or not (0 <= self.current < len(pages)):
+            self.status.config(text="Group needs two or more selected objects")
+            return
+        self._apply_script()
+        from author.geometry import group
+        page = pages[self.current]
+        at = group(page.get("shapes") or [], self._chosen)
+        if at is None:
+            self.status.config(text="Group needs objects on one layer")
+            return
+        self._fill_objects(page)
+        self._choose([at])
         self._draw_thumbs()
 
     def _distribute(self, axis: str):

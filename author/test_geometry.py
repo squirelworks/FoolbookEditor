@@ -257,5 +257,52 @@ class DistributeTests(unittest.TestCase):
         self.assertEqual([s["x"] for s in shapes], [0, 50])
 
 
+class GroupTests(unittest.TestCase):
+    def shapes(self):
+        return [
+            {"kind": "rect", "name": "paper", "x": 0, "y": 0, "w": 640, "h": 480},
+            {"kind": "button", "name": "A", "x": 10, "y": 10, "w": 90, "h": 28},
+            {"kind": "text", "name": "between", "x": 300, "y": 300, "w": 10, "h": 10},
+            {"kind": "line", "name": "L", "points": [[20, 60], [120, 90]]},
+        ]
+
+    def test_a_group_holds_the_children_in_order_with_their_bounds(self):
+        shapes = self.shapes()
+        at = geometry.group(shapes, [3, 1])
+        self.assertEqual(at, 2)
+        self.assertEqual([s["name"] for s in shapes], ["paper", "between", "Group"])
+        made = shapes[2]
+        self.assertEqual(made["kind"], "group")
+        self.assertEqual([c["name"] for c in made["children"]], ["A", "L"])
+        self.assertEqual((made["x"], made["y"], made["w"], made["h"]), (10, 10, 110, 80))
+        self.assertEqual(made["children"][0]["x"], 10)
+
+    def test_fewer_than_two_or_two_layers_is_not_a_group(self):
+        shapes = self.shapes()
+        self.assertIsNone(geometry.group(shapes, [1]))
+        shapes[3]["layer"] = "background"
+        self.assertIsNone(geometry.group(shapes, [1, 3]))
+        self.assertEqual(len(shapes), 4)
+
+    def test_moving_a_group_moves_its_children(self):
+        shapes = self.shapes()
+        at = geometry.group(shapes, [1, 3])
+        geometry.nudge(shapes, [at], 8, 0)
+        made = shapes[at]
+        self.assertEqual(made["x"], 18)
+        self.assertEqual(made["children"][0]["x"], 18)
+        self.assertEqual(made["children"][1]["points"][0], [28, 60])
+
+    def test_the_stage_paints_the_children(self):
+        shapes = self.shapes()
+        geometry.group(shapes, [1, 3])
+        self.assertEqual([s["name"] for s in geometry.flatten(shapes)], ["paper", "between", "A", "L"])
+
+    def test_a_group_can_be_picked_inside_its_bounds(self):
+        shapes = self.shapes()
+        at = geometry.group(shapes, [1, 3])
+        self.assertEqual(geometry.hit(shapes, 50, 50, "page"), at)
+
+
 if __name__ == "__main__":
     unittest.main()

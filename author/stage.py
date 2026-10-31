@@ -110,7 +110,9 @@ def paint(canvas, page: dict, book: dict | None = None) -> None:
     if width < 20 or height < 20:
         canvas.after(50, lambda: paint(canvas, page, book))
         return
-    drawn = shown(page, book)
+    # A group is painted as its children. Hit tests still see the group.
+    from author.geometry import flatten
+    drawn = shown(dict(page, shapes=flatten(page.get("shapes") or [])), book)
     box = view_box(page, drawn)
     scale, dx, dy, ox, oy = fit_view(box, width, height)
     draw(canvas, place_window(drawn, scale, box[0], box[1], dx, dy))
