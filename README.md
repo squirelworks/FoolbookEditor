@@ -26,6 +26,8 @@ Save compresses by default, as Foolbook packs a book. The Compress box turns it 
 
 ## Use
 
+A book always has at least one page. Deleting the only page is refused, and the status line says so. The editor does not make a blank page in its place. The reader cannot show a book with no pages.
+
 ```bash
 python3 -m foolbookeditor --fbk path/to/book.tbk    # write book.fbk beside it
 python3 -m foolbookeditor --fbk path/to/book.sbk    # write book.fsk
@@ -126,6 +128,12 @@ python3 examples/welcome.py /path/to/Foolbook/foolbook/books
 
 That writes the two books a new Foolbook install opens: Using Foolbook and First Light.
 
+
+## Backgrounds live on the page, for now
+
+A background shape is stored on each page that shows it, with `layer: background`, because that is what the web editor stores and what the reader opens today. It is not lifted to a shared background page in this phase. Do not "clean this up" by moving them; a shared background page is a later item with its own pull request, and old books with `layer` will still paint.
+
+The reader paints in array order and does not read `layer`, so Save writes a page's background shapes ahead of its page shapes. Order inside each layer is kept. The book in the editor is not reordered.
 
 ## Quizzes
 

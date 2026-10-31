@@ -3,6 +3,10 @@
 ## 2026-10-31
 
 - Save writes compressed or uncompressed. Compressed stays the default, matching Foolbook's `pack`. A Compress box turns it off, and a book opened from an uncompressed file saves uncompressed.
+- Save writes a page's background shapes ahead of its page shapes. The reader paints in array order, so a background shape added after a page shape (a web editor book) was drawn on top of it. Backgrounds stay on the page, tagged `layer: background`; `schema.md` says why.
+- Deleting the only page is refused with a sentence, in the model (`LastPage`), not silently ignored. No blank page is made. The README says so.
+- Record lays its rows out as pages: the fields go on this page with the first row, and the page is copied once for each further row with that row in the fields. Previous record and Next record go to the page before and after; the first page has no Previous and the last no Next. Nothing is stored as `records`, so the reader needs no change (Foolbook#53 is closed). `author/test_records.py`.
+- Print writes the PNG proof pages and sends them to the printer when the machine has one call for it: `os.startfile(path, "print")` on Windows, one `lpr` on a Mac or Linux. Anywhere else the folder of pages is the print, and the status line says so.
 - Save is not Export. Save writes `.fbk`, `.fsk`, or `.json`. A book opened from a `.tbk`, an `.sbk`, or an office file is saved beside it as `.fbk` (or `.fsk`), and the original is not written. Saving an `.fsk` keeps it a system book; it was written as an `.fbk`. The status line names the file written. Export stays its own button. The extension picks the kind whatever its case, no extension saves as `.fbk`, a system book saved as `.fbk` becomes a book, and an empty system book is still a valid `FSK1` file. Tests: `tests/test_save_target.py`, `tests/test_save_as_kind.py`.
 - Apply script on an object shows a warning in the status line when a line uses a word Foolbook does not run, with the line number. The script is still kept. The words come from Foolbook's `engine/subset.py` table through `foolbook.core.unknown_words`. Tested in `author/test_scripts.py`.
 - Foolbook comes from its main branch, not commit 031e8d8. The pin froze the editor on a reader main has moved past: at that commit the system-book test fails, and at the v1.0.8 tag eight tests fail. A release tag is the other allowed form. Test: `tests/test_pin.py`.
@@ -11,6 +15,7 @@
 
 - Naming a system book writes OpenScript the reader runs: the book script's `enterBook` gets `if "shared.fsk" is not in sysBooks` / `push "shared.fsk" onto sysBooks` / `end if`, as a ToolBook course does. Before, only a `system` key was stored, and Foolbook does not read it, so the system book's handlers never ran. A new name replaces the push, and clearing it takes the push out and leaves the rest of the script. `system` stays as the editor's own record. Test: `author/test_system_book.py`.
 - Find lists every page text and shape text that holds a word or phrase, with how many times, and Replace all changes them and says how many. The search is plain text, never a regular expression. Match case is off unless ticked.
+- - The property pane has Go to page, In book, and Jump label rows. They write the shape's `item`, which Foolbook follows on a click with no script. An empty page takes the jump off, and a book or label needs a page first. Test: `author/test_properties.py` ItemTests.
 
 ## 2026-10-31
 
@@ -37,6 +42,7 @@
 
 ## 2026-10-31
 
+- Save writes the book to a temporary file beside it (`.name.saving.fbk`) and only then replaces the old file in one step. If the write or the replace fails, the temporary file is removed and the previous book is untouched. Test: `author/test_safesave.py`, which makes the replace step fail. A book from a newer Foolbook is still refused, and an opened book still saves back to the same bytes.
 - The Icon tool places a picture at 32 by 32, whatever the drag or the picture's own size, and marks it `preset: "icon"`. The reader stretches the picture to fit.
 
 ## 2026-10-31
@@ -83,6 +89,7 @@
 - Undock under the Properties pane moves that same pane into its own window. Dock, or closing the window, puts it back. There is still one property system.
 ## 2026-10-31
 
+- Every five minutes, a book with unsaved changes gets a recovery copy in the user config directory (`foolbookeditor/recovery/`), never beside the book. Saving removes it. Opening a book whose recovery copy is newer than the file asks which one to open. Test: `author/test_recovery.py` checks the copy's contents.
 - The page form has a Background list. It names the shared backgrounds in the book (pages with `"background": true`) and `(none)`. Picking one sets the page's `uses`, and the stage draws that background under the page. `(none)` clears it. The model refuses a name that is not a background. Test: `author/test_backgrounds.py`.
 - The README lists the script lines the reader runs: `go to page`, `go to page of book`, `send next`, `send previous`. `author/test_script_subset.py` runs every line in that table through Foolbook.
 - `instructor-map.md` lists the fourteen Instructor jobs, where each one stands, and the work order items that cover it. `author/test_instructor_map.py` keeps every job listed once with a status.
