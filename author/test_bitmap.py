@@ -41,3 +41,16 @@ class Bitmap(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PlacedPicture(unittest.TestCase):
+    def test_an_embedded_picture_keeps_its_pixel_size(self):
+        import tempfile
+        from pathlib import Path
+        from author.picture import picture_fields
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "dot.png"
+            path.write_bytes(_png(5, 3))
+            fields = picture_fields(path)
+        self.assertEqual(fields["pixels"], [5, 3])
+        self.assertTrue(base64.b64decode(fields["data"]).startswith(PNG))
