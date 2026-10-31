@@ -3,6 +3,7 @@
 ## Unreleased — 2026-10-31
 
 - Add puts the new page right after the current page, not at the end. Ctrl+M does the same.
+- Duplicate copies the current page, with its shapes and scripts, under a new id. The copy is the next page. Ctrl+Shift+D does the same.
 
 ## 0.4.0 — 2026-10-24
 
