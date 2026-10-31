@@ -11,7 +11,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .files import FutureBook, open_book as load_book, save as save_book
+from .files import EmptyBook, FutureBook, open_book as load_book, save as save_book
 
 try:
     import tkinter as tk
@@ -850,7 +850,11 @@ class Editor:
         elif suffix in {".tbk", ".sbk"}:
             self.book = read(path)
         else:
-            self.book = load_book(path)
+            try:
+                self.book = load_book(path)
+            except EmptyBook as exc:
+                messagebox.showerror("Foolbook Editor", str(exc))
+                return
         self.path = path
         self.current = 0
         self._refresh_list()
