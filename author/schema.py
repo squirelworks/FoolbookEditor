@@ -1,0 +1,17 @@
+"""The book dict, written down.
+
+Foolbook reads this dict. The Tk editor and the web editor write it.
+This module is the field list both editors follow; ``schema.md`` says
+the same thing in sentences. Until the web editor can import anything,
+it copies this list in a pull request that changes both.
+"""
+
+from __future__ import annotations
+
+# Book fields that must survive a save and a load.
+BOOK_FIELDS = ("id", "title", "pages")
+
+# Editor state the web editor keeps on the book. The envelope already
+# says the magic, and the reader does not read this key, so it is not
+# written into the payload.
+NOT_WRITTEN = ("_magic",)
