@@ -22,6 +22,8 @@ python3 -m foolbookeditor --selftest    # save and load a book, no window
 
 Every pull request runs the self test before it goes up.
 
+Save compresses by default, as Foolbook packs a book. The Compress box turns it off. A book opened from an uncompressed file, such as a web editor download, is saved uncompressed until the box is ticked.
+
 ## Use
 
 ```bash
