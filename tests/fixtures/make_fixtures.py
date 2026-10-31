@@ -29,6 +29,7 @@ TINY = {
 def main() -> None:
     from author.files import save
     save(HERE / "tiny.fbk", TINY, compress=False)
+    save(HERE / "tiny_z.fbk", TINY, compress=True)
 
 
 if __name__ == "__main__":
