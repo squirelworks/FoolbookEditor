@@ -702,6 +702,8 @@ class Editor:
         down = getattr(self, "_down", None)
         self._down = None
         if tool == "select":
+            if self._drag:
+                self._show_properties()
             self._drag = None
             return
         self._drag = None

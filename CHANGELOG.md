@@ -18,6 +18,7 @@
 - A colour well of eight plain colours sits under the Properties pane. A click sets the fill and a right-click sets the outline. Typed `#rrggbb` still works.
 - No fill, or an empty Fill box, stores `fill: ""` and the object is drawn with nothing inside. A button with no fill saves and draws that way.
 - A Visible check box in the Properties pane. An object with `visible: false` is drawn ghosted on the stage, its colours washed toward white, and Foolbook still skips it.
+- Left, Top, Width, and Height in the Properties pane move and size the object by number, points included. Bad input keeps the old value.
 ## 2026-10-31
 
 - The page form has a Background list. It names the shared backgrounds in the book (pages with `"background": true`) and `(none)`. Picking one sets the page's `uses`, and the stage draws that background under the page. `(none)` clears it. The model refuses a name that is not a background. Test: `author/test_backgrounds.py`.

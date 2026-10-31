@@ -23,7 +23,14 @@ ROWS = [
     ("underline", "Underline", "flag"),
     ("align", "Align", "choice"),
     ("visible", "Visible", "flag"),
+    ("x", "Left", "place"),
+    ("y", "Top", "place"),
+    ("w", "Width", "extent"),
+    ("h", "Height", "extent"),
 ]
+
+# The smallest width or height a typed size may give.
+MIN_EXTENT = 4
 
 # The values a choice row offers.
 CHOICES = {"align": ("left", "center", "right")}
@@ -50,6 +57,9 @@ def read(shape: dict, key: str) -> str:
     """The value as the pane shows it."""
     if key == "stroke":
         return str(shape.get("stroke", STROKE))
+    if _kind(key) in ("place", "extent"):
+        from author.tools import bounds_of
+        return str(int(dict(zip("xywh", bounds_of(shape)))[key]))
     if key == "visible":
         # Missing is shown. Only an explicit false hides the object.
         return "false" if shape.get("visible") is False else "true"
@@ -109,9 +119,35 @@ def write(shape: dict, key: str, raw: str, page: dict | None = None) -> bool:
         if raw.lower() not in CHOICES[key]:
             return False
         shape[key] = raw.lower()
+    elif kind in ("place", "extent"):
+        try:
+            number = int(raw)
+        except ValueError:
+            return False
+        if kind == "extent" and number < MIN_EXTENT:
+            return False
+        _set_bounds(shape, key, number)
     else:
         return False
     return True
+
+
+def _set_bounds(shape: dict, key: str, number: int) -> None:
+    """Move or size by one number. Points and arc ends go with the box."""
+    from author.tools import bounds_of
+    x, y, w, h = bounds_of(shape)
+    box = {"x": x, "y": y, "w": w, "h": h}
+    box[key] = number
+    sx = box["w"] / w if w else 1
+    sy = box["h"] / h if h else 1
+    for field in ("points", "ends"):
+        if shape.get(field):
+            shape[field] = [
+                [int(round(box["x"] + (pt[0] - x) * sx)), int(round(box["y"] + (pt[1] - y) * sy))]
+                for pt in shape[field]
+            ]
+    for field in ("x", "y", "w", "h"):
+        shape[field] = int(box[field])
 
 
 def _align_name(value) -> str:

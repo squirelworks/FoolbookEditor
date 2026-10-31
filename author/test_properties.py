@@ -135,6 +135,28 @@ class NoFillTests(unittest.TestCase):
         boxes = [k for name, k in canvas.calls if name == "create_rectangle"]
         self.assertEqual(boxes[0]["fill"], "")
 
+class PositionSizeTests(unittest.TestCase):
+    def test_typing_left_and_top_moves_the_shape(self):
+        shape = {"kind": "rect", "x": 10, "y": 20, "w": 100, "h": 50}
+        self.assertTrue(write(shape, "x", "40"))
+        self.assertTrue(write(shape, "y", "-5"))
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (40, -5, 100, 50))
+
+    def test_a_polygon_moves_and_sizes_with_its_points(self):
+        shape = {"kind": "polygon", "x": 0, "y": 0, "w": 10, "h": 10, "points": [[0, 0], [10, 0], [10, 10]]}
+        write(shape, "x", "5")
+        self.assertEqual(shape["points"], [[5, 0], [15, 0], [15, 10]])
+        write(shape, "w", "20")
+        self.assertEqual(shape["points"], [[5, 0], [25, 0], [25, 10]])
+
+    def test_bad_input_leaves_the_old_value(self):
+        shape = {"kind": "rect", "x": 10, "y": 20, "w": 100, "h": 50}
+        self.assertFalse(write(shape, "x", "left"))
+        self.assertFalse(write(shape, "w", "3"))
+        self.assertFalse(write(shape, "h", ""))
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 20, 100, 50))
+        self.assertEqual(read(shape, "w"), "100")
+
 
 if __name__ == "__main__":
     unittest.main()
