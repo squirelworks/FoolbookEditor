@@ -8,6 +8,7 @@
 - Up and Down beside the page list move the current page one place earlier or later. Ctrl+Shift+Up and Ctrl+Shift+Down do the same.
 - Size under the stage sets the page size, 640 by 480 when the book does not say. The stage shows the whole page with a dashed edge, and a shape past the edge is kept and drawn past it.
 - Each page has a small drawing of its shapes under the page list. A click on one shows that page.
+- Go to, or Ctrl+G, shows the page whose id you type. An unknown id stays put and the status line says so.
 
 ## 0.4.0 — 2026-10-24
 

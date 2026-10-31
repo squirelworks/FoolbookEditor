@@ -16,6 +16,7 @@ SHORTCUTS = {
     "delete_page": ("Ctrl+Shift+Delete", "<Control-Shift-Delete>"),
     "page_up": ("Ctrl+Shift+Up", "<Control-Shift-Up>"),
     "page_down": ("Ctrl+Shift+Down", "<Control-Shift-Down>"),
+    "go_to_page": ("Ctrl+G", "<Control-g>"),
 }
 
 
@@ -58,3 +59,18 @@ def page_up(book: dict, current: int) -> int:
 def page_down(book: dict, current: int) -> int:
     """Swap the current page with the one after it. The last page stays."""
     return document.move_page(book, current, 1)
+
+
+def go_to_page(book: dict, current: int, typed: str) -> tuple[int, str]:
+    """The page whose id was typed, and the status line to show.
+
+    Ids compare without case, as the reader finds them. An unknown id leaves
+    the current page where it is.
+    """
+    wanted = (typed or "").strip()
+    if not wanted:
+        return current, ""
+    for index, page in enumerate(book.get("pages") or []):
+        if str(page.get("id") or "").casefold() == wanted.casefold():
+            return index, f"Page {page.get('id')}"
+    return current, f"Unknown page {wanted}"

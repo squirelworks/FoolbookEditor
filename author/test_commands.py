@@ -110,5 +110,19 @@ class ReorderTests(unittest.TestCase):
         self.assertEqual(commands.page_down(book, 0), 0)
 
 
+class GoToPageTests(unittest.TestCase):
+    def test_a_typed_id_finds_the_page_without_case(self):
+        book = _book("P0", "Quiz1", "End")
+        self.assertEqual(commands.go_to_page(book, 0, "quiz1"), (1, "Page Quiz1"))
+        self.assertEqual(commands.go_to_page(book, 0, "  END "), (2, "Page End"))
+
+    def test_an_unknown_id_stays_and_says_so(self):
+        book = _book("P0", "P100")
+        self.assertEqual(commands.go_to_page(book, 1, "P999"), (1, "Unknown page P999"))
+
+    def test_nothing_typed_does_nothing(self):
+        self.assertEqual(commands.go_to_page(_book("P0"), 0, " "), (0, ""))
+
+
 if __name__ == "__main__":
     unittest.main()
