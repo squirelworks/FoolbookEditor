@@ -4,11 +4,14 @@ The editor holds the same book dict Foolbook reads. foolbook.core writes it.
 This module only mutates the dict.
 
 A page is text, items (jumps), an optional script, an optional quiz,
-and widgets dropped on the slide. That is the scaffold. Groups,
-backgrounds, and pictures are not in it yet.
+and widgets dropped on the slide. A page with `"background": true` is a
+shared background, and a page names the one it uses in `uses`. Groups
+are not in it yet.
 """
 
 from __future__ import annotations
+
+import copy
 
 
 WIDGET_KINDS = ("text", "box", "button")
@@ -101,6 +104,21 @@ def add_page(book: dict, index: int | None = None) -> int:
     return at
 
 
+def duplicate_page(book: dict, index: int) -> int:
+    """Copy a page, shapes and scripts and all, to right after it.
+
+    The copy gets a fresh id. Nothing in it is shared with the original.
+    Returns where the copy landed, or ``index`` when there is no such page.
+    """
+    found = book.get("pages") or []
+    if not (0 <= index < len(found)):
+        return index
+    twin = copy.deepcopy(found[index])
+    twin["id"] = fresh_id(book)
+    found.insert(index + 1, twin)
+    return index + 1
+
+
 def delete_page(book: dict, index: int) -> int:
     """Drop a page. The last page stays. Returns the index to show."""
     found = book.get("pages") or []
@@ -190,3 +208,33 @@ def add_widget(page: dict, kind: str, x: int, y: int) -> dict:
         widget["label"] = spec["label"]
     widgets(page).append(widget)
     return widget
+
+
+def background_page(book: dict, page_id: str) -> dict | None:
+    """The background page with this id, compared without case."""
+    wanted = str(page_id or "").lower()
+    if not wanted:
+        return None
+    for page in book.get("pages") or []:
+        if page.get("background") and str(page.get("id") or "").lower() == wanted:
+            return page
+    return None
+
+
+def background_of(book: dict, page: dict) -> dict | None:
+    """The shared background this page uses, or None."""
+    return background_page(book, page.get("uses") or "")
+
+
+def set_background(book: dict, page: dict, page_id: str) -> None:
+    """Give a page a shared background. The name must be a background page."""
+    if page.get("background"):
+        raise ValueError(f"{page.get('id')} is a background and cannot use another")
+    found = background_page(book, page_id)
+    if found is None:
+        raise ValueError(f"no background called {page_id}")
+    page["uses"] = found.get("id")
+
+
+def clear_background(page: dict) -> None:
+    page.pop("uses", None)
