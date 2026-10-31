@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31
+
+- The tool row shows the colours the book already uses, most used first. Click a swatch to fill the selected object with it, right-click to use it for the line.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.
