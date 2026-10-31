@@ -77,9 +77,11 @@ class Editor:
         ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
+        ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
+        ttk.Button(bar, text="Menu bar", command=self._menubar).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle"), ("roundrect", "Rounded")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
@@ -113,6 +115,19 @@ class Editor:
         ttk.Button(tools, text="Pattern", command=self._pattern).pack(side="left")
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="Viewer").pack(side="left")
+        self.viewer_buttons = {}
+        for name, label in (("previous", "Previous"), ("next", "Next"), ("page", "Page number")):
+            var = tk.BooleanVar(value=False)
+            self.viewer_buttons[name] = var
+            ttk.Checkbutton(tools, text=label, variable=var, command=self._set_viewer).pack(side="left", padx=2)
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="System book").pack(side="left")
+        self.system = ttk.Entry(tools, width=16)
+        self.system.pack(side="left", padx=2)
+        self.system.bind("<Return>", self._set_system)
+        self.system.bind("<FocusOut>", self._set_system)
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
         # Colours the book already uses. Click for fill, right-click for line.
         self.swatches = ttk.Frame(tools)
@@ -315,6 +330,27 @@ class Editor:
         except tk.TclError:
             return
 
+    def _menubar(self):
+        from .menubar import render, set_menubar
+        win = tk.Toplevel(self.root)
+        win.title("Menu bar")
+        win.transient(self.root)
+        ttk.Label(win, text="A menu at the margin, its items indented. Label -> page, or Label: one line of script.").pack(anchor="w", padx=6, pady=4)
+        box = tk.Text(win, width=60, height=14, font=("TkFixedFont", 10))
+        box.pack(fill="both", expand=True, padx=6)
+        box.insert("1.0", render(self.book.get("menubar") or []))
+
+        def apply():
+            try:
+                set_menubar(self.book, box.get("1.0", "end"))
+            except ValueError as exc:
+                messagebox.showerror("Menu bar", str(exc), parent=win)
+                return
+            win.destroy()
+
+        ttk.Button(win, text="Apply", command=apply).pack(anchor="e", padx=6, pady=4)
+        self._menubar_window = win
+
     def _new(self, ask: bool = True):
         from author.document import new_book
         if not ask:
@@ -431,7 +467,7 @@ class Editor:
         p = filedialog.askopenfilename(
             title="Open book",
             filetypes=[
-                ("Foolbook", "*.fbk *.json *.tbk *.sbk"),
+                ("Foolbook", "*.fbk *.fsk *.json *.tbk *.sbk"),
                 ("Office", "*.pdf *.ppt *.pptx *.doc *.docx *.odt"),
                 ("All", "*.*"),
             ],
@@ -451,7 +487,31 @@ class Editor:
         self.path = path
         self.current = 0
         self._refresh_list()
-        self.status.config(text=str(path.name))
+        from author.document import handler_names
+        found = handler_names(self.book)
+        note = f"  {len(found)} handlers" if path.suffix.lower() == ".fsk" else ""
+        self.status.config(text=str(path.name) + note)
+
+    def _import(self):
+        p = filedialog.askopenfilename(title="Import a ToolBook book", filetypes=[("ToolBook", "*.tbk"), ("All", "*.*")])
+        if p:
+            self._import_from(Path(p))
+
+    def _import_from(self, src: Path):
+        """The .tbk is only read. Save writes an .fbk beside it."""
+        from author.importer import import_book, report_text
+        self.book, lines = import_book(src)
+        self.path = src.with_suffix(".fbk")
+        self.current = 0
+        self._refresh_list()
+        self.status.config(text=f"Imported {src.name}. Save writes {self.path.name}")
+        win = tk.Toplevel(self.root)
+        win.title(f"Import report: {src.name}")
+        box = tk.Text(win, width=90, height=24, wrap="word")
+        box.pack(fill="both", expand=True)
+        box.insert("1.0", report_text(lines))
+        box.config(state="disabled")
+        self.report = box
 
     def _save(self):
         self._apply()
@@ -526,7 +586,33 @@ class Editor:
         except NotImplementedError as exc:
             messagebox.showinfo("Foolbook Editor", str(exc))
 
+    def _set_viewer(self):
+        from author.document import set_viewer, viewer_of
+        current = viewer_of(self.book) or {}
+        chosen = [name for name, var in self.viewer_buttons.items() if var.get()]
+        set_viewer(self.book, current.get("name") or "Main", current.get("size") or [640, 480], chosen)
+
+    def _set_system(self, _evt=None):
+        from author.document import clear_system, set_system
+        name = self.system.get().strip()
+        if not name:
+            clear_system(self.book)
+            return
+        try:
+            set_system(self.book, name)
+        except ValueError as exc:
+            self.status.config(text=str(exc))
+
+    def _show_viewer(self):
+        from author.document import system_of, viewer_of
+        self.system.delete(0, "end")
+        self.system.insert(0, system_of(self.book) or "")
+        asked = set((viewer_of(self.book) or {}).get("buttons") or [])
+        for name, var in self.viewer_buttons.items():
+            var.set(name in asked)
+
     def _refresh_list(self):
+        self._show_viewer()
         self.pages.delete(0, "end")
         from author.document import page_label
         for p in self.book.get("pages") or []:

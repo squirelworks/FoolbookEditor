@@ -263,3 +263,61 @@ def page_label(page: dict) -> str:
     """How the page list names a page. A background says so."""
     name = page.get("id") or "?"
     return f"{name} (background)" if page.get("background") else name
+
+
+VIEWER_BUTTONS = ("previous", "next", "page")
+
+
+def viewer_of(book: dict) -> dict | None:
+    """The viewer the reader shows: the first one on the book."""
+    for viewer in book.get("viewers") or []:
+        if isinstance(viewer, dict):
+            return viewer
+    return None
+
+
+def set_viewer(book: dict, name: str, size: list[int], buttons: list[str]) -> dict:
+    """Store the first viewer. Buttons are previous, next, and page, in that order."""
+    asked = [str(b).lower() for b in buttons]
+    unknown = [b for b in asked if b not in VIEWER_BUTTONS]
+    if unknown:
+        raise ValueError(f"no viewer button called {unknown[0]}")
+    viewer = {
+        "name": name.strip() or "Main",
+        "size": [int(size[0]), int(size[1])],
+        "buttons": [b for b in VIEWER_BUTTONS if b in asked],
+    }
+    found = book.setdefault("viewers", [])
+    if found and isinstance(found[0], dict):
+        found[0] = viewer
+    else:
+        found.insert(0, viewer)
+    return viewer
+
+
+def system_of(book: dict) -> str | None:
+    """The system book this book names, or None."""
+    return book.get("system") or None
+
+
+def set_system(book: dict, name: str) -> None:
+    """Name the one system book. It is an .fsk file name."""
+    name = name.strip()
+    if not name.lower().endswith(".fsk"):
+        raise ValueError(f"{name or 'that'} is not an .fsk system book")
+    book["system"] = name
+
+
+def clear_system(book: dict) -> None:
+    book.pop("system", None)
+
+
+def handler_names(book: dict) -> list[str]:
+    """`to handle` and `to get` names in the book script and page scripts, in order."""
+    import re
+    header = re.compile(r"(?im)^[ \t]*to[ \t]+(?:handle|get)[ \t]+([A-Za-z_]\w*)")
+    scripts = [book.get("script") or ""]
+    scripts += [page.get("script") or "" for page in book.get("pages") or []]
+    names = [m.group(1) for script in scripts for m in header.finditer(str(script))]
+    names += [str(h.get("name")) for h in book.get("handlers") or [] if isinstance(h, dict) and h.get("name")]
+    return list(dict.fromkeys(names))
