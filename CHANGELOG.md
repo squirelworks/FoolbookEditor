@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31
+
+- Apply script on an object shows a warning in the status line when a line uses a word Foolbook does not run, with the line number. The script is still kept. The words come from Foolbook's `engine/subset.py` table through `foolbook.core.unknown_words`. Tested in `author/test_scripts.py`.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.

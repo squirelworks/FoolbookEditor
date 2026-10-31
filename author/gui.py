@@ -316,7 +316,12 @@ class Editor:
         if not (0 <= self.current < len(pages)):
             return
         from author.catalog import set_object_script
-        set_object_script(pages[self.current], self._rows[self._object]["index"], self.oscript.get("1.0", "end"))
+        source = self.oscript.get("1.0", "end")
+        set_object_script(pages[self.current], self._rows[self._object]["index"], source)
+        from author.scripts import warning
+        note = warning(source)
+        if note:
+            self.status.config(text=note)
         self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
 
     def _apply(self):

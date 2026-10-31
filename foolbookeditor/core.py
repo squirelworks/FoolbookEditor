@@ -66,3 +66,8 @@ def export_book(path: str | Path, book: dict, compile_script=None) -> Path:
 
 def compile_script(source: str, keywords: list[str] | None = None) -> bytes:
     return require().compile_script(source, keywords)
+
+
+def unknown_words(source: str) -> list[tuple[int, str]]:
+    """Lines of a script whose word Foolbook does not run, from Foolbook's own table."""
+    return require().unknown_words(source)
