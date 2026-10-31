@@ -1,6 +1,22 @@
 # FoolbookEditor
 
-The editor. [Foolbook](https://github.com/squirelworks/Foolbook) is the reader and the core. This repository is the window. It does not keep its own copy of loading, saving, office files, or OpenScript. Those calls go through `foolbookeditor.core`, which calls `foolbook.core`.
+The editor. [Foolbook](https://github.com/squirelworks/Foolbook) is the reader and the core. Foolbook is the reader, and this repository is the window. It does not keep its own copy of loading, saving, office files, or OpenScript. Those calls go through `foolbookeditor.core`, which calls `foolbook.core`.
+
+## Install
+
+```bash
+git clone https://github.com/squirelworks/FoolbookEditor.git
+cd FoolbookEditor
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -U pip
+python3 -m pip install -e .
+python3 -m foolbookeditor
+```
+
+`pip install -e .` brings Foolbook with it. The window needs Tk. On Debian and Ubuntu that is `sudo apt install python3-tk`.
+
+## Use
 
 ```bash
 python3 -m foolbookeditor --fbk path/to/book.tbk    # write book.fbk beside it

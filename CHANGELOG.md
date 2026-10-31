@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — 2026-10-31
+
+- The README says how to install the editor: a venv, `pip install -e .`, and `python3 -m foolbookeditor`.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.
