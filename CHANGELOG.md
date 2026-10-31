@@ -4,6 +4,7 @@
 
 - Add puts the new page right after the current page, not at the end. Ctrl+M does the same.
 - With no book named, Author opens a start window: New book, Open book, and up to five recent books that are still on disk.
+- New book asks for a page size, 640 by 480 unless changed, and a background colour, then opens the stage. The colour is a page-sized `paper` rect on the background layer, which the reader already paints first.
 
 ## 0.4.0 — 2026-10-24
 
