@@ -15,10 +15,15 @@ DEFAULT_TOOL = "select"
 PAPER = "#f7f4ee"
 INK = "#071428"
 
+# Radios placed one after another answer the same question until the property pane renames the group.
+RADIO_GROUP = "choice"
+
 _SIZE = {
     "button": (90, 28),
     "text": (160, 36),
     "label": (120, 24),
+    "check": (120, 22),
+    "radio": (120, 22),
     "box": (100, 60),
     "line": (80, 8),
     "ellipse": (80, 60),
@@ -31,6 +36,8 @@ _KIND = {
     "button": "button",
     "text": "text",
     "label": "text",
+    "check": "check",
+    "radio": "radio",
     "box": "rect",
     "line": "line",
     "ellipse": "ellipse",
@@ -42,6 +49,8 @@ _LABEL = {
     "button": "Button",
     "text": "Field",
     "label": "Label",
+    "check": "Check",
+    "radio": "Radio",
     "box": "Rectangle",
     "line": "Line",
     "ellipse": "Ellipse",
@@ -98,7 +107,7 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
         "y": int(top),
         "w": int(width),
         "h": int(height),
-        "text": label if tool in ("button", "text", "label") else "",
+        "text": label if tool in ("button", "text", "label", "check", "radio") else "",
         "script": "",
         "fill": "#c0c0c0" if tool == "button" else "",
         "outline": "#000000",
@@ -118,6 +127,12 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
         shape["preset"] = "label"
         shape["border"] = 1
         shape["editable"] = False
+    elif tool in ("check", "radio"):
+        # The reader turns value over on a click. A radio turns off the others in its group.
+        shape["value"] = False
+        shape["outline"] = INK
+        if tool == "radio":
+            shape["group"] = RADIO_GROUP
     elif tool == "box":
         shape["fill"] = PAPER
         shape["outline"] = INK
