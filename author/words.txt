@@ -1,0 +1,27 @@
+# Ordinary English words for the small spellcheck. Written for Foolbook.
+# One or more per line. Add a book's own words with "Add to book".
+a about above across act add after again against age ago agree air all almost alone along already also always am among an and animal another answer any anyone anything are area arm around art as ask at away
+back bad ball be because become bed been before began begin behind being believe below best better between big bird black blue boat body book both bottom box boy bring brother brown build built but buy by
+call came can car care carry case cat cause center change check child children choose circle city class clear close cold color come common complete could count country course cover cross cut
+dark day deep did different do does dog done door down draw dream drive during
+each early earth easy eat edge end enough even evening ever every example eye
+face fact fall family far farm fast father feel feet few field fill final find fine fire first fish five follow food foot for form found four free friend from front full fun
+game gave general get girl give glad go good got great green ground group grow guess
+had half hand happen happy hard has have he head hear heard heart help her here high him his hold home horse hot hour house how however hundred
+i idea if important in inside into is it its itself
+just keep kind king knew know
+land language large last late later learn least leave left less let letter life light like line list listen little live long look lost lot love low
+made main make man many map mark matter may me mean measure men might mile mind minute miss money month moon more morning most mother move much music must my
+name near need never new next night no north not note nothing now number
+of off often oh old on once one only open or order other our out over own
+page paper part pass past people perhaps picture piece place plan plant play please point possible power press problem pull put
+question quick quickly quiet quite
+rain ran reach read ready real really red remember rest right river road rock room round rule run
+said same saw say school sea second see seem seen sentence set several shape she short should show side simple since sing sit six size slow small snow so some something sometimes song soon sound south space speak special spell stand star start state stay step still stop story street strong study such sun sure
+table take talk teach tell ten test than thank that the their them then there these they thing think third this those though thought three through time to today together told too took top toward town tree true try turn two
+under understand until up upon us use usually
+very voice
+wait walk want war warm was watch water way we week well went were what when where which while white who whole why will wind with without woman women wonder word work world would write wrong
+year yes yet you young your
+answers asked asks books called calls changes colors days does words friends gets gives goes hands helps keeps knows likes lines lives looks makes means moves names needs numbers pages parts pictures places plays points questions reads runs says sees shows starts stops takes tells things thinks times tries turns uses wants works writes years
+correct incorrect again quiz score try next previous choose choice click button chapter lesson review contents welcome finish finished done well
