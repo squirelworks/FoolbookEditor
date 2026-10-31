@@ -86,6 +86,7 @@
 - Each page has a small drawing of its shapes under the page list. A click on one shows that page.
 - Go to, or Ctrl+G, shows the page whose id you type. An unknown id stays put and the status line says so.
 - First, previous, next, and last buttons under the page list move the editor through the pages in book order. They do not follow the book's Next button.
+- Right click on a page in the list opens Add page, Duplicate page, Delete page, and Properties. They run the same commands as the buttons and keys, and show the key. Properties moves to the page id field.
 - A click selects the topmost shape under it. A line is picked near its stroke, a shape stored as points is picked inside its points' bounds, and background shapes are picked only while Background is chosen.
 - A drag on empty page draws a box and selects every object whose bounds meet it. The object list can select more than one.
 
