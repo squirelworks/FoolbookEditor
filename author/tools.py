@@ -163,6 +163,19 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
     return shape
 
 
+# How a picture sits in its frame, in the order the Fit button steps through them.
+FITS = ("fill", "contain", "none")
+
+
+def next_fit(shape: dict) -> str | None:
+    """Step a picture to the next fit. Not a picture: nothing changes."""
+    if (shape.get("kind") or "") != "image":
+        return None
+    current = shape.get("fit") or "fill"
+    shape["fit"] = FITS[(FITS.index(current) + 1) % len(FITS)] if current in FITS else FITS[0]
+    return shape["fit"]
+
+
 def shape_at(page: dict, index: int) -> dict | None:
     """The shape at that row. Hidden ones count. Non-shapes do not."""
     seen = 0
