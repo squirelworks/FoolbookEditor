@@ -68,6 +68,8 @@ Align lines up two or more selected objects by their left, right, top, or bottom
 
 Group puts two or more selected objects on one layer into one object of kind `group`, with the objects as its `children` at their page positions. It sits where the front-most of them was. Moving the group moves them all; resizing a group is not done yet. Foolbook keeps a group's children on the page, clickable and in paint order (Foolbook#48). Ungroup puts the children back where the group was, in order, at their page positions; a group inside it comes back as a group.
 
+Lock stops an object being picked or caught by a box on the stage, so a click goes to what is under it. The object list marks it locked and can still select it; Lock > Unlock selected, or Unlock all on this page, frees it. A locked object stores `locked: true`, which the file keeps; an unlocked one has no `locked` key.
+
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash

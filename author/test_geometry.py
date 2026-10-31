@@ -341,5 +341,47 @@ class UngroupTests(unittest.TestCase):
         self.assertEqual(len(shapes), 5)
 
 
+class LockTests(unittest.TestCase):
+    def shapes(self):
+        return [
+            {"kind": "rect", "name": "paper", "x": 0, "y": 0, "w": 640, "h": 480},
+            {"kind": "button", "name": "Next", "x": 10, "y": 10, "w": 90, "h": 28},
+        ]
+
+    def test_a_locked_shape_is_not_hit_and_the_click_goes_under_it(self):
+        shapes = self.shapes()
+        geometry.set_locked(shapes, [1], True)
+        self.assertEqual(geometry.hit(shapes, 20, 20), 0)
+        geometry.set_locked(shapes, [0], True)
+        self.assertIsNone(geometry.hit(shapes, 20, 20))
+
+    def test_a_locked_shape_is_not_caught_by_a_box(self):
+        shapes = self.shapes()
+        geometry.set_locked(shapes, [0], True)
+        self.assertEqual(geometry.marquee(shapes, 0, 0, 50, 50), [1])
+
+    def test_unlock_brings_it_back_and_drops_the_key(self):
+        shapes = self.shapes()
+        geometry.set_locked(shapes, [1], True)
+        self.assertIs(shapes[1]["locked"], True)
+        geometry.set_locked(shapes, [1], False)
+        self.assertNotIn("locked", shapes[1])
+        self.assertEqual(geometry.hit(shapes, 20, 20), 1)
+
+    def test_locked_round_trips_through_the_book_file(self):
+        try:
+            from foolbookeditor.core import pack, unpack
+            import foolbook.core  # noqa: F401
+        except ImportError:
+            self.skipTest("Foolbook is not installed")
+        shapes = self.shapes()
+        geometry.set_locked(shapes, [1], True)
+        book = {"id": "b", "pages": [{"id": "P0", "shapes": shapes}]}
+        for compress in (False, True):
+            back = unpack(pack(book, compress=compress))
+            self.assertIs(back["pages"][0]["shapes"][1]["locked"], True)
+            self.assertNotIn("locked", back["pages"][0]["shapes"][0])
+
+
 if __name__ == "__main__":
     unittest.main()

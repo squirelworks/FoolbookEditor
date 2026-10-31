@@ -32,6 +32,7 @@ def objects_of(page: dict, layer: str | None = None) -> list[dict]:
             "script": shape.get("script") or "",
             "text": shape.get("text") or "",
             "hidden": shape.get("visible") is False,
+            "locked": shape.get("locked") is True,
             "layer": shape.get("layer") or "page",
         })
     return rows

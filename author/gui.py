@@ -130,6 +130,13 @@ class Editor:
         menu.add_command(label="Distribute down (3 or more)", command=lambda: self._distribute("vertical"))
         aligner["menu"] = menu
         aligner.pack(side="left", padx=(8, 0))
+        locker = ttk.Menubutton(tools, text="Lock")
+        lock_menu = tk.Menu(locker, tearoff=False)
+        lock_menu.add_command(label="Lock selected", command=lambda: self._lock(True))
+        lock_menu.add_command(label="Unlock selected (pick it in the object list)", command=lambda: self._lock(False))
+        lock_menu.add_command(label="Unlock all on this page", command=self._unlock_all)
+        locker["menu"] = lock_menu
+        locker.pack(side="left", padx=(8, 0))
         ttk.Button(tools, text="Group", command=self._group).pack(side="left", padx=(8, 0))
         ttk.Button(tools, text="Ungroup", command=self._ungroup).pack(side="left", padx=2)
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
@@ -909,7 +916,7 @@ class Editor:
         self.objects.delete(0, "end")
         for row in self._rows:
             name = row["name"] or "(unnamed)"
-            mark = " hidden" if row["hidden"] else ""
+            mark = (" hidden" if row["hidden"] else "") + (" locked" if row.get("locked") else "")
             self.objects.insert("end", f"{row['kind']}  {name}{mark}")
         script = page_script(page)
         self.oscript.delete("1.0", "end")
@@ -1486,6 +1493,31 @@ class Editor:
         align(pages[self.current].get("shapes") or [], self._chosen, how)
         self._preview()
         self._draw_thumbs()
+
+    def _lock(self, locked: bool):
+        pages = self.book.get("pages") or []
+        if not self._chosen or not (0 <= self.current < len(pages)):
+            self.status.config(text="Select an object in the object list first")
+            return
+        from author.geometry import set_locked
+        page = pages[self.current]
+        chosen = list(self._chosen)
+        set_locked(page.get("shapes") or [], chosen, locked)
+        self._fill_objects(page)
+        self._choose([] if locked else chosen)
+        self.status.config(text="Locked" if locked else "Unlocked")
+
+    def _unlock_all(self):
+        pages = self.book.get("pages") or []
+        if not (0 <= self.current < len(pages)):
+            return
+        from author.geometry import set_locked
+        page = pages[self.current]
+        shapes = page.get("shapes") or []
+        set_locked(shapes, list(range(len(shapes))), False)
+        self._fill_objects(page)
+        self._preview()
+        self.status.config(text="Nothing on this page is locked")
 
     def _group(self):
         pages = self.book.get("pages") or []
