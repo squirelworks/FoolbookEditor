@@ -243,6 +243,7 @@ class Editor:
         ttk.Button(tools, text="Fill", command=lambda: self._color("fill")).pack(side="left")
         ttk.Button(tools, text="Fit", command=self._fit).pack(side="left", padx=(2, 0))
         ttk.Button(tools, text="Record", command=self._record).pack(side="left", padx=(2, 0))
+        ttk.Button(tools, text="Hotword", command=self._hotword).pack(side="left", padx=(2, 0))
         ttk.Button(tools, text="Line", command=lambda: self._color("outline")).pack(side="left", padx=2)
         ttk.Button(tools, text="Pattern", command=self._pattern).pack(side="left")
         self.grid = tk.BooleanVar(value=False)
@@ -1844,6 +1845,27 @@ class Editor:
             return
         self.status.config(text=f"Fit {fit}")
         self._preview()
+
+    def _hotword(self):
+        """A word in the selected field that jumps to a page."""
+        shape, _index = self._selected()
+        if shape is None:
+            self.status.config(text="Select a field first")
+            return
+        from tkinter import simpledialog
+        from author.hotwords import add_hotword
+        word = simpledialog.askstring("Hotword", "Word in the field", parent=self.root)
+        if not word:
+            return
+        page = simpledialog.askstring("Hotword", f"Page {word} goes to", parent=self.root)
+        if page is None:
+            return
+        try:
+            add_hotword(shape, word, page)
+        except ValueError as exc:
+            self.status.config(text=str(exc))
+            return
+        self.status.config(text=f"{word.strip()} goes to {page.strip()}")
 
     def _record(self):
         """Fields and rows for a record on this page, then the shapes that show it."""
