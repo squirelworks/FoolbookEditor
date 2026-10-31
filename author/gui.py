@@ -76,6 +76,8 @@ class Editor:
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Button(tools, text="Fill", command=lambda: self._color("fill")).pack(side="left")
         ttk.Button(tools, text="Line", command=lambda: self._color("outline")).pack(side="left", padx=2)
+        self.grid = tk.BooleanVar(value=False)
+        ttk.Checkbutton(tools, text="Grid 8", variable=self.grid, command=self._preview).pack(side="left", padx=(8, 0))
         ttk.Button(tools, text="Front", command=lambda: self._restack("front")).pack(side="left", padx=(8, 2))
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
 
@@ -479,7 +481,26 @@ class Editor:
             page = pages[self.current]
         from author.stage import paint
         paint(self.canvas, page or {})
+        if self.grid.get():
+            self._draw_grid(page or {})
         self._draw_handles()
+
+    def _draw_grid(self, page: dict):
+        """A dot at every grid crossing on the page, under the handles."""
+        view = getattr(self.canvas, "_author_view", None)
+        if not view or not view.get("scale"):
+            return
+        from author.geometry import GRID
+        from author.stage import page_size
+        from author.tools import window_point
+        width, height = page_size(page)
+        step = GRID
+        while step * view["scale"] < 6:
+            step *= 2
+        for gx in range(0, width + 1, step):
+            for gy in range(0, height + 1, step):
+                sx, sy = window_point(view, gx, gy)
+                self.canvas.create_line(sx, sy, sx + 1, sy, fill="#9a9a9a", tags=("grid",))
 
     def _draw_handles(self):
         if self.tool.get() != "select" or self._object is None:
@@ -607,6 +628,8 @@ class Editor:
                     x1, y1 = page_point(view, evt.x, evt.y)
                     self._choose(marquee(view["shapes"], x0, y0, x1, y1, self.layer.get()))
             elif drag:
+                if self.grid.get():
+                    self._snap_drag(drag, evt)
                 self._draw_thumbs()
             return
         self._drag = None
@@ -619,6 +642,10 @@ class Editor:
         from author.tools import new_shape, page_point
         x0, y0 = page_point(view, down[0], down[1])
         x1, y1 = page_point(view, evt.x, evt.y)
+        if self.grid.get():
+            from author.geometry import snap_point
+            x0, y0 = snap_point(x0, y0)
+            x1, y1 = snap_point(x1, y1)
         if evt.state & 0x0001:
             # Shift: a square box, or a line at 0, 45, or 90 degrees.
             from author.geometry import constrain_box, constrain_line
@@ -680,6 +707,24 @@ class Editor:
             self._object = None
             self._chosen = []
             self._preview()
+
+    def _snap_drag(self, drag: dict, evt):
+        """The grid applies once, when the button comes up, so a drag does not jitter."""
+        pages = self.book.get("pages") or []
+        view = getattr(self.canvas, "_author_view", None)
+        if not view or not (0 <= self.current < len(pages)):
+            return
+        shapes = pages[self.current].get("shapes") or []
+        from author.geometry import resize, snap_move, snap_point
+        from author.tools import page_point
+        if drag["mode"] == "move-all":
+            snap_move(shapes, list(drag["snaps"]))
+        elif drag["mode"] == "move":
+            snap_move(shapes, [drag["index"]])
+        elif drag["mode"] == "size" and 0 <= drag["index"] < len(shapes):
+            px, py = snap_point(*page_point(view, evt.x, evt.y))
+            resize(shapes[drag["index"]], drag["before"], drag["handle"], px, py)
+        self._preview()
 
     def _selected(self):
         pages = self.book.get("pages") or []

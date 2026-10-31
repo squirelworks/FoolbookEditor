@@ -36,6 +36,8 @@ A selected object has eight handles: four corners and the middle of each side. A
 
 Hold Shift while drawing: a box, ellipse, button, or field comes out square, and a line snaps to horizontal, vertical, or 45 degrees.
 
+Grid 8 is off when the window opens. When it is on, the stage shows the grid as dots, and a drawn, moved, or resized object snaps to the 8-pixel grid when the mouse button comes up, not during the drag.
+
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash

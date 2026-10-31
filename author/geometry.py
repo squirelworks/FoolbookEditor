@@ -17,6 +17,9 @@ _LINES = {"line", "curve"}
 NUDGE = 1
 NUDGE_BIG = 8
 
+# The grid is off until the author turns it on. Snapping happens on release.
+GRID = 8
+
 # No resize makes a shape smaller than this, in page pixels, either way.
 MIN_SIZE = 4
 
@@ -215,3 +218,28 @@ def constrain_line(x0: float, y0: float, x1: float, y1: float) -> tuple[float, f
         return x0, y1
     leg = max(abs(dx), abs(dy))
     return x0 + math.copysign(leg, dx or 1), y0 + math.copysign(leg, dy or 1)
+
+
+def snap(value: float, grid: int = GRID) -> int:
+    """The nearest grid line. A half-way value goes up."""
+    if grid <= 0:
+        return int(round(value))
+    return int(math.floor(value / grid + 0.5) * grid)
+
+
+def snap_point(x: float, y: float, grid: int = GRID) -> tuple[int, int]:
+    return snap(x, grid), snap(y, grid)
+
+
+def snap_move(shapes: list[dict], indices: list[int], grid: int = GRID) -> None:
+    """After a move, shift the selection so the first shape's top-left is on the grid.
+
+    The others move by the same amount, so their spacing is kept.
+    """
+    chosen = [i for i in dict.fromkeys(indices) if 0 <= i < len(shapes) and isinstance(shapes[i], dict)]
+    if not chosen:
+        return
+    x, y, _w, _h = bounds(shapes[chosen[0]])
+    dx, dy = snap(x, grid) - x, snap(y, grid) - y
+    if dx or dy:
+        nudge(shapes, chosen, dx, dy)
