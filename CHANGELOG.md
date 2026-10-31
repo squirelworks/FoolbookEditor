@@ -3,6 +3,7 @@
 ## 2026-10-31
 
 - A book dropped on the program's icon or shortcut opens: the first file among the arguments is opened, and flags, folders and missing paths are skipped. A packaged macOS app answers `::tk::mac::OpenDocument`. The README says that a drop on the open window does nothing on any platform, since stock Tk has no drop target. Test: `tests/test_drop.py`.
+- `move_page` is tested at the ends: the first page, the last page, and a one-page book. Moving past an end does nothing. No behavior changed.
 - Page ids are unique in a book, without regard to case, as the reader finds them. `rename_page` refuses a rename onto another page's id and the status line says so. The casing typed is kept. A new page's id no longer collides with an id in another case.
 - `schema.md` and `author/schema.py` write the book dict down, starting with the book fields `id`, `title`, and `pages`. `_magic` is the web editor's envelope state and is not written into the payload; the reader opens a book with or without it.
 - A generated 200-page book with 20 shapes a page opens in the editor in about 0.012 s and in the reader in about 0.02 s, well under two seconds. A test holds it under two seconds. No optimization.
