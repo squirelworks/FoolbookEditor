@@ -49,6 +49,8 @@ class Editor:
             self._new(ask=False)
             if path is None:
                 self._start([])
+        from author.recovery import INTERVAL_MS
+        self.root.after(INTERVAL_MS, self._recover)
         self.root.mainloop()
 
     _CHANGES = (
@@ -828,6 +830,7 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self._kept = None
         self.status.config(text="New book")
 
     def _open(self):
@@ -851,6 +854,15 @@ class Editor:
             self.book = read(path)
         else:
             self.book = load_book(path)
+        from author import recovery
+        self._kept = recovery.snapshot(self.book)
+        copy = recovery.newer(path)
+        if copy is not None and messagebox.askyesno(
+            "Foolbook Editor",
+            f"There is a recovery copy of {path.name} newer than the file. Open the recovery copy?",
+            parent=self.root,
+        ):
+            self.book = load_book(copy)
         self.path = path
         self.current = 0
         self._refresh_list()
@@ -873,6 +885,7 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self._kept = None
         self.status.config(text=f"Imported {src.name}. Save writes {self.path.name}")
         win = tk.Toplevel(self.root)
         win.title(f"Import report: {src.name}")
@@ -892,6 +905,7 @@ class Editor:
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._saved()
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
     def _save_as(self):
@@ -909,8 +923,22 @@ class Editor:
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._saved()
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
+    def _saved(self):
+        from author import recovery
+        recovery.clear(self.path)
+        self._kept = recovery.snapshot(self.book)
+
+    def _recover(self):
+        """Every five minutes: a recovery copy, if there are unsaved changes."""
+        from author import recovery
+        try:
+            recovery.tick(self.book, getattr(self, "_kept", None), self.path)
+        except Exception as exc:
+            self.status.config(text=f"Recovery copy not written: {exc}")
+        self.root.after(recovery.INTERVAL_MS, self._recover)
 
     def _publish(self):
         """A folder with the .fbk, its linked files, and a README. No installer."""

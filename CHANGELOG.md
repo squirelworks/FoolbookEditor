@@ -72,6 +72,7 @@
 - Undock under the Properties pane moves that same pane into its own window. Dock, or closing the window, puts it back. There is still one property system.
 ## 2026-10-31
 
+- Every five minutes, a book with unsaved changes gets a recovery copy in the user config directory (`foolbookeditor/recovery/`), never beside the book. Saving removes it. Opening a book whose recovery copy is newer than the file asks which one to open. Test: `author/test_recovery.py` checks the copy's contents.
 - The page form has a Background list. It names the shared backgrounds in the book (pages with `"background": true`) and `(none)`. Picking one sets the page's `uses`, and the stage draws that background under the page. `(none)` clears it. The model refuses a name that is not a background. Test: `author/test_backgrounds.py`.
 - The README lists the script lines the reader runs: `go to page`, `go to page of book`, `send next`, `send previous`. `author/test_script_subset.py` runs every line in that table through Foolbook.
 - `instructor-map.md` lists the fourteen Instructor jobs, where each one stands, and the work order items that cover it. `author/test_instructor_map.py` keeps every job listed once with a status.
