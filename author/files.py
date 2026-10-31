@@ -46,6 +46,17 @@ def open_book(path: str | Path) -> dict:
     return load(path)
 
 
+def is_dirty(saved: dict | None, current: dict) -> bool:
+    """True when ``current`` would write something other than ``saved`` did.
+
+    Compared as written, so the envelope keys do not count. ``saved`` is
+    None for a book never saved or opened.
+    """
+    if saved is None:
+        return True
+    return payload(saved) != payload(current)
+
+
 def save(path: str | Path, book: dict, compress: bool = True) -> Path:
     check_version(book)
     return save_book(path, payload(book), compress=compress)
