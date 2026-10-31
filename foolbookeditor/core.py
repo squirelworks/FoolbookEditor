@@ -69,6 +69,13 @@ def unpack(blob: bytes) -> dict:
     return require().unpack(blob)
 
 
+def is_toolbook(path: str | Path) -> bool:
+    """True when the bytes are ToolBook, whatever the name says."""
+    require()
+    from toolbook.format import is_toolbook as sniff
+    return sniff(path)
+
+
 def is_office(path: str | Path) -> bool:
     return require().is_office(path)
 
@@ -87,3 +94,8 @@ def export_book(path: str | Path, book: dict, compile_script=None) -> Path:
 
 def compile_script(source: str, keywords: list[str] | None = None) -> bytes:
     return require().compile_script(source, keywords)
+
+
+def unknown_words(source: str) -> list[tuple[int, str]]:
+    """Lines of a script whose word Foolbook does not run, from Foolbook's own table."""
+    return require().unknown_words(source)

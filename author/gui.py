@@ -8,10 +8,12 @@ Slide editor. Produces .fbk (and .fsk). Export .tbk writes a shell with compiled
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
-from .files import FutureBook, open_book as load_book, save as save_book
+from .files import FutureBook, open_book as load_book
+from .safesave import save_safely
 
 try:
     import tkinter as tk
@@ -32,6 +34,7 @@ class Editor:
         self.book: dict = {"id": "new", "title": "New book", "pages": []}
         self.path: Path | None = path
         self.current = 0
+        self.saved: dict | None = None
         from author.tools import DEFAULT_TOOL
         self.tool = tk.StringVar(value=DEFAULT_TOOL)
         from author.history import History
@@ -49,6 +52,8 @@ class Editor:
             self._new(ask=False)
             if path is None:
                 self._start([])
+        from author.recovery import INTERVAL_MS
+        self.root.after(INTERVAL_MS, self._recover)
         self.root.mainloop()
 
     _CHANGES = (
@@ -193,6 +198,7 @@ class Editor:
         win.grab_set()
 
     def _build(self):
+        self._menus()
         # toolbar
         bar = ttk.Frame(self.root, padding=4)
         bar.pack(fill="x")
@@ -202,9 +208,12 @@ class Editor:
         ttk.Button(bar, text="Catalog", command=self._catalog).pack(side="left")
         ttk.Button(bar, text="Save", command=self._save).pack(side="left")
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
+        self.compress = tk.BooleanVar(value=True)
+        ttk.Checkbutton(bar, text="Compress", variable=self.compress).pack(side="left", padx=2)
         ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Proof PNGs", command=self._proof).pack(side="left", padx=2)
+        ttk.Button(bar, text="Print", command=self._print).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
         ttk.Button(bar, text="Menu bar", command=self._menubar).pack(side="left", padx=2)
@@ -272,6 +281,12 @@ class Editor:
         ttk.Button(tools, text="Backward", command=lambda: self._restack("backward")).pack(side="left", padx=2)
         ttk.Button(tools, text="Back", command=lambda: self._restack("back")).pack(side="left")
         ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
+        ttk.Label(tools, text="Zoom").pack(side="left")
+        self.zoom = ttk.Combobox(tools, width=6, state="readonly", values=["Fit", "50%", "100%", "200%"])
+        self.zoom.set("Fit")
+        self.zoom.pack(side="left", padx=2)
+        self.zoom.bind("<<ComboboxSelected>>", lambda _e: self._preview())
+        ttk.Separator(tools, orient="vertical").pack(side="left", fill="y", padx=6)
         ttk.Label(tools, text="Viewer").pack(side="left")
         self.viewer_buttons = {}
         for name, label in (("previous", "Previous"), ("next", "Next"), ("page", "Page number")):
@@ -288,6 +303,10 @@ class Editor:
         # Colours the book already uses. Click for fill, right-click for line.
         self.swatches = ttk.Frame(tools)
         self.swatches.pack(side="left")
+
+        self.status_line = ttk.Label(self.root, text="", anchor="w", padding=(6, 2))
+        self.status_line.pack(side="bottom", fill="x")
+        self.tool.trace_add("write", lambda *_: self._status_line())
 
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=4, pady=4)
@@ -355,11 +374,19 @@ class Editor:
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
         body.add(center, weight=3)
-        self.canvas = tk.Canvas(center, bg="white", width=640, height=480, highlightthickness=0)
+        stage = ttk.Frame(center)
+        stage.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(stage, bg="white", width=640, height=480, highlightthickness=0)
+        across = ttk.Scrollbar(stage, orient="horizontal", command=self.canvas.xview)
+        down = ttk.Scrollbar(stage, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(xscrollcommand=across.set, yscrollcommand=down.set)
+        down.pack(side="right", fill="y")
+        across.pack(side="bottom", fill="x")
         self.canvas.pack(fill="both", expand=True)
-        self.canvas.bind("<ButtonPress-1>", self._on_press)
-        self.canvas.bind("<B1-Motion>", self._on_drag)
-        self.canvas.bind("<ButtonRelease-1>", self._on_release)
+        # A pointer position is a window pixel. Scrolled, the drawing is somewhere else.
+        self.canvas.bind("<ButtonPress-1>", lambda e: self._on_press(self._scrolled(e)))
+        self.canvas.bind("<B1-Motion>", lambda e: self._on_drag(self._scrolled(e)))
+        self.canvas.bind("<ButtonRelease-1>", lambda e: self._on_release(self._scrolled(e)))
         self.canvas.bind("<Configure>", self._on_canvas_resize)
         # Right click is Button-2 on macOS Tk and Button-3 elsewhere.
         right = "<Button-2>" if self.root.tk.call("tk", "windowingsystem") == "aqua" else "<Button-3>"
@@ -556,6 +583,48 @@ class Editor:
             self.objects.selection_set(self._object)
         self._preview()
 
+    def _menus(self):
+        """File, Edit, Insert, Arrange, Book, Help, from author.menus."""
+        from author.menus import MENUS
+        bar = tk.Menu(self.root, tearoff=False)
+        for name, entries in MENUS:
+            menu = tk.Menu(bar, tearoff=False)
+            for entry in entries:
+                if entry is None:
+                    menu.add_separator()
+                    continue
+                label, command = entry
+                menu.add_command(label=label, command=lambda c=command: self._run(c))
+            bar.add_cascade(label=name, menu=menu)
+        self.root.config(menu=bar)
+        self.menubar = bar
+
+    def _run(self, command: str):
+        if command.startswith("tool:"):
+            self.tool.set(command[5:])
+        elif command.startswith("layer:"):
+            self.layer.set(command[6:])
+            self._relayer()
+        else:
+            getattr(self, command)()
+
+    def _front(self):
+        self._restack("front")
+
+    def _back(self):
+        self._restack("back")
+
+    def _help_tool(self):
+        from author.menus import TOOL_TITLES, tool_help
+        tool = self.tool.get()
+        win = tk.Toplevel(self.root)
+        win.title(f"Help: {TOOL_TITLES.get(tool, tool)}")
+        box = tk.Text(win, width=72, height=12, wrap="word")
+        box.pack(fill="both", expand=True)
+        box.insert("1.0", tool_help(tool))
+        box.config(state="disabled")
+        self.help_text = box
+
     def _split(self):
         """Keep the picture on screen. The side panes do not take the window."""
         width = self.body.winfo_width()
@@ -581,8 +650,36 @@ class Editor:
             pass
 
     def _close(self):
+        if not self._discard_ok():
+            return
         self._keep_panes()
         self.root.destroy()
+
+    def _snapshot(self):
+        import copy
+        self.saved = copy.deepcopy(self.book)
+        self._mark()
+
+    def _mark(self):
+        """A star in the title bar while the book differs from the file."""
+        from author.files import is_dirty
+        name = self.path.name if self.path else (self.book.get("title") or "New book")
+        star = "*" if is_dirty(self.saved, self.book) else ""
+        self.root.title(f"{star}{name} - Foolbook Author")
+
+    def _discard_ok(self) -> bool:
+        """Ask before dropping unsaved changes. True means go on."""
+        from author.files import is_dirty
+        self._apply()
+        if not self.book.get("pages") or not is_dirty(self.saved, self.book):
+            return True
+        answer = messagebox.askyesnocancel("Foolbook Editor", "Save changes to this book first?")
+        if answer is None:
+            return False
+        if answer:
+            self._save()
+            return not is_dirty(self.saved, self.book)
+        return True
 
     def _book_properties(self):
         from .bookprops import properties, set_properties
@@ -718,6 +815,8 @@ class Editor:
         self._menubar_window = win
 
     def _new(self, ask: bool = True):
+        if self.saved is not None and not self._discard_ok():
+            return
         from author.document import new_book
         if not ask:
             self._open_new(new_book())
@@ -828,6 +927,8 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self._snapshot()
+        self._kept = None
         self.status.config(text="New book")
 
     def _open(self):
@@ -839,22 +940,32 @@ class Editor:
                 ("All", "*.*"),
             ],
         )
-        if p:
+        if p and self._discard_ok():
             self._load(Path(p))
 
     def _load(self, path: Path):
-        from foolbookeditor.core import is_office, read, to_book
-        suffix = path.suffix.lower()
-        if is_office(path):
-            self.book = to_book(path)
-        elif suffix in {".tbk", ".sbk"}:
-            self.book = read(path)
-        else:
+        from author.files import save_path_for
+        try:
             self.book = load_book(path)
-        self.path = path
+        except (OSError, ValueError) as exc:
+            messagebox.showerror("Foolbook Editor", f"{path.name}: {exc}")
+            return
+        from author import recovery
+        self._kept = recovery.snapshot(self.book)
+        copy = recovery.newer(path)
+        if copy is not None and messagebox.askyesno(
+            "Foolbook Editor",
+            f"There is a recovery copy of {path.name} newer than the file. Open the recovery copy?",
+            parent=self.root,
+        ):
+            self.book = load_book(copy)
+        self.path = save_path_for(path)
+        from author.files import is_compressed
+        self.compress.set(is_compressed(path))
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self._snapshot()
         from author.document import handler_names
         found = handler_names(self.book)
         note = f"  {len(found)} handlers" if path.suffix.lower() == ".fsk" else ""
@@ -873,6 +984,9 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self.saved = None
+        self._mark()
+        self._kept = None
         self.status.config(text=f"Imported {src.name}. Save writes {self.path.name}")
         win = tk.Toplevel(self.root)
         win.title(f"Import report: {src.name}")
@@ -888,29 +1002,46 @@ class Editor:
             self._save_as()
             return
         try:
-            save_book(self.path, self.book)
+            self.path = save_safely(self.path, self.book, compress=self.compress.get())
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
-        self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
+        self._snapshot()
+        self._saved()
+        self.status.config(text=f"Saved {self.path.name}")
 
     def _save_as(self):
         self._apply()
         p = filedialog.asksaveasfilename(
             title="Save book",
             defaultextension=".fbk",
-            filetypes=[("Foolbook book", "*.fbk"), ("JSON", "*.json")],
+            filetypes=[("Foolbook book", "*.fbk"), ("System book", "*.fsk"), ("JSON", "*.json")],
         )
         if not p:
             return
         self.path = Path(p)
         try:
-            save_book(self.path, self.book)
+            self.path = save_safely(self.path, self.book, compress=self.compress.get())
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
-        self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
+        self._snapshot()
+        self._saved()
+        self.status.config(text=f"Saved {self.path.name}")
 
+    def _saved(self):
+        from author import recovery
+        recovery.clear(self.path)
+        self._kept = recovery.snapshot(self.book)
+
+    def _recover(self):
+        """Every five minutes: a recovery copy, if there are unsaved changes."""
+        from author import recovery
+        try:
+            recovery.tick(self.book, getattr(self, "_kept", None), self.path)
+        except Exception as exc:
+            self.status.config(text=f"Recovery copy not written: {exc}")
+        self.root.after(recovery.INTERVAL_MS, self._recover)
 
     def _publish(self):
         """A folder with the .fbk, its linked files, and a README. No installer."""
@@ -928,7 +1059,7 @@ class Editor:
         self.status.config(text=note)
 
     def _export(self):
-        """Save as a book, a TBX folder, a ToolBook shell, or an office file."""
+        """Export. Not Save. Writes a TBX folder, a ToolBook shell, or an office file."""
         self._apply()
         p = filedialog.asksaveasfilename(
             title="Export",
@@ -965,6 +1096,24 @@ class Editor:
         base = self.path.parent if self.path else None
         written = export_pngs(self.book, folder, base=base)
         self.status.config(text=f"Wrote {len(written)} page pictures")
+
+    def _print(self):
+        """The PNG pages, sent to the printer when this machine has one call for it."""
+        self._apply()
+        folder = filedialog.askdirectory(title="Folder for the printed pages")
+        if not folder:
+            return
+        from author.printing import print_book, printer
+        base = self.path.parent if self.path else None
+        try:
+            written, sent = print_book(self.book, folder, base=base, send=printer())
+        except (OSError, subprocess.CalledProcessError) as exc:
+            self.status.config(text=f"Printing failed: {exc}. The pages are in {folder}")
+            return
+        if sent:
+            self.status.config(text=f"Sent {len(written)} pages to the printer")
+        else:
+            self.status.config(text=f"No printer call here. The {len(written)} PNG pages in {folder} are the print")
 
     def _export_executable(self):
         """ToolBook-style self-running book. Scaffold only."""
@@ -1123,6 +1272,7 @@ class Editor:
         self.oscript.insert("1.0", row["script"])
         self._show_properties()
         self._show_actions()
+        self._status_line()
 
     def _script_tab(self, _evt=None):
         from author.properties import SCRIPT_TAB
@@ -1211,7 +1361,12 @@ class Editor:
             set_page_script(pages[self.current], self.oscript.get("1.0", "end"))
             return
         from author.catalog import set_object_script
-        set_object_script(pages[self.current], self._rows[self._object]["index"], self.oscript.get("1.0", "end"))
+        source = self.oscript.get("1.0", "end")
+        set_object_script(pages[self.current], self._rows[self._object]["index"], source)
+        from author.scripts import warning
+        note = warning(source)
+        if note:
+            self.status.config(text=note)
         self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
         self._show_actions()
 
@@ -1330,6 +1485,7 @@ class Editor:
         self._refresh_list()
 
     def _preview(self):
+        self._mark()
         if getattr(self, "_typing", None) is not None:
             # A field is being typed into. Redrawing now would take the box away.
             return
@@ -1338,12 +1494,14 @@ class Editor:
         if 0 <= self.current < len(pages):
             page = pages[self.current]
         from author.stage import paint
-        paint(self.canvas, page or {}, self.book)
+        from author.view import ZOOMS
+        paint(self.canvas, page or {}, self.book, ZOOMS.get(self.zoom.get()))
         self._palette()
         if self.grid.get():
             self._draw_grid(page or {})
         self._draw_handles()
         self._draw_draft()
+        self._status_line()
 
     def _draw_grid(self, page: dict):
         """A dot at every grid crossing on the page, under the handles."""
@@ -1361,6 +1519,27 @@ class Editor:
             for gy in range(0, height + 1, step):
                 sx, sy = window_point(view, gx, gy)
                 self.canvas.create_line(sx, sy, sx + 1, sy, fill="#9a9a9a", tags=("grid",))
+
+    def _dirty(self) -> bool:
+        """Unsaved changes, once the dirty flag (item 22) is in. Until then, never."""
+        try:
+            from author.files import is_dirty
+        except ImportError:
+            return False
+        return is_dirty(getattr(self, "saved", None), self.book)
+
+    def _status_line(self):
+        from author.status import status_text
+        pages = self.book.get("pages") or []
+        page = pages[self.current] if 0 <= self.current < len(pages) else None
+        shape = None
+        if self._object is not None and 0 <= self._object < len(self._rows):
+            shape = self._rows[self._object].get("name") or ""
+        # The zoom shows once the stage has a zoom control.
+        zoom = self.zoom.get() if hasattr(self, "zoom") else None
+        self.status_line.config(text=status_text(
+            self.tool.get(), (page or {}).get("id"), shape, zoom, self._dirty()
+        ))
 
     def _draw_handles(self):
         if self.tool.get() != "select" or self._object is None:
@@ -1384,6 +1563,11 @@ class Editor:
         for x, y in handles(shape).values():
             sx, sy = window_point(view, x, y)
             self.canvas.create_rectangle(sx - 4, sy - 4, sx + 4, sy + 4, fill="#ffffff", outline="#000000")
+
+    def _scrolled(self, evt):
+        evt.x = int(self.canvas.canvasx(evt.x))
+        evt.y = int(self.canvas.canvasy(evt.y))
+        return evt
 
     def _on_canvas_resize(self, event):
         if event.widget is not self.canvas or event.width < 20 or event.height < 20:
@@ -1846,7 +2030,7 @@ class Editor:
         self._preview()
 
     def _record(self):
-        """Fields and rows for a record on this page, then the shapes that show it."""
+        """Fields and rows for a record, laid out one page per row from this page."""
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
@@ -1869,7 +2053,7 @@ class Editor:
         def make():
             try:
                 fields, data = parse_rows(names.get(), rows.get("1.0", "end"))
-                place_record(pages[self.current], fields, data, 40, 40)
+                place_record(self.book, self.current, fields, data, 40, 40)
             except ValueError as exc:
                 error.config(text=str(exc))
                 return
