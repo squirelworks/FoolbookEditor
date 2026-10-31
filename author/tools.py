@@ -27,6 +27,7 @@ _SIZE = {
     "polygon": (80, 60),
     "curve": (80, 60),
     "arc": (80, 60),
+    "pie": (80, 60),
     "picture": (120, 80),
 }
 
@@ -40,6 +41,7 @@ _KIND = {
     "polygon": "polygon",
     "curve": "curve",
     "arc": "arc",
+    "pie": "pie",
     "picture": "image",
 }
 _LABEL = {
@@ -52,12 +54,13 @@ _LABEL = {
     "polygon": "Polygon",
     "curve": "Curve",
     "arc": "Arc",
+    "pie": "Pie",
     "picture": "Picture",
 }
 
 
 # The start angle and sweep a new arc is placed with.
-ANGLES = {"arc": (0, 180)}
+ANGLES = {"arc": (0, 180), "pie": (0, 90)}
 
 # Tools that are clicked out one point at a time, and the fewest points each keeps.
 POINT_TOOLS = {"polygon": 3, "curve": 2}
@@ -180,6 +183,8 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
         # Degrees: zero is east, a positive sweep turns counterclockwise. Foolbook reads the same.
         shape["start"], shape["sweep"] = ANGLES[tool]
         shape["outline"] = INK
+        if tool != "arc":
+            shape["fill"] = PAPER
     return shape
 
 
