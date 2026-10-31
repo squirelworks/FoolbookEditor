@@ -559,7 +559,7 @@ class Editor:
 
     def _menus(self):
         """File, Edit, Insert, Arrange, Book, Help, from author.menus."""
-        from author.menus import MENUS
+        from author.menus import ALREADY_BOUND, MENUS, tk_sequence
         bar = tk.Menu(self.root, tearoff=False)
         for name, entries in MENUS:
             menu = tk.Menu(bar, tearoff=False)
@@ -567,8 +567,15 @@ class Editor:
                 if entry is None:
                     menu.add_separator()
                     continue
-                label, command = entry
-                menu.add_command(label=label, command=lambda c=command: self._run(c))
+                label, command, key = entry
+                menu.add_command(
+                    label=label,
+                    command=lambda c=command: self._run(c),
+                    accelerator="" if key == "none" else key,
+                )
+                sequence = None if command in ALREADY_BOUND else tk_sequence(key)
+                if sequence:
+                    self.root.bind_all(sequence, lambda _e, c=command: (self._run(c), "break")[1])
             bar.add_cascade(label=name, menu=menu)
         self.root.config(menu=bar)
         self.menubar = bar
@@ -596,6 +603,16 @@ class Editor:
         box = tk.Text(win, width=72, height=12, wrap="word")
         box.pack(fill="both", expand=True)
         box.insert("1.0", tool_help(tool))
+        box.config(state="disabled")
+        self.help_text = box
+
+    def _help_keys(self):
+        from author.menus import keymap_text
+        win = tk.Toplevel(self.root)
+        win.title("Keyboard map")
+        box = tk.Text(win, width=60, height=34, wrap="none", font="TkFixedFont")
+        box.pack(fill="both", expand=True)
+        box.insert("1.0", keymap_text())
         box.config(state="disabled")
         self.help_text = box
 

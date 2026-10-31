@@ -1,55 +1,65 @@
 """The menu bar, as data. The window builds it. Tests read it.
 
-Each item is (label, command). The command is the name of an Editor
-method, `tool:<name>` to pick a drawing tool, or `layer:<name>` to pick
-the layer. None is a separator.
+Each item is (label, command, shortcut). The command is the name of an
+Editor method, `tool:<name>` to pick a drawing tool, or `layer:<name>` to
+pick the layer. The shortcut is a key such as `Ctrl+S`, or the word
+`none`, said on purpose. None is a separator.
+
+The layers have none because the toolbar radio buttons are one click.
+Add page and Delete page show the keys the window already binds in
+`author.commands.SHORTCUTS`, and are not bound a second time.
 """
 
 from __future__ import annotations
 
 MENUS = (
     ("File", (
-        ("New", "_new"),
-        ("Open...", "_open"),
-        ("Save", "_save"),
-        ("Save as...", "_save_as"),
+        ("New", "_new", "Ctrl+N"),
+        ("Open...", "_open", "Ctrl+O"),
+        ("Save", "_save", "Ctrl+S"),
+        ("Save as...", "_save_as", "Ctrl+Shift+S"),
         None,
-        ("Import .tbk...", "_import"),
-        ("Export...", "_export"),
-        ("Proof PNGs...", "_proof"),
+        ("Import .tbk...", "_import", "Ctrl+I"),
+        ("Export...", "_export", "Ctrl+E"),
+        ("Proof PNGs...", "_proof", "Ctrl+P"),
         None,
-        ("Quit", "_close"),
+        ("Quit", "_close", "Ctrl+Q"),
     )),
     ("Edit", (
-        ("Apply page text", "_apply"),
-        ("Apply object script", "_apply_script"),
+        ("Apply page text", "_apply", "Ctrl+Return"),
+        ("Apply object script", "_apply_script", "Ctrl+Shift+Return"),
     )),
     ("Insert", (
-        ("Button", "tool:button"),
-        ("Field", "tool:text"),
-        ("Rectangle", "tool:box"),
-        ("Line", "tool:line"),
-        ("Ellipse", "tool:ellipse"),
-        ("Polygon", "tool:polygon"),
-        ("Arc", "tool:arc"),
-        ("Picture", "tool:picture"),
+        ("Button", "tool:button", "Ctrl+1"),
+        ("Field", "tool:text", "Ctrl+2"),
+        ("Rectangle", "tool:box", "Ctrl+3"),
+        ("Line", "tool:line", "Ctrl+4"),
+        ("Ellipse", "tool:ellipse", "Ctrl+5"),
+        ("Polygon", "tool:polygon", "Ctrl+6"),
+        ("Arc", "tool:arc", "Ctrl+7"),
+        ("Picture", "tool:picture", "Ctrl+8"),
     )),
     ("Arrange", (
-        ("Bring to front", "_front"),
-        ("Send to back", "_back"),
+        ("Bring to front", "_front", "Ctrl+]"),
+        ("Send to back", "_back", "Ctrl+["),
         None,
-        ("Work on the page", "layer:page"),
-        ("Work on the background", "layer:background"),
+        ("Work on the page", "layer:page", "none"),
+        ("Work on the background", "layer:background", "none"),
     )),
     ("Book", (
-        ("Add page", "_add_page"),
-        ("Delete page", "_del_page"),
-        ("New background", "_add_background"),
+        ("Add page", "_add_page", "Ctrl+M"),
+        ("Delete page", "_del_page", "Ctrl+Shift+Delete"),
+        ("New background", "_add_background", "Ctrl+Shift+M"),
     )),
     ("Help", (
-        ("Help for this tool", "_help_tool"),
+        ("Help for this tool", "_help_tool", "F1"),
+        ("Keyboard map", "_help_keys", "none"),
     )),
 )
+
+# Menu commands whose key the window already binds, by their name in
+# author.commands.SHORTCUTS. Binding them again would run them twice.
+ALREADY_BOUND = {"_add_page": "add_page", "_del_page": "delete_page"}
 
 TOOL_TITLES = {
     "select": "Select",
@@ -65,11 +75,46 @@ TOOL_TITLES = {
 
 
 def items():
-    """Every (menu, label, command), separators left out."""
+    """Every (menu, label, command, shortcut), separators left out."""
     for menu, entries in MENUS:
         for entry in entries:
             if entry is not None:
-                yield menu, entry[0], entry[1]
+                yield menu, entry[0], entry[1], entry[2]
+
+
+_KEYS = {"]": "bracketright", "[": "bracketleft", "Return": "Return"}
+
+
+def tk_sequence(shortcut: str) -> str | None:
+    """`Ctrl+Shift+S` as the Tk event `<Control-S>`. `none` has no event."""
+    if not shortcut or shortcut == "none":
+        return None
+    parts = shortcut.split("+")
+    key = parts[-1]
+    mods = parts[:-1]
+    shift = "Shift" in mods
+    name = _KEYS.get(key, key)
+    if len(name) == 1 and name.isalpha():
+        name = name.upper() if shift else name.lower()
+        shift = False
+    elif name.isdigit():
+        # <Control-3> is the third mouse button. The key is Key-3.
+        name = "Key-" + name
+    out = []
+    if "Ctrl" in mods:
+        out.append("Control")
+    if shift:
+        out.append("Shift")
+    out.append(name)
+    return "<" + "-".join(out) + ">"
+
+
+def keymap_text() -> str:
+    """The keyboard map Help prints, one line per menu item."""
+    lines = []
+    for menu, label, _command, shortcut in items():
+        lines.append(f"{shortcut:<20} {menu} > {label.rstrip('.')}")
+    return "\n".join(lines) + "\n"
 
 
 def tool_help(tool: str, section=None) -> str:
