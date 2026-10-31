@@ -43,6 +43,7 @@
 - Author starts on Select, and Escape goes back to Select from any tool.
 - A new rectangle is filled `#f7f4ee` with a `#071428` outline. It had no fill and a black outline.
 - Label places a text shape with no border and no fill. It is the text kind with `preset: label`, not a new kind, so the reader draws it today.
+- A new Field is `editable: true`, so the student can type into it in Foolbook and the typing is kept as `value`. A Label is `editable: false`. Needs the reader change in Foolbook#42.
 - Rounded places a rounded rectangle (`kind: roundrect`, `radius: 8`). Foolbook draws it from Foolbook#23 on.
 - Polygon is clicked out: each click is a point, double-click or Enter closes it, and Escape drops it with nothing left on the page. It used to be a rectangle you dragged.
 - Curve is clicked out like Polygon and stays open. It stores `kind: curve` and its points. Foolbook draws it from Foolbook#26 on.

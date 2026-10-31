@@ -176,10 +176,14 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
             shape["points"] = [[int(left), int(top)], [int(left + width), int(top + height)]]
         else:
             shape["points"] = [[int(x0), int(y0)], [int(x1), int(y1)]]
+    elif tool == "text":
+        # The reader gives an editable field the keyboard and keeps the typing as value.
+        shape["editable"] = True
     elif tool == "label":
         # A label is a preset of the text shape, not a kind of its own.
         shape["preset"] = "label"
         shape["border"] = 1
+        shape["editable"] = False
     elif tool == "box":
         shape["fill"] = PAPER
         shape["outline"] = INK
