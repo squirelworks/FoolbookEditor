@@ -11,6 +11,8 @@ are not in it yet.
 
 from __future__ import annotations
 
+import copy
+
 
 WIDGET_KINDS = ("text", "box", "button")
 
@@ -63,6 +65,21 @@ def add_page(book: dict, index: int | None = None) -> int:
         at = len(found)
     found.insert(at, blank_page(fresh_id(book)))
     return at
+
+
+def duplicate_page(book: dict, index: int) -> int:
+    """Copy a page, shapes and scripts and all, to right after it.
+
+    The copy gets a fresh id. Nothing in it is shared with the original.
+    Returns where the copy landed, or ``index`` when there is no such page.
+    """
+    found = book.get("pages") or []
+    if not (0 <= index < len(found)):
+        return index
+    twin = copy.deepcopy(found[index])
+    twin["id"] = fresh_id(book)
+    found.insert(index + 1, twin)
+    return index + 1
 
 
 def delete_page(book: dict, index: int) -> int:

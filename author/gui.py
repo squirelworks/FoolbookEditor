@@ -38,7 +38,31 @@ class Editor:
             self._load(path)
         else:
             self._new()
+            if path is None:
+                self._start([])
         self.root.mainloop()
+
+    def _start(self, recent: list[str]):
+        """The start window. New book keeps the blank book already showing."""
+        from author.start import NEW, OPEN, start_choices
+        win = tk.Toplevel(self.root)
+        win.title("Foolbook Author")
+        win.transient(self.root)
+        frame = ttk.Frame(win, padding=16)
+        frame.pack(fill="both", expand=True)
+
+        def pick(label: str, chosen: Path | None):
+            win.destroy()
+            if chosen is not None:
+                self._load(chosen)
+            elif label == OPEN:
+                self._open()
+
+        for label, chosen in start_choices(recent):
+            text = label if chosen is None else f"{label}: {chosen.name}"
+            ttk.Button(frame, text=text, command=lambda l=label, c=chosen: pick(l, c)).pack(fill="x", pady=2)
+        win.bind("<Escape>", lambda _e: pick(NEW, None))
+        win.grab_set()
 
     def _build(self):
         # toolbar
@@ -93,7 +117,18 @@ class Editor:
         row = ttk.Frame(left)
         row.pack(fill="x", pady=4)
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
-        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left", padx=4)
+        from author.commands import SHORTCUTS
+        self.root.bind(SHORTCUTS["add_page"][1], lambda _e: self._add_page())
+        self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
+        self.root.bind(SHORTCUTS["delete_page"][1], lambda _e: self._del_page())
+        self.root.bind(SHORTCUTS["page_up"][1], lambda _e: self._reorder("page_up"))
+        self.root.bind(SHORTCUTS["page_down"][1], lambda _e: self._reorder("page_down"))
+        ttk.Button(row, text="Duplicate", command=self._duplicate_page).pack(side="left", padx=4)
+        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left")
+        order = ttk.Frame(left)
+        order.pack(fill="x")
+        ttk.Button(order, text="Up", command=lambda: self._reorder("page_up")).pack(side="left")
+        ttk.Button(order, text="Down", command=lambda: self._reorder("page_down")).pack(side="left", padx=4)
 
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
@@ -361,12 +396,32 @@ class Editor:
 
     def _add_page(self):
         self._apply()
-        from author.document import add_page
-        self.current = add_page(self.book)
+        from author.commands import add_page
+        self.current = add_page(self.book, self.current)
+        self._refresh_list()
+
+    def _duplicate_page(self):
+        self._apply()
+        self._apply_script()
+        from author.commands import duplicate_page
+        self.current = duplicate_page(self.book, self.current)
+        self._refresh_list()
+
+    def _reorder(self, command: str):
+        self._apply()
+        self._apply_script()
+        from author import commands
+        self.current = getattr(commands, command)(self.book, self.current)
         self._refresh_list()
 
     def _del_page(self):
-        from author.document import delete_page
+        from author.commands import delete_page, delete_question
+        question = delete_question(self.book, self.current)
+        if question is None:
+            self.status.config(text="A book keeps its last page")
+            return
+        if not messagebox.askyesno("Delete page", question, parent=self.root):
+            return
         self.current = delete_page(self.book, self.current)
         self._refresh_list()
 
