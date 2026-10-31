@@ -142,6 +142,13 @@ class PieTests(unittest.TestCase):
         self.assertEqual((shape["start"], shape["sweep"]), (0, 90))
         self.assertEqual((shape["fill"], shape["outline"]), ("#f7f4ee", "#071428"))
 
+class ChordTests(unittest.TestCase):
+    def test_a_chord_is_a_filled_half_by_its_angles(self):
+        shape = new_shape("chord", 0, 0, 80, 80, set())
+        self.assertEqual(shape["kind"], "chord")
+        self.assertEqual((shape["start"], shape["sweep"]), (0, 180))
+        self.assertEqual(shape["fill"], "#f7f4ee")
+
 
 if __name__ == "__main__":
     unittest.main()
