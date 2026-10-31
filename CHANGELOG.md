@@ -24,6 +24,7 @@
 - Save as by extension is tested: `.fbk` writes a book, `.fsk` a system book, no extension a book, and an empty system book is a valid `FSK1` the reader opens. No behavior changed; #22 made it so.
 - The title bar shows a star while the book differs from its file. Close, New, and Open ask before dropping changes. The flag is `is_dirty(saved, current)`, which compares what Save would write, so envelope keys do not count.
 - Recent lists the last five books opened or saved, kept in the user's config folder. Opening one that is gone drops it from the list and says so.
+- A book dropped on the program's icon opens: on Windows and Linux through the command line, on macOS through the open-document event. Dropping on the open window does not work on any platform with stock Tk, and the README says so.
 
 ## 0.4.0 — 2026-10-24
 

@@ -38,6 +38,8 @@ class Editor:
         self._build()
         self.root.protocol("WM_DELETE_WINDOW", self._close)
         self._fill_recent()
+        from author.drop import install
+        install(self.root, lambda path: self._discard_ok() and self._load(path))
         if path and path.exists():
             self._load(path)
         else:
@@ -640,7 +642,9 @@ class Editor:
 
 def main(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
-    path = Path(argv[0]) if argv else None
+    from author.drop import paths_from
+    found = paths_from(argv)
+    path = found[0] if found else (Path(argv[0]) if argv else None)
     Editor(path)
     return 0
 

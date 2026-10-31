@@ -28,6 +28,8 @@ Save compresses by default, as Foolbook packs a book. The Compress box turns it 
 
 Recent lists the last five books opened or saved. The list is kept in the user's config folder (`~/.config/foolbookeditor/recent.json`, or `%APPDATA%\foolbookeditor` on Windows), not in the repository. A book that is gone is taken off the list, and the status line says so.
 
+Drag and drop, by platform. Dropping a book onto the open window does nothing anywhere: stock Tk has no drop target, and the editor does not add a dependency for it. Dropping a book onto the program's icon or shortcut opens it on Windows and Linux, because that starts the program with the path. On macOS, dropping onto the Dock icon of a packaged app opens it through `::tk::mac::OpenDocument`. Running from a terminal on macOS has no icon to drop on.
+
 A book always has at least one page. Deleting the only page is refused, and the status line says so. The editor does not make a blank page in its place. The reader cannot show a book with no pages.
 
 ```bash
