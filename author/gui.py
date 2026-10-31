@@ -236,6 +236,9 @@ class Editor:
         self.uses = ttk.Combobox(form, width=14, state="readonly")
         self.uses.grid(row=0, column=7, sticky="w", padx=4)
         self.uses.bind("<<ComboboxSelected>>", self._on_uses)
+        ttk.Label(form, text="Transition").grid(row=0, column=6, sticky="w")
+        self.transition = ttk.Combobox(form, values=("none", "dissolve", "wipe"), width=9)
+        self.transition.grid(row=0, column=7, sticky="w", padx=4)
 
         ttk.Label(center, text="Text  (blank line = new paragraph; lines starting with - or * are a list)").pack(anchor="w", pady=(6, 0))
         self.text = tk.Text(center, height=4, wrap="word")
@@ -705,6 +708,7 @@ class Editor:
         self.next.insert(0, items.get("next") or "")
         self.back.delete(0, "end")
         self.back.insert(0, items.get("back") or "")
+        self.transition.set(p.get("transition") or "none")
         self.text.delete("1.0", "end")
         self.text.insert("1.0", "\n\n".join(p.get("text") or []))
         self._fill_uses(p)
@@ -860,8 +864,9 @@ class Editor:
         if not (0 <= self.current < len(pages)):
             return
         p = pages[self.current]
-        from author.document import set_id, set_nav, set_text, text_from_editor
+        from author.document import set_id, set_nav, set_text, set_transition, text_from_editor
         set_id(p, self.pid.get())
+        set_transition(p, self.transition.get())
         set_text(p, text_from_editor(self.text.get("1.0", "end")))
         set_nav(p, self.next.get(), self.back.get())
         from author.document import page_label

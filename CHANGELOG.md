@@ -2,6 +2,10 @@
 
 ## 2026-10-31
 
+- A page's Transition is stored as `transition` and ignored. Foolbook changes pages with no animation, and the README says so. "none" stores nothing.
+
+## 2026-10-31
+
 - A picture is stored as PNG. GIF, BMP, and JPEG are converted when Pillow is installed. The picture's size in pixels shows when it comes in and when it is selected, and a click without a drag places it at that size. A file that is not a picture is refused.
 - Book sets the book's title, author, default page size (`pageSize`), and first page (`firstPage`). A bad size or a page that does not exist is refused and changes nothing. Foolbook opens the book at its first page.
 
