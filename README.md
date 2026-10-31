@@ -26,7 +26,7 @@ Every pull request runs the self test before it goes up.
 
 Save compresses by default, as Foolbook packs a book. The Compress box turns it off. A book opened from an uncompressed file, such as a web editor download, is saved uncompressed until the box is ticked.
 
-Recent lists the last five books opened or saved. The list is kept in the user's config folder (`~/.config/foolbookeditor/recent.json`, or `%APPDATA%\\foolbookeditor` on Windows), not in the repository. A book that is gone is taken off the list, and the status line says so.
+Recent lists the last five books opened or saved. The list is kept in the user's config folder (`~/.config/foolbookeditor/recent.json`, or `%APPDATA%\foolbookeditor` on Windows), not in the repository. A book that is gone is taken off the list, and the status line says so.
 
 A book always has at least one page. Deleting the only page is refused, and the status line says so. The editor does not make a blank page in its place. The reader cannot show a book with no pages.
 
