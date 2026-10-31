@@ -374,3 +374,26 @@ def flatten(shapes: list) -> list:
                 child = {**child, "visible": False}
             out.append(child)
     return out
+
+
+def ungroup(shapes: list[dict], index: int) -> list[int]:
+    """Put a group's children back on the page where the group was.
+
+    They keep their order and their absolute bounds. A group inside the group
+    comes back as a group; ungroup it again to open it. A hidden group's
+    children come back hidden, as the reader showed them. Returns the
+    children's new indices, or ``[]`` when the shape is not a group.
+    """
+    if not (0 <= index < len(shapes)) or not isinstance(shapes[index], dict):
+        return []
+    made = shapes[index]
+    if (made.get("kind") or "") != "group":
+        return []
+    children = [c for c in made.get("children") or [] if isinstance(c, dict)]
+    for child in children:
+        if made.get("visible") is False:
+            child["visible"] = False
+        if "layer" not in child and made.get("layer"):
+            child["layer"] = made["layer"]
+    shapes[index:index + 1] = children
+    return list(range(index, index + len(children)))
