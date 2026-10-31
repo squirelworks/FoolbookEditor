@@ -3,6 +3,7 @@
 ## 2026-10-31
 
 - Save from the window keeps a system book a system book again. The safe save, which writes beside the file and then replaces it, saved `.fsk` as `.fbk` and an `.sbk` import as `.fbk`; it now writes where `save_target` says, through `save_system` for `.fsk`. Test: `tests/test_safe_save_kind.py`.
+- A book dropped on the program's icon or shortcut opens: the first file among the arguments is opened, and flags, folders and missing paths are skipped. A packaged macOS app answers `::tk::mac::OpenDocument`. The README says that a drop on the open window does nothing on any platform, since stock Tk has no drop target. Test: `tests/test_drop.py`.
 - Recent, beside Open, lists the last five books opened or saved, and the start window offers them; before, nothing recorded them and the start window was always handed an empty list. The list lives under `recent` in the editor's existing settings file in the user's config folder. Choosing one that is gone drops it and the status line says so. Test: `tests/test_recent.py`.
 - `schema.md` and `author/schema.py` write down the 34 shape fields and 17 kinds the editor writes, with the drawing tools' `radius`, `start`/`sweep`, `stroke`, text style, `item`, and `data`/`pixels`/`src`. A test fails when a Tk tool or a property-pane row writes a key that is not listed, and saves, opens and reads a shape with every field. Test: `tests/test_schema_shape.py`.
 - A book the web editor downloaded (`FBK1`, a zero flags byte, plain JSON) opens under its own name and saves again with the same shapes. An `FBK1` or `FSK1` file that holds only zero bytes after the header, which the web Download wrote before the site fixed it, is refused with a message saying to download it again; the window shows that message and keeps the book it had. Test: `tests/test_web_download.py`.
@@ -58,6 +59,7 @@
 
 ## 2026-10-31
 
+- Every menu item has a keyboard shortcut, or `none` on purpose (the two layer items). Add page and Delete page show the keys the window already had and are not bound twice. The menus show the keys, and Help > Keyboard map prints the whole map. Ctrl+1 to Ctrl+8 pick the drawing tools. Test: `author/test_menus.py` `KeyboardMap`.
 - The tool row shows the colours the book already uses, most used first. Click a swatch to fill the selected object with it, right-click to use it for the line.
 - The pages, stage, and properties panes reopen at the widths you left them. The sashes are kept in `settings.json` under the user config directory (`$XDG_CONFIG_HOME` or `~/.config/foolbookeditor`, `%APPDATA%` on Windows), not in the book. A smaller window still leaves the stage at least 300 pixels. Test: `author/test_settings.py`.
 - Proof PNGs writes one picture per page (`001_P0.png`, ...) into a folder, the shared background first, using Foolbook's `draw` as the stage does. It needs no window, and backgrounds are not pages. Text uses Pillow's built-in face. PDF was already in Export, through Foolbook. Test: `author/test_proof.py`.
