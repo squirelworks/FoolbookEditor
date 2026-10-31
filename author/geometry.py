@@ -243,3 +243,38 @@ def snap_move(shapes: list[dict], indices: list[int], grid: int = GRID) -> None:
     dx, dy = snap(x, grid) - x, snap(y, grid) - y
     if dx or dy:
         nudge(shapes, chosen, dx, dy)
+
+
+# Align choices, in the order the menu lists them.
+ALIGN = ("left", "right", "top", "bottom", "center horizontal", "center vertical")
+
+
+def align(shapes: list[dict], indices: list[int], how: str) -> None:
+    """Line the selection up with the first selected shape, which does not move.
+
+    ``center horizontal`` puts every centre on the first shape's vertical
+    centre line (they share an x centre). ``center vertical`` shares a y centre.
+    """
+    chosen = [i for i in dict.fromkeys(indices) if 0 <= i < len(shapes) and isinstance(shapes[i], dict)]
+    if len(chosen) < 2:
+        return
+    rx, ry, rw, rh = bounds(shapes[chosen[0]])
+    for index in chosen[1:]:
+        x, y, w, h = bounds(shapes[index])
+        dx = dy = 0.0
+        if how == "left":
+            dx = rx - x
+        elif how == "right":
+            dx = (rx + rw) - (x + w)
+        elif how == "top":
+            dy = ry - y
+        elif how == "bottom":
+            dy = (ry + rh) - (y + h)
+        elif how == "center horizontal":
+            dx = (rx + rw / 2) - (x + w / 2)
+        elif how == "center vertical":
+            dy = (ry + rh / 2) - (y + h / 2)
+        else:
+            raise ValueError(f"unknown alignment {how}")
+        if dx or dy:
+            offset(shapes[index], dx, dy)

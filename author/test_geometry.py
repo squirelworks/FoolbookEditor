@@ -187,5 +187,45 @@ class GridTests(unittest.TestCase):
         self.assertEqual(shapes[2]["points"], [[5, 5], [9, 9]])
 
 
+class AlignTests(unittest.TestCase):
+    def shapes(self):
+        return [
+            {"x": 100, "y": 100, "w": 40, "h": 20},
+            {"x": 10, "y": 50, "w": 20, "h": 10},
+            {"kind": "line", "points": [[0, 0], [10, 30]]},
+        ]
+
+    def boxes(self, shapes):
+        return [geometry.bounds(s) for s in shapes]
+
+    def test_the_first_selected_shape_is_the_reference_and_stays(self):
+        shapes = self.shapes()
+        geometry.align(shapes, [0, 1, 2], "left")
+        self.assertEqual([b[0] for b in self.boxes(shapes)], [100, 100, 100])
+        self.assertEqual(geometry.bounds(shapes[0]), (100, 100, 40, 20))
+
+    def test_the_reference_is_selection_order_not_array_order(self):
+        shapes = self.shapes()
+        geometry.align(shapes, [1, 0], "top")
+        self.assertEqual(shapes[0]["y"], 50)
+        self.assertEqual(shapes[1]["y"], 50)
+
+    def test_right_bottom_and_centres(self):
+        shapes = self.shapes()
+        geometry.align(shapes, [0, 1], "right")
+        self.assertEqual(shapes[1]["x"] + shapes[1]["w"], 140)
+        geometry.align(shapes, [0, 1], "bottom")
+        self.assertEqual(shapes[1]["y"] + shapes[1]["h"], 120)
+        geometry.align(shapes, [0, 1], "center horizontal")
+        self.assertEqual(shapes[1]["x"] + shapes[1]["w"] / 2, 120)
+        geometry.align(shapes, [0, 1], "center vertical")
+        self.assertEqual(shapes[1]["y"] + shapes[1]["h"] / 2, 110)
+
+    def test_one_shape_is_nothing_to_align(self):
+        shapes = self.shapes()
+        geometry.align(shapes, [1], "left")
+        self.assertEqual(shapes[1]["x"], 10)
+
+
 if __name__ == "__main__":
     unittest.main()
