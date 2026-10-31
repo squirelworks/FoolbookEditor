@@ -135,6 +135,16 @@ class Editor:
         ttk.Button(row, text="Add", width=4, command=self._add_action).pack(side="left", padx=2)
         ttk.Button(row, text="Remove", width=7, command=self._remove_action).pack(side="left")
         ttk.Button(row, text="Write script", command=self._write_script).pack(side="left", padx=2)
+        # Drag one of these onto an object on the page to add it there.
+        from author.actions import DOS as _dos
+        ttk.Label(objects, text="Drag an action onto an object:").pack(anchor="w")
+        rows = [ttk.Frame(objects), ttk.Frame(objects)]
+        for frame in rows:
+            frame.pack(fill="x")
+        for n, do in enumerate(_dos):
+            chip = tk.Label(rows[n * 2 // len(_dos)], text=do, relief="raised", borderwidth=1, padx=3, cursor="hand2")
+            chip.pack(side="left", padx=1)
+            chip.bind("<ButtonRelease-1>", lambda evt, do=do: self._drop_action(do, evt.x_root, evt.y_root))
         self.action_note = ttk.Label(objects, text="", wraplength=240)
         self.action_note.pack(anchor="w")
         self._rows: list[dict] = []
@@ -358,6 +368,37 @@ class Editor:
             return
         remove(shape, picked[0])
         self._show_actions()
+
+    def _drop_action(self, do: str, x_root: int, y_root: int):
+        from author.actions import ARGS, drop, make
+        from author.tools import page_point
+        view = getattr(self.canvas, "_author_view", None)
+        pages = self.book.get("pages") or []
+        if not view or not view.get("scale") or not (0 <= self.current < len(pages)):
+            return
+        x, y = x_root - self.canvas.winfo_rootx(), y_root - self.canvas.winfo_rooty()
+        if not (0 <= x < self.canvas.winfo_width() and 0 <= y < self.canvas.winfo_height()):
+            return
+        target = self.action_target.get()
+        if ARGS[do] and not target.strip():
+            from tkinter import simpledialog
+            target = simpledialog.askstring(do, f"{do}: which {ARGS[do][0]}?", parent=self.root) or ""
+        try:
+            action = make(do, target, self.action_text.get())
+        except ValueError as exc:
+            self.action_note.config(text=str(exc))
+            return
+        px, py = page_point(view, x, y)
+        placed = drop(pages[self.current], px, py, action, self.layer.get())
+        if placed is None:
+            self.action_note.config(text="Drop an action on an object.")
+            return
+        for row, item in enumerate(self._rows):
+            if item["index"] == placed:
+                self.objects.selection_clear(0, "end")
+                self.objects.selection_set(row)
+                self._on_object()
+                break
 
     def _write_script(self):
         from author.actions import write_script
