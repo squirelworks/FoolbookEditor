@@ -8,10 +8,12 @@ Slide editor. Produces .fbk (and .fsk). Export .tbk writes a shell with compiled
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
-from .files import EmptyBook, FutureBook, open_book as load_book, save as save_book
+from .files import EmptyBook, FutureBook, open_book as load_book
+from .safesave import save_safely
 
 try:
     import tkinter as tk
@@ -49,6 +51,8 @@ class Editor:
             self._new(ask=False)
             if path is None:
                 self._start([])
+        from author.recovery import INTERVAL_MS
+        self.root.after(INTERVAL_MS, self._recover)
         self.root.mainloop()
 
     _CHANGES = (
@@ -206,6 +210,7 @@ class Editor:
         ttk.Button(bar, text="Import .tbk", command=self._import).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Proof PNGs", command=self._proof).pack(side="left", padx=2)
+        ttk.Button(bar, text="Print", command=self._print).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
         ttk.Button(bar, text="Publish", command=self._publish).pack(side="left", padx=2)
         ttk.Button(bar, text="Menu bar", command=self._menubar).pack(side="left", padx=2)
@@ -889,6 +894,7 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self._kept = None
         self.status.config(text="New book")
 
     def _open(self):
@@ -916,6 +922,15 @@ class Editor:
             except EmptyBook as exc:
                 messagebox.showerror("Foolbook Editor", str(exc))
                 return
+        from author import recovery
+        self._kept = recovery.snapshot(self.book)
+        copy = recovery.newer(path)
+        if copy is not None and messagebox.askyesno(
+            "Foolbook Editor",
+            f"There is a recovery copy of {path.name} newer than the file. Open the recovery copy?",
+            parent=self.root,
+        ):
+            self.book = load_book(copy)
         self.path = path
         self.current = 0
         self._refresh_list()
@@ -938,6 +953,7 @@ class Editor:
         self.current = 0
         self._refresh_list()
         self.history.reset(self.book)
+        self._kept = None
         self.status.config(text=f"Imported {src.name}. Save writes {self.path.name}")
         win = tk.Toplevel(self.root)
         win.title(f"Import report: {src.name}")
@@ -953,10 +969,11 @@ class Editor:
             self._save_as()
             return
         try:
-            self.path = save_book(self.path, self.book)
+            self.path = save_safely(self.path, self.book)
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._saved()
         self.status.config(text=f"Saved {self.path.name}")
 
     def _save_as(self):
@@ -970,12 +987,26 @@ class Editor:
             return
         self.path = Path(p)
         try:
-            self.path = save_book(self.path, self.book)
+            self.path = save_safely(self.path, self.book)
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
+        self._saved()
         self.status.config(text=f"Saved {self.path.name}")
 
+    def _saved(self):
+        from author import recovery
+        recovery.clear(self.path)
+        self._kept = recovery.snapshot(self.book)
+
+    def _recover(self):
+        """Every five minutes: a recovery copy, if there are unsaved changes."""
+        from author import recovery
+        try:
+            recovery.tick(self.book, getattr(self, "_kept", None), self.path)
+        except Exception as exc:
+            self.status.config(text=f"Recovery copy not written: {exc}")
+        self.root.after(recovery.INTERVAL_MS, self._recover)
 
     def _publish(self):
         """A folder with the .fbk, its linked files, and a README. No installer."""
@@ -1030,6 +1061,24 @@ class Editor:
         base = self.path.parent if self.path else None
         written = export_pngs(self.book, folder, base=base)
         self.status.config(text=f"Wrote {len(written)} page pictures")
+
+    def _print(self):
+        """The PNG pages, sent to the printer when this machine has one call for it."""
+        self._apply()
+        folder = filedialog.askdirectory(title="Folder for the printed pages")
+        if not folder:
+            return
+        from author.printing import print_book, printer
+        base = self.path.parent if self.path else None
+        try:
+            written, sent = print_book(self.book, folder, base=base, send=printer())
+        except (OSError, subprocess.CalledProcessError) as exc:
+            self.status.config(text=f"Printing failed: {exc}. The pages are in {folder}")
+            return
+        if sent:
+            self.status.config(text=f"Sent {len(written)} pages to the printer")
+        else:
+            self.status.config(text=f"No printer call here. The {len(written)} PNG pages in {folder} are the print")
 
     def _export_executable(self):
         """ToolBook-style self-running book. Scaffold only."""
@@ -1945,7 +1994,7 @@ class Editor:
         self._preview()
 
     def _record(self):
-        """Fields and rows for a record on this page, then the shapes that show it."""
+        """Fields and rows for a record, laid out one page per row from this page."""
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
@@ -1968,7 +2017,7 @@ class Editor:
         def make():
             try:
                 fields, data = parse_rows(names.get(), rows.get("1.0", "end"))
-                place_record(pages[self.current], fields, data, 40, 40)
+                place_record(self.book, self.current, fields, data, 40, 40)
             except ValueError as exc:
                 error.config(text=str(exc))
                 return
