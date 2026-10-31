@@ -2,6 +2,10 @@
 
 ## 2026-10-31
 
+- A generated 200-page book with 20 shapes a page opens in the editor in about 0.012 s and in the reader in about 0.02 s, well under two seconds. A test holds it under two seconds. No optimization.
+
+## 2026-10-31
+
 - Naming a system book writes OpenScript the reader runs: the book script's `enterBook` gets `if "shared.fsk" is not in sysBooks` / `push "shared.fsk" onto sysBooks` / `end if`, as a ToolBook course does. Before, only a `system` key was stored, and Foolbook does not read it, so the system book's handlers never ran. A new name replaces the push, and clearing it takes the push out and leaves the rest of the script. `system` stays as the editor's own record. Test: `author/test_system_book.py`.
 - Find lists every page text and shape text that holds a word or phrase, with how many times, and Replace all changes them and says how many. The search is plain text, never a regular expression. Match case is off unless ticked.
 
