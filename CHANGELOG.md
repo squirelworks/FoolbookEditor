@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Apply script shows the first error Foolbook's check finds, with its line number, in the status line, ahead of any warning. The script is saved anyway. Tested in `author/test_script_check.py`.
 - Apply script on an object shows a warning in the status line when a line uses a word Foolbook does not run, with the line number. The script is still kept. The words come from Foolbook's `engine/subset.py` table through `foolbook.core.unknown_words`. Tested in `author/test_scripts.py`.
 
 ## 0.4.0 — 2026-10-24

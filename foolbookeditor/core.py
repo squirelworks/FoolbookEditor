@@ -71,3 +71,8 @@ def compile_script(source: str, keywords: list[str] | None = None) -> bytes:
 def unknown_words(source: str) -> list[tuple[int, str]]:
     """Lines of a script whose word Foolbook does not run, from Foolbook's own table."""
     return require().unknown_words(source)
+
+
+def check_script(source: str) -> list[tuple[int, str]]:
+    """Errors in a script, with line numbers, from Foolbook's check. Nothing is compiled."""
+    return require().check_script(source)

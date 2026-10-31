@@ -318,8 +318,8 @@ class Editor:
         from author.catalog import set_object_script
         source = self.oscript.get("1.0", "end")
         set_object_script(pages[self.current], self._rows[self._object]["index"], source)
-        from author.scripts import warning
-        note = warning(source)
+        from author.scripts import status
+        note = status(source)
         if note:
             self.status.config(text=note)
         self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
