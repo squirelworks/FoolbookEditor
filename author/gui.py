@@ -50,6 +50,7 @@ class Editor:
         ttk.Button(bar, text="Save as", command=self._save_as).pack(side="left", padx=2)
         ttk.Button(bar, text="Export", command=self._export).pack(side="left", padx=2)
         ttk.Button(bar, text="Export executable", command=self._export_executable).pack(side="left", padx=2)
+        ttk.Button(bar, text="Book", command=self._book_properties).pack(side="left", padx=2)
         ttk.Separator(bar, orient="vertical").pack(side="left", fill="y", padx=6)
         for name, label in (("select", "Select"), ("button", "Button"), ("text", "Field"), ("box", "Rectangle")):
             ttk.Radiobutton(bar, text=label, value=name, variable=self.tool).pack(side="left", padx=2)
@@ -153,6 +154,38 @@ class Editor:
             self.body.sashpos(1, width - 280)
         except tk.TclError:
             return
+
+    def _book_properties(self):
+        from .bookprops import properties, set_properties
+        win = tk.Toplevel(self.root)
+        win.title("Book properties")
+        win.transient(self.root)
+        values = properties(self.book)
+        entries = {}
+        for row, (key, label) in enumerate((("title", "Title"), ("author", "Author"),
+                                            ("size", "Page size"), ("firstPage", "First page"))):
+            ttk.Label(win, text=label).grid(row=row, column=0, sticky="w", padx=6, pady=2)
+            if key == "firstPage":
+                ids = [""] + [str(p.get("id") or "") for p in self.book.get("pages") or []]
+                entry = ttk.Combobox(win, values=ids, width=30)
+            else:
+                entry = ttk.Entry(win, width=32)
+            entry.insert(0, values[key])
+            entry.grid(row=row, column=1, padx=6, pady=2)
+            entries[key] = entry
+
+        def apply():
+            try:
+                set_properties(self.book, *(entries[k].get() for k in ("title", "author", "size", "firstPage")))
+            except ValueError as exc:
+                messagebox.showerror("Book properties", str(exc), parent=win)
+                return
+            self.status.config(text=self.book.get("title") or "")
+            win.destroy()
+
+        ttk.Button(win, text="Apply", command=apply).grid(row=4, column=1, sticky="e", padx=6, pady=6)
+        self._book_window = win
+        self._book_entries = entries
 
     def _new(self):
         self.book = {

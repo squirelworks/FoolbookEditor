@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31
+
+- Book sets the book's title, author, default page size (`pageSize`), and first page (`firstPage`). A bad size or a page that does not exist is refused and changes nothing. Foolbook opens the book at its first page.
+
 ## 0.4.0 — 2026-10-24
 
 - Page and Background are separate. The list and a new object follow the one that is selected. The picture still shows both, background first.
