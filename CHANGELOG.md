@@ -19,6 +19,7 @@
 - Align lines up the selection by left, right, top, bottom, or centre, against the first selected object.
 - Distribute spaces three or more selected objects with equal gaps, across or down.
 - Front and Back now go all the way on the object's layer. Forward and Backward move it one place.
+- Group puts the selected objects into one group object that moves as one. Foolbook paints its children (Foolbook#48).
 
 ## 0.4.0 — 2026-10-24
 

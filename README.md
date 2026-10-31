@@ -40,6 +40,8 @@ Grid 8 is off when the window opens. When it is on, the stage shows the grid as 
 
 Align lines up two or more selected objects by their left, right, top, or bottom edges, or their horizontal or vertical centres. The first selected object is the reference and does not move; the menu says so. Distribute, in the same menu, spaces three or more objects with equal gaps between their bounds, across or down; the two outermost stay put.
 
+Group puts two or more selected objects on one layer into one object of kind `group`, with the objects as its `children` at their page positions. It sits where the front-most of them was. Moving the group moves them all; resizing a group is not done yet. Foolbook paints and clicks a group's children (Foolbook#48), and `hide group "Group"` reaches them.
+
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash

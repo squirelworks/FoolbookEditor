@@ -104,13 +104,19 @@ def marquee(shapes: list[dict], x0: float, y0: float, x1: float, y1: float, laye
 
 
 def offset(shape: dict, dx: float, dy: float) -> None:
-    """Move one shape, its points and arc ends included. Size does not change."""
+    """Move one shape, its points, arc ends, and a group's children included.
+
+    Size does not change.
+    """
     if "x" in shape or shape.get("w"):
         shape["x"] = int(round(float(shape.get("x") or 0) + dx))
         shape["y"] = int(round(float(shape.get("y") or 0) + dy))
     for key in ("points", "ends"):
         if shape.get(key):
             shape[key] = [[pt[0] + dx, pt[1] + dy] + list(pt[2:]) for pt in shape[key]]
+    for child in shape.get("children") or []:
+        if isinstance(child, dict):
+            offset(child, dx, dy)
 
 
 def nudge(shapes: list[dict], indices: list[int], dx: float, dy: float) -> None:
@@ -136,6 +142,9 @@ def handles(shape: dict) -> dict[str, tuple[float, float]]:
 
     Any other shape has eight: the corners and the middle of each side.
     """
+    if (shape.get("kind") or "") == "group":
+        # Resizing a group, and everything in it, is not done yet. It only moves.
+        return {}
     if is_line(shape):
         points = [pt for pt in shape.get("points") or [] if len(pt) >= 2]
         ends = {0: points[0], len(points) - 1: points[-1]}
@@ -305,3 +314,63 @@ def distribute(shapes: list[dict], indices: list[int], axis: str) -> None:
         if move:
             offset(shapes[index], move if pos == 0 else 0, move if pos == 1 else 0)
         at += boxes[index][size] + gap
+
+
+def group(shapes: list[dict], indices: list[int], names: set[str] | None = None) -> int | None:
+    """Put the selected shapes in one ``group`` shape. Returns the group's index.
+
+    The children keep their page order and their absolute bounds. The group
+    takes the place of the front-most child, so nothing moves in paint order
+    relative to what was not grouped. Its ``x, y, w, h`` are the children's
+    bounds. Fewer than two shapes, or shapes on two layers, is not a group.
+    The reader paints a group by painting its children (Foolbook#48).
+    """
+    chosen = sorted(i for i in set(indices) if 0 <= i < len(shapes) and isinstance(shapes[i], dict))
+    if len(chosen) < 2:
+        return None
+    layers = {shapes[i].get("layer") or "page" for i in chosen}
+    if len(layers) != 1:
+        return None
+    children = [shapes[i] for i in chosen]
+    boxes = [bounds(child) for child in children]
+    left = min(b[0] for b in boxes)
+    top = min(b[1] for b in boxes)
+    right = max(b[0] + b[2] for b in boxes)
+    bottom = max(b[1] + b[3] for b in boxes)
+    taken = set(names or ()) | {s.get("name") or "" for s in shapes if isinstance(s, dict)}
+    name, n = "Group", 2
+    while name in taken:
+        name, n = f"Group{n}", n + 1
+    made = {
+        "kind": "group",
+        "name": name,
+        "x": int(left),
+        "y": int(top),
+        "w": int(right - left),
+        "h": int(bottom - top),
+        "layer": layers.pop(),
+        "visible": True,
+        "children": children,
+    }
+    at = chosen[-1] - (len(chosen) - 1)
+    for index in reversed(chosen):
+        del shapes[index]
+    shapes.insert(at, made)
+    return at
+
+
+def flatten(shapes: list) -> list:
+    """What the stage paints: a group is its children, in its place.
+
+    A hidden group hides its children, as in the reader.
+    """
+    out = []
+    for shape in shapes or []:
+        if not isinstance(shape, dict) or (shape.get("kind") or "") != "group":
+            out.append(shape)
+            continue
+        for child in flatten(shape.get("children") or []):
+            if shape.get("visible") is False and isinstance(child, dict):
+                child = {**child, "visible": False}
+            out.append(child)
+    return out

@@ -78,7 +78,10 @@ def paint(canvas, page: dict) -> None:
         return
     box = view_box(page, shapes)
     scale, dx, dy, ox, oy = fit_view(box, width, height)
-    draw(canvas, place_window(shapes, scale, box[0], box[1], dx, dy))
+    # A group is painted as its children. Hit tests still see the group.
+    from author.geometry import flatten
+    painted = shown({"shapes": flatten(page.get("shapes") or [])})
+    draw(canvas, place_window(painted, scale, box[0], box[1], dx, dy))
     # The page edge. A shape past it is kept in the file and drawn past the line.
     pw, ph = page_size(page)
     left = (0 - box[0]) * scale + ox

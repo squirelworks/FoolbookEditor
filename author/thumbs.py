@@ -26,7 +26,9 @@ def miniature(page: dict, width: int = SIZE[0], height: int = SIZE[1]) -> list[t
     pw, ph = page_size(page)
     scale = min(width / pw, height / ph)
     ops: list[tuple] = [("page", (0.0, 0.0, pw * scale, ph * scale), "#ffffff", "#7f7f7f")]
-    for shape in page.get("shapes") or []:
+    from author.geometry import flatten
+
+    for shape in flatten(page.get("shapes") or []):
         if not isinstance(shape, dict) or shape.get("visible") is False:
             continue
         kind = shape.get("kind") or ""
