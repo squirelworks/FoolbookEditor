@@ -15,6 +15,7 @@
 - The shape fields are written down: `kind`, `name`, `text`, `x`, `y`, `w`, `h`, `fill`, `outline`, `size`, `points`, `item`, `script`, `src`, `data`, `visible`, `layer`, and an arc's `ends`. Each round-trips, an embedded picture included, and the reader keeps them. The Tk tools write no other field.
 - `set_item(shape, page, book, label)` sets the jump a click follows, and an empty page clears it. A button with an item and no script goes there in the reader; `foolbookeditor.core.click` is the headless click the test uses.
 - Page ids are unique in a book, without regard to case, as the reader finds them. `rename_page` refuses a rename onto another page's id and the status line says so. The casing typed is kept. A new page's id no longer collides with an id in another case.
+- `move_page` is tested at the ends: the first page, the last page, and a one-page book. Moving past an end does nothing. No behavior changed.
 
 ## 0.4.0 — 2026-10-24
 
