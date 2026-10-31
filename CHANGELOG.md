@@ -1,10 +1,15 @@
 # Changelog
 
+## 2026-10-31
+
+- `instructor-map.md` lists the fourteen Instructor jobs, where each one stands, and the work order items that cover it. `author/test_instructor_map.py` keeps every job listed once with a status.
 ## Unreleased — 2026-10-31
 
+- Add puts the new page right after the current page, not at the end. Ctrl+M does the same.
 - The README says how to install the editor: a venv, `pip install -e .`, and `python3 -m foolbookeditor`.
 - Foolbook is pinned to commit 031e8d8, not to a floating main. A pull request that needs a newer reader bumps the pin and names the function.
 - `python3 -m foolbookeditor --selftest` builds a book in memory, saves it, loads it, and checks the page id, one shape, and one script. No window.
+- Duplicate copies the current page, with its shapes and scripts, under a new id. The copy is the next page. Ctrl+Shift+D does the same.
 
 ## 0.4.0 — 2026-10-24
 

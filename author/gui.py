@@ -93,7 +93,11 @@ class Editor:
         row = ttk.Frame(left)
         row.pack(fill="x", pady=4)
         ttk.Button(row, text="Add", command=self._add_page).pack(side="left")
-        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left", padx=4)
+        from author.commands import SHORTCUTS
+        self.root.bind(SHORTCUTS["add_page"][1], lambda _e: self._add_page())
+        self.root.bind(SHORTCUTS["duplicate_page"][1], lambda _e: self._duplicate_page())
+        ttk.Button(row, text="Duplicate", command=self._duplicate_page).pack(side="left", padx=4)
+        ttk.Button(row, text="Delete", command=self._del_page).pack(side="left")
 
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
@@ -335,8 +339,15 @@ class Editor:
 
     def _add_page(self):
         self._apply()
-        from author.document import add_page
-        self.current = add_page(self.book)
+        from author.commands import add_page
+        self.current = add_page(self.book, self.current)
+        self._refresh_list()
+
+    def _duplicate_page(self):
+        self._apply()
+        self._apply_script()
+        from author.commands import duplicate_page
+        self.current = duplicate_page(self.book, self.current)
         self._refresh_list()
 
     def _del_page(self):
