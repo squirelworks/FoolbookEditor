@@ -10,6 +10,7 @@
 - The compressed form has a golden file too, `tests/fixtures/tiny_z.fbk`: flags byte 1, then a zlib stream the reader decompresses. Opened and saved compressed, it is the same bytes.
 - A new book carries `"fbk": 1`, the book version Foolbook already stamps. The editor refuses to save a book whose version is newer than the installed reader writes, and says the number. A book with no version key still opens and saves.
 - Save is not Export. Save writes `.fbk`, `.fsk`, or `.json`. A book opened from a `.tbk`, an `.sbk`, or an office file is saved beside it as `.fbk` (or `.fsk`), and the original is not written. Saving an `.fsk` keeps it a system book; it was written as an `.fbk`. The status line names the file written. Export stays its own button.
+- `schema.md` and `author/schema.py` write the book dict down, starting with the book fields `id`, `title`, and `pages`. `_magic` is the web editor's envelope state and is not written into the payload; the reader opens a book with or without it.
 
 ## 0.4.0 — 2026-10-24
 
