@@ -3,6 +3,7 @@
 ## 2026-10-31
 
 - Save from the window keeps a system book a system book again. The safe save, which writes beside the file and then replaces it, saved `.fsk` as `.fbk` and an `.sbk` import as `.fbk`; it now writes where `save_target` says, through `save_system` for `.fsk`. Test: `tests/test_safe_save_kind.py`.
+- A new page gets `shapes: []`, not `widgets: []`; the reader draws `shapes` and never reads `widgets`. `schema.md` and `author/schema.py` write down the twelve page fields, and a test saves, opens and reads a page with every one of them. The three shipped templates are rebuilt by `python -m author.templates`. Test: `tests/test_schema_page.py`.
 - `move_page` is tested at the ends: the first page, the last page, and a one-page book. Moving past an end does nothing. No behavior changed.
 - Page ids are unique in a book, without regard to case, as the reader finds them. `rename_page` refuses a rename onto another page's id and the status line says so. The casing typed is kept. A new page's id no longer collides with an id in another case.
 - `schema.md` and `author/schema.py` write the book dict down, starting with the book fields `id`, `title`, and `pages`. `_magic` is the web editor's envelope state and is not written into the payload; the reader opens a book with or without it.
