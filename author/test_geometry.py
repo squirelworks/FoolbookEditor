@@ -41,5 +41,30 @@ class HitTests(unittest.TestCase):
         self.assertEqual(geometry.hit([line], 40, 51), 0)
 
 
+class MarqueeTests(unittest.TestCase):
+    shapes = [
+        {"kind": "rect", "x": 0, "y": 0, "w": 20, "h": 20},
+        {"kind": "rect", "x": 100, "y": 100, "w": 20, "h": 20},
+        {"kind": "line", "points": [[30, 40], [60, 40]]},
+        {"kind": "rect", "x": 15, "y": 15, "w": 10, "h": 10, "layer": "background"},
+    ]
+
+    def test_every_shape_the_box_meets_is_chosen(self):
+        self.assertEqual(geometry.marquee(self.shapes, 10, 10, 50, 50), [0, 2, 3])
+
+    def test_a_backwards_drag_is_the_same_box(self):
+        self.assertEqual(geometry.marquee(self.shapes, 50, 50, 10, 10), [0, 2, 3])
+
+    def test_a_flat_line_is_caught_by_its_points(self):
+        self.assertEqual(geometry.marquee(self.shapes, 40, 35, 45, 45), [2])
+
+    def test_the_layer_filters(self):
+        self.assertEqual(geometry.marquee(self.shapes, 10, 10, 50, 50, "page"), [0, 2])
+        self.assertEqual(geometry.marquee(self.shapes, 10, 10, 50, 50, "background"), [3])
+
+    def test_an_empty_box_far_away_chooses_nothing(self):
+        self.assertEqual(geometry.marquee(self.shapes, 300, 300, 400, 400), [])
+
+
 if __name__ == "__main__":
     unittest.main()

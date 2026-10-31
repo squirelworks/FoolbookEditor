@@ -201,7 +201,7 @@ class Editor:
         objects = ttk.Frame(body, width=260)
         body.add(objects, weight=0)
         ttk.Label(objects, text="Objects").pack(anchor="w")
-        self.objects = tk.Listbox(objects, exportselection=False, width=28)
+        self.objects = tk.Listbox(objects, exportselection=False, width=28, selectmode="extended")
         self.objects.pack(fill="both", expand=True)
         self.objects.bind("<<ListboxSelect>>", self._on_object)
         self.object_meta = ttk.Label(objects, text="", wraplength=200)
@@ -243,6 +243,8 @@ class Editor:
         self.action_note.pack(anchor="w")
         self._rows: list[dict] = []
         self._object = None
+        # Shape indices that are selected, in the order they were chosen.
+        self._chosen: list[int] = []
         self._drag = None
 
         form = ttk.Frame(center)
@@ -880,6 +882,7 @@ class Editor:
         from author.catalog import objects_of, page_script
         self._rows = objects_of(page, self.layer.get())
         self._object = None
+        self._chosen = []
         self.objects.delete(0, "end")
         for row in self._rows:
             name = row["name"] or "(unnamed)"
@@ -896,6 +899,7 @@ class Editor:
             return
         self._apply_script()
         self._object = sel[0]
+        self._chosen = [self._rows[at]["index"] for at in sel]
         row = self._rows[self._object]
         left, top, right, bottom = row["bounds"]
         size = ""
@@ -1105,11 +1109,19 @@ class Editor:
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
+        from author.geometry import bounds
         from author.tools import corners, window_point
         shape, _index = self._selected()
         view = getattr(self.canvas, "_author_view", None)
         if shape is None or not view:
             return
+        shapes = pages[self.current].get("shapes") or []
+        for index in self._chosen:
+            if 0 <= index < len(shapes) and len(self._chosen) > 1:
+                x, y, w, h = bounds(shapes[index])
+                sx0, sy0 = window_point(view, x, y)
+                sx1, sy1 = window_point(view, x + w, y + h)
+                self.canvas.create_rectangle(sx0 - 2, sy0 - 2, sx1 + 2, sy1 + 2, outline="#3070c0", dash=(3, 2))
         for x, y in corners(shape).values():
             sx, sy = window_point(view, x, y)
             self.canvas.create_rectangle(sx - 4, sy - 4, sx + 4, sy + 4, fill="#ffffff", outline="#000000")
@@ -1140,12 +1152,17 @@ class Editor:
                 ax, ay = opposite(current, corner)
                 self._drag = {"mode": "size", "index": index, "ax": ax, "ay": ay, "snap": snapshot(current)}
                 return
+        px, py = page_point(view, evt.x, evt.y)
+        from author.stage import hit
+        if hit(view["shapes"], px, py, self.layer.get()) is None:
+            # Empty page under the pointer: drag a box to choose.
+            self._choose([])
+            self._drag = {"mode": "marquee", "wx": evt.x, "wy": evt.y}
+            return
         self._select_at(evt.x, evt.y)
         current, index = self._selected()
         if current is None:
             return
-        px, py = page_point(view, evt.x, evt.y)
-        from author.stage import hit
         if hit(view["shapes"], px, py, self.layer.get()) != index:
             return
         self._drag = {"mode": "move", "index": index, "px": px, "py": py, "snap": snapshot(current)}
@@ -1157,6 +1174,10 @@ class Editor:
         view = getattr(self.canvas, "_author_view", None)
         pages = self.book.get("pages") or []
         if not view or not (0 <= self.current < len(pages)):
+            return
+        if drag["mode"] == "marquee":
+            self.canvas.delete("marquee")
+            self.canvas.create_rectangle(drag["wx"], drag["wy"], evt.x, evt.y, outline="#3070c0", dash=(4, 2), tags=("marquee",))
             return
         from author.tools import move_shape, page_point, resize_shape
         shapes = pages[self.current].get("shapes") or []
@@ -1175,10 +1196,19 @@ class Editor:
         down = getattr(self, "_down", None)
         self._down = None
         if tool == "select":
-            if self._drag:
+            drag, self._drag = self._drag, None
+            if drag and drag["mode"] == "marquee":
+                self.canvas.delete("marquee")
+                view = getattr(self.canvas, "_author_view", None)
+                if view and view.get("scale"):
+                    from author.geometry import marquee
+                    from author.tools import page_point
+                    x0, y0 = page_point(view, drag["wx"], drag["wy"])
+                    x1, y1 = page_point(view, evt.x, evt.y)
+                    self._choose(marquee(view["shapes"], x0, y0, x1, y1, self.layer.get()))
+            elif drag:
                 self._draw_thumbs()
                 self._show_properties()
-            self._drag = None
             return
         self._drag = None
         if down is None:
@@ -1328,6 +1358,22 @@ class Editor:
         for x, y in draft.points:
             sx, sy = window_point(view, x, y)
             self.canvas.create_rectangle(sx - 2, sy - 2, sx + 2, sy + 2, outline="#071428")
+
+    def _choose(self, indices: list[int]):
+        """Select these shapes in the object list. The first one is the one edited."""
+        self.objects.selection_clear(0, "end")
+        rows = [row for row, item in enumerate(self._rows) if item["index"] in indices]
+        for row in rows:
+            self.objects.selection_set(row)
+        if rows:
+            self.objects.see(rows[0])
+            self._on_object()
+            self._preview()
+        else:
+            self._apply_script()
+            self._object = None
+            self._chosen = []
+            self._preview()
 
     def _selected(self):
         pages = self.book.get("pages") or []

@@ -63,3 +63,25 @@ def hit(shapes: list[dict], x: float, y: float, layer: str | None = None) -> int
         if contains(shape, x, y):
             return index
     return None
+
+
+def intersects(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> bool:
+    """Do two ``(x, y, w, h)`` boxes touch or overlap."""
+    return a[0] <= b[0] + b[2] and b[0] <= a[0] + a[2] and a[1] <= b[1] + b[3] and b[1] <= a[1] + a[3]
+
+
+def marquee(shapes: list[dict], x0: float, y0: float, x1: float, y1: float, layer: str | None = None) -> list[int]:
+    """Indices, in array order, of every shape whose bounds meet the dragged box.
+
+    The box may be dragged in any direction. A line uses its points' bounds.
+    """
+    box = (min(x0, x1), min(y0, y1), abs(x1 - x0), abs(y1 - y0))
+    found = []
+    for index, shape in enumerate(shapes):
+        if not isinstance(shape, dict):
+            continue
+        if layer and (shape.get("layer") or "page") != layer:
+            continue
+        if intersects(box, bounds(shape)):
+            found.append(index)
+    return found
