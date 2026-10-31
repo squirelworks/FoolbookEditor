@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- A question bank is `name.bank.json` beside the book: `{"bank": 1, "questions": [...]}`, the quiz schema as an array. `author/bank.py` loads, checks, and saves it, refuses a newer bank version and names it, and `pick` puts one question on a page. Tested in `author/test_bank.py`, with questions written for the test.
 - `author.quiz.insert_quiz` puts a quiz on the page as shapes: the question, one button per choice with its `choice` index, and the right and wrong feedback hidden. Foolbook grades the saved page by that index. Tested in `author/test_quiz_insert.py`.
 - The quiz schema is written down: `version`, `question`, `choices` (`label`, `correct`, exactly one right), `feedback_right`, `feedback_wrong`, optional `next` and `again`. `author/quiz.py` has `make_quiz`, `right_index`, and `validate`. Tested in `author/test_quiz.py`, with questions written for the test.
 
