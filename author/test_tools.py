@@ -5,6 +5,7 @@ from __future__ import annotations
 import unittest
 
 from author.tools import (
+    next_fit,
     handle_at,
     move_shape,
     new_shape,
@@ -56,6 +57,155 @@ class ToolTests(unittest.TestCase):
         view = {"scale": 1, "ox": 0, "oy": 0, "x0": 0, "y0": 0}
         self.assertEqual(handle_at(view, shape, 100, 40), "se")
         self.assertIsNone(handle_at(view, shape, 50, 20))
+
+
+class SelectTests(unittest.TestCase):
+    def test_select_is_the_tool_author_starts_with(self):
+        from author.tools import DEFAULT_TOOL
+        self.assertEqual(DEFAULT_TOOL, "select")
+
+    def test_escape_returns_to_select(self):
+        from author.tools import after_escape
+        for tool in ("button", "text", "box", "line", "ellipse", "polygon", "arc", "picture", "select"):
+            self.assertEqual(after_escape(tool), "select")
+
+class RectangleTests(unittest.TestCase):
+    def test_a_new_rectangle_is_paper_with_an_ink_outline(self):
+        shape = new_shape("box", 0, 0, 100, 60, set())
+        self.assertEqual(shape["kind"], "rect")
+        self.assertEqual(shape["fill"], "#f7f4ee")
+        self.assertEqual(shape["outline"], "#071428")
+
+class RoundRectTests(unittest.TestCase):
+    def test_a_rounded_rectangle_has_a_radius_of_8(self):
+        shape = new_shape("roundrect", 10, 10, 110, 70, set())
+        self.assertEqual(shape["kind"], "roundrect")
+        self.assertEqual(shape["radius"], 8)
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 10, 100, 60))
+        self.assertEqual((shape["fill"], shape["outline"]), ("#f7f4ee", "#071428"))
+
+class PolygonTests(unittest.TestCase):
+    def test_clicks_add_points_and_finish_closes_the_polygon(self):
+        from author.tools import PointDraft
+        draft = PointDraft("polygon")
+        for x, y in ((10, 10), (90, 10), (50, 70)):
+            draft.add(x, y)
+        draft.add(50, 70)  # the second click of the double-click
+        shape = draft.finish(set())
+        self.assertEqual(shape["kind"], "polygon")
+        self.assertEqual(shape["points"], [[10, 10], [90, 10], [50, 70]])
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 10, 80, 60))
+
+    def test_two_points_are_not_a_polygon(self):
+        from author.tools import PointDraft
+        draft = PointDraft("polygon")
+        draft.add(0, 0)
+        draft.add(10, 10)
+        self.assertIsNone(draft.finish(set()))
+
+    def test_escape_drops_the_unfinished_polygon_and_keeps_the_tool(self):
+        from author.tools import PointDraft, after_escape
+        draft = PointDraft("polygon")
+        draft.add(0, 0)
+        self.assertEqual(after_escape("polygon", draft), "polygon")
+        self.assertEqual(after_escape("polygon", None), "select")
+
+class CurveTests(unittest.TestCase):
+    def test_a_curve_keeps_its_points_and_is_not_filled(self):
+        from author.tools import PointDraft
+        draft = PointDraft("curve")
+        for x, y in ((0, 40), (30, 0), (60, 40), (90, 0)):
+            draft.add(x, y)
+        shape = draft.finish(set())
+        self.assertEqual(shape["kind"], "curve")
+        self.assertEqual(shape["points"], [[0, 40], [30, 0], [60, 40], [90, 0]])
+        self.assertEqual(shape["fill"], "")
+
+    def test_one_point_is_not_a_curve(self):
+        from author.tools import PointDraft
+        draft = PointDraft("curve")
+        draft.add(5, 5)
+        self.assertIsNone(draft.finish(set()))
+
+class ArcTests(unittest.TestCase):
+    def test_an_arc_stores_its_start_angle_and_sweep(self):
+        shape = new_shape("arc", 0, 0, 80, 60, set())
+        self.assertEqual(shape["kind"], "arc")
+        self.assertEqual((shape["start"], shape["sweep"]), (0, 180))
+        self.assertNotIn("ends", shape)
+        self.assertEqual(shape["fill"], "")
+
+class PieTests(unittest.TestCase):
+    def test_a_pie_is_a_filled_quarter_by_its_angles(self):
+        shape = new_shape("pie", 0, 0, 80, 80, set())
+        self.assertEqual(shape["kind"], "pie")
+        self.assertEqual(shape["name"], "Pie")
+        self.assertEqual((shape["start"], shape["sweep"]), (0, 90))
+        self.assertEqual((shape["fill"], shape["outline"]), ("#f7f4ee", "#071428"))
+
+class ChordTests(unittest.TestCase):
+    def test_a_chord_is_a_filled_half_by_its_angles(self):
+        shape = new_shape("chord", 0, 0, 80, 80, set())
+        self.assertEqual(shape["kind"], "chord")
+        self.assertEqual((shape["start"], shape["sweep"]), (0, 180))
+        self.assertEqual(shape["fill"], "#f7f4ee")
+
+    def test_a_label_is_a_text_shape_with_no_border(self):
+        shape = new_shape("label", 10, 20, 10, 20, set())
+        self.assertEqual(shape["kind"], "text")
+        self.assertEqual(shape["preset"], "label")
+        self.assertEqual(shape["name"], "Label")
+        self.assertEqual(shape["text"], "Label")
+        self.assertEqual(shape["fill"], "")
+        # The reader draws no frame for border 1, the ToolBook "none" style.
+        self.assertEqual(shape["border"], 1)
+
+    def test_a_field_is_not_a_label(self):
+        self.assertNotIn("preset", new_shape("text", 0, 0, 160, 36, set()))
+
+    def test_a_field_is_one_the_student_types_into(self):
+        self.assertIs(new_shape("text", 0, 0, 160, 36, set())["editable"], True)
+
+    def test_a_label_is_not_typed_into(self):
+        self.assertIs(new_shape("label", 0, 0, 120, 24, set())["editable"], False)
+
+    def test_a_checkbox_starts_off_with_a_caption(self):
+        shape = new_shape("check", 0, 0, 0, 0, set())
+        self.assertEqual((shape["kind"], shape["name"], shape["text"]), ("check", "Check", "Check"))
+        self.assertIs(shape["value"], False)
+
+    def test_radios_placed_one_after_another_share_a_group(self):
+        first = new_shape("radio", 0, 0, 0, 0, set())
+        second = new_shape("radio", 0, 30, 0, 30, {"Radio"})
+        self.assertEqual((first["kind"], second["name"]), ("radio", "Radio2"))
+        self.assertEqual(first["group"], second["group"])
+        self.assertIs(first["value"], False)
+
+    def test_a_list_box_starts_with_three_choices_and_none_chosen(self):
+        shape = new_shape("list", 0, 0, 0, 0, set())
+        self.assertEqual((shape["kind"], shape["name"]), ("list", "List"))
+        self.assertEqual(shape["choices"], ["First", "Second", "Third"])
+        self.assertNotIn("value", shape)
+        self.assertEqual(shape["text"], "")
+
+    def test_a_combo_box_is_one_row_high_and_closed(self):
+        shape = new_shape("combo", 0, 0, 0, 0, set())
+        self.assertEqual((shape["kind"], shape["name"], shape["h"]), ("combo", "Combo", 22))
+        self.assertEqual(shape["choices"], ["First", "Second", "Third"])
+        self.assertNotIn("open", shape)
+
+    def test_fit_steps_from_fill_to_contain_to_none_and_back(self):
+        picture = new_shape("picture", 0, 0, 0, 0, set())
+        self.assertNotIn("fit", picture)
+        self.assertEqual(next_fit(picture), "contain")
+        self.assertEqual(next_fit(picture), "none")
+        self.assertEqual(next_fit(picture), "fill")
+        self.assertEqual(picture["fit"], "fill")
+
+    def test_fit_leaves_a_shape_that_is_not_a_picture(self):
+        box = new_shape("box", 0, 0, 0, 0, set())
+        self.assertIsNone(next_fit(box))
+        self.assertNotIn("fit", box)
 
 
 if __name__ == "__main__":
