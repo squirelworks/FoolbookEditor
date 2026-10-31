@@ -11,7 +11,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .formats import save_book, load as load_book
+from .formats import load as load_book
+from .safesave import save_safely
 
 try:
     import tkinter as tk
@@ -334,7 +335,7 @@ class Editor:
         if not self.path:
             self._save_as()
             return
-        save_book(self.path, self.book)
+        save_safely(self.path, self.book)
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
     def _save_as(self):
@@ -347,7 +348,7 @@ class Editor:
         if not p:
             return
         self.path = Path(p)
-        save_book(self.path, self.book)
+        save_safely(self.path, self.book)
         self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
 
 

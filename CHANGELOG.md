@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- Save writes the book to a temporary file beside it (`.name.saving.fbk`) and only then replaces the old file in one step. If the write or the replace fails, the temporary file is removed and the previous book is untouched. Test: `author/test_safesave.py`, which makes the replace step fail.
 - Every menu item has a keyboard shortcut, or `none` on purpose (Delete page, so a slip cannot drop a page, and the two layer items). The menus show the keys, and Help > Keyboard map prints the whole map. Ctrl+1 to Ctrl+8 pick the drawing tools. Test: `author/test_menus.py` `KeyboardMap`.
 - A menu bar: File, Edit, Insert, Arrange, Book, Help. It is built from `author/menus.py`, and every item runs a command the window already has. Help for this tool opens the tool's README section in a window, not a website. Test: `author/test_menus.py`.
 - The README has a Tools section with one `###` heading per tool (Select, Button, Field, Rectangle, Line, Ellipse, Polygon, Arc, Picture), so Help can open the local section for the tool in use. Test: `author/test_help.py`.
