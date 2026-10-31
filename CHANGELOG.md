@@ -13,6 +13,7 @@
 - A click selects the topmost shape under it. A line is picked near its stroke, a shape stored as points is picked inside its points' bounds, and background shapes are picked only while Background is chosen.
 - A drag on empty page draws a box and selects every object whose bounds meet it. The object list can select more than one.
 - Arrow keys move the selected objects by 1, and Shift+arrow by 8. Dragging one of several selected objects moves them all.
+- A selected object has eight handles, and a line has its two ends. A side handle pulls one side. Nothing resizes below 4 by 4.
 
 ## 0.4.0 — 2026-10-24
 

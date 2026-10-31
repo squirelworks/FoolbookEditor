@@ -92,5 +92,58 @@ class NudgeTests(unittest.TestCase):
         self.assertEqual(shapes[0]["x"], 1)
 
 
+class ResizeTests(unittest.TestCase):
+    def box(self):
+        return {"kind": "rect", "x": 10, "y": 20, "w": 100, "h": 50}
+
+    def test_a_box_has_eight_handles(self):
+        found = geometry.handles(self.box())
+        self.assertEqual(set(found), {"nw", "n", "ne", "e", "se", "s", "sw", "w"})
+        self.assertEqual(found["n"], (60, 20))
+        self.assertEqual(found["e"], (110, 45))
+
+    def test_a_line_has_its_two_ends(self):
+        line = {"kind": "line", "points": [[0, 0], [50, 10]]}
+        self.assertEqual(geometry.handles(line), {"p0": (0.0, 0.0), "p1": (50.0, 10.0)})
+
+    def test_a_side_handle_pulls_only_its_side(self):
+        shape = self.box()
+        geometry.resize(shape, dict(shape), "e", 150, 999)
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 20, 140, 50))
+        shape = self.box()
+        geometry.resize(shape, dict(shape), "n", -5, 0)
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (10, 0, 100, 70))
+
+    def test_a_corner_keeps_the_opposite_corner(self):
+        shape = self.box()
+        geometry.resize(shape, dict(shape), "nw", 0, 0)
+        self.assertEqual((shape["x"], shape["y"], shape["w"], shape["h"]), (0, 0, 110, 70))
+
+    def test_nothing_gets_smaller_than_four_by_four(self):
+        self.assertEqual(geometry.MIN_SIZE, 4)
+        shape = self.box()
+        geometry.resize(shape, dict(shape), "se", 10, 20)
+        self.assertEqual((shape["w"], shape["h"]), (4, 4))
+        shape = self.box()
+        geometry.resize(shape, dict(shape), "w", 500, 0)
+        self.assertEqual((shape["x"], shape["w"]), (106, 4))
+
+    def test_dragging_a_line_end_moves_only_that_end(self):
+        line = {"kind": "line", "x": 0, "y": 0, "w": 50, "h": 10, "points": [[0, 0], [50, 10]]}
+        geometry.resize(line, {**line}, "p1", 80, 40)
+        self.assertEqual(line["points"], [[0, 0], [80, 40]])
+        self.assertEqual((line["w"], line["h"]), (80, 40))
+
+    def test_a_line_end_cannot_land_on_the_other_end(self):
+        line = {"kind": "line", "points": [[0, 0], [50, 10]]}
+        geometry.resize(line, {**line}, "p1", 1, 1)
+        self.assertEqual(line["points"], [[0, 0], [50, 10]])
+
+    def test_points_inside_a_box_scale_with_it(self):
+        poly = {"kind": "polygon", "x": 0, "y": 0, "w": 10, "h": 10, "points": [[0, 0], [10, 0], [10, 10]]}
+        geometry.resize(poly, {**poly}, "se", 20, 30)
+        self.assertEqual(poly["points"], [[0, 0], [20, 0], [20, 30]])
+
+
 if __name__ == "__main__":
     unittest.main()
