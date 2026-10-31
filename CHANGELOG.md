@@ -95,6 +95,7 @@
 - Shift while drawing makes a box square, and makes a line horizontal, vertical, or 45 degrees.
 - Grid 8 snaps a drawn, moved, or resized object to an 8-pixel grid when the mouse button comes up. It is off by default.
 - Align lines up the selection by left, right, top, bottom, or centre, against the first selected object.
+- Distribute spaces three or more selected objects with equal gaps, across or down.
 
 ## 0.4.0 — 2026-10-24
 

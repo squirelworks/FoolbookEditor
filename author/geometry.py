@@ -278,3 +278,30 @@ def align(shapes: list[dict], indices: list[int], how: str) -> None:
             raise ValueError(f"unknown alignment {how}")
         if dx or dy:
             offset(shapes[index], dx, dy)
+
+
+def distribute(shapes: list[dict], indices: list[int], axis: str) -> None:
+    """Equal gaps between the selected shapes' bounds, ``horizontal`` or ``vertical``.
+
+    The two outermost shapes stay where they are; the ones between them move.
+    Shapes are taken in the order they sit along the axis, not the order chosen.
+    Fewer than three shapes is a no-op.
+    """
+    chosen = [i for i in dict.fromkeys(indices) if 0 <= i < len(shapes) and isinstance(shapes[i], dict)]
+    if len(chosen) < 3:
+        return
+    if axis not in ("horizontal", "vertical"):
+        raise ValueError(f"unknown axis {axis}")
+    pos, size = (0, 2) if axis == "horizontal" else (1, 3)
+    boxes = {i: bounds(shapes[i]) for i in chosen}
+    order = sorted(chosen, key=lambda i: (boxes[i][pos], i))
+    first, last = boxes[order[0]], boxes[order[-1]]
+    span = (last[pos] + last[size]) - first[pos]
+    filled = sum(boxes[i][size] for i in order)
+    gap = (span - filled) / (len(order) - 1)
+    at = first[pos] + first[size] + gap
+    for index in order[1:-1]:
+        move = at - boxes[index][pos]
+        if move:
+            offset(shapes[index], move if pos == 0 else 0, move if pos == 1 else 0)
+        at += boxes[index][size] + gap
