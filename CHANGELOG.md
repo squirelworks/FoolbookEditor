@@ -13,6 +13,7 @@
 - `schema.md` and `author/schema.py` write the book dict down, starting with the book fields `id`, `title`, and `pages`. `_magic` is the web editor's envelope state and is not written into the payload; the reader opens a book with or without it.
 - The page fields are written down: `id`, `text` (a list of strings), `items`, `shapes`, `script`, `name`, `size` (`[w, h]`). Each round-trips, and the reader sees them. A new page gets `shapes`, not the `widgets` key the reader never read.
 - The shape fields are written down: `kind`, `name`, `text`, `x`, `y`, `w`, `h`, `fill`, `outline`, `size`, `points`, `item`, `script`, `src`, `data`, `visible`, `layer`, and an arc's `ends`. Each round-trips, an embedded picture included, and the reader keeps them. The Tk tools write no other field.
+- `set_item(shape, page, book, label)` sets the jump a click follows, and an empty page clears it. A button with an item and no script goes there in the reader; `foolbookeditor.core.click` is the headless click the test uses.
 
 ## 0.4.0 — 2026-10-24
 

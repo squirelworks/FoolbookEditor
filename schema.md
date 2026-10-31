@@ -30,7 +30,7 @@ An `.fbk` is `FBK1`, a flags byte (bit 0 means zlib), then this dict as JSON. An
 - `fill`, `outline`: colours as `#rrggbb`. An empty `fill` is no fill.
 - `size`: the font size of the shape's text.
 - `points`: a line's or polygon's points, a list of `[x, y]`.
-- `item`: the jump a click follows, `{"page", "book", "label"}`.
+- `item`: the jump a click follows, `{"page", "book", "label"}`. `page` is required; `book` and `label` are optional. A button with an `item` and no script still goes there in the reader. An empty page clears the item.
 - `script`: the shape's script, one string.
 - `src`: a picture's file, beside the book.
 - `data`: a picture's PNG bytes as base64, so the book is one file.

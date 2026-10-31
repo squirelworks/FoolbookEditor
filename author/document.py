@@ -146,6 +146,24 @@ def set_quiz(page: dict, quiz: dict | None) -> None:
         page.pop("quiz", None)
 
 
+def set_item(shape: dict, page: str, book: str = "", label: str = "") -> None:
+    """The jump a click on this shape follows. An empty page clears it.
+
+    The reader follows ``item`` when the shape has no script, or when
+    its script did not move the page.
+    """
+    page = (page or "").strip()
+    if not page:
+        shape.pop("item", None)
+        return
+    item = {"page": page}
+    if (book or "").strip():
+        item["book"] = book.strip()
+    if (label or "").strip():
+        item["label"] = label.strip()
+    shape["item"] = item
+
+
 def widgets(page: dict) -> list:
     return page.setdefault("widgets", [])
 

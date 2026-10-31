@@ -87,3 +87,33 @@ def export_book(path: str | Path, book: dict, compile_script=None) -> Path:
 
 def compile_script(source: str, keywords: list[str] | None = None) -> bytes:
     return require().compile_script(source, keywords)
+
+
+def click(path: str | Path, page_id: str, x: float, y: float) -> str:
+    """The page the reader shows after a click at (x, y) on that page.
+
+    Headless. The same steps Foolbook's window takes: the object under
+    the point runs its click script, and when that does not move the
+    page, its ``item`` is followed. Returns the page id after the click.
+    """
+    require()
+    from engine.engine import click_script, follow, press, run_handler
+    from engine.loader import load as load_book
+    from engine.place import click_target
+    from foolbook.model import RuntimeState
+
+    book = load_book(Path(path))
+    state = RuntimeState(book=book)
+    ids = [page.id.lower() for page in book.pages]
+    state.index = ids.index(page_id.lower())
+    obj = click_target(state.page.shapes, x, y)
+    if obj is None:
+        return state.page.id
+    moved = False
+    script = click_script(obj)
+    if script:
+        moved = follow(state, run_handler(state, script))
+    item = obj.get("item") or {}
+    if not moved and (item.get("page") or item.get("label")):
+        press(state, item.get("label") or obj.get("text") or "", item.get("page") or "")
+    return state.page.id
