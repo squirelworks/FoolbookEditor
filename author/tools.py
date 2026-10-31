@@ -18,12 +18,16 @@ INK = "#071428"
 # Radios placed one after another answer the same question until the property pane renames the group.
 RADIO_GROUP = "choice"
 
+# A new list box has rows to look at until the property pane edits them.
+LIST_CHOICES = ("First", "Second", "Third")
+
 _SIZE = {
     "button": (90, 28),
     "text": (160, 36),
     "label": (120, 24),
     "check": (120, 22),
     "radio": (120, 22),
+    "list": (140, 72),
     "box": (100, 60),
     "line": (80, 8),
     "ellipse": (80, 60),
@@ -38,6 +42,7 @@ _KIND = {
     "label": "text",
     "check": "check",
     "radio": "radio",
+    "list": "list",
     "box": "rect",
     "line": "line",
     "ellipse": "ellipse",
@@ -51,6 +56,7 @@ _LABEL = {
     "label": "Label",
     "check": "Check",
     "radio": "Radio",
+    "list": "List",
     "box": "Rectangle",
     "line": "Line",
     "ellipse": "Ellipse",
@@ -133,6 +139,11 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
         shape["outline"] = INK
         if tool == "radio":
             shape["group"] = RADIO_GROUP
+    elif tool == "list":
+        # The reader picks a row into value and scrolls a list longer than its box.
+        shape["choices"] = list(LIST_CHOICES)
+        shape["fill"] = "#ffffff"
+        shape["outline"] = INK
     elif tool == "box":
         shape["fill"] = PAPER
         shape["outline"] = INK

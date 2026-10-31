@@ -7,6 +7,7 @@
 - Label places a text shape with no border and no fill. It is the text kind with `preset: label`, not a new kind, so the reader draws it today.
 - A new Field is `editable: true`, so the student can type into it in Foolbook and the typing is kept as `value`. A Label is `editable: false`. Needs the reader change in Foolbook#42.
 - Check and Radio place a checkbox and a radio button, off, with a caption. Radios share the group `choice`, so the reader turns the others off when one is clicked. Needs Foolbook#49.
+- List places a list box with three choices and none chosen. The reader picks a row into `value` and scrolls a long list. Needs Foolbook#50.
 
 ## 0.4.0 — 2026-10-24
 
