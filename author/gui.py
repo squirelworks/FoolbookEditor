@@ -140,6 +140,7 @@ class Editor:
         order.pack(fill="x")
         ttk.Button(order, text="Up", command=lambda: self._reorder("page_up")).pack(side="left")
         ttk.Button(order, text="Down", command=lambda: self._reorder("page_down")).pack(side="left", padx=4)
+        ttk.Button(left, text="New background", command=self._add_background).pack(anchor="w")
 
         # The page picture. Foolbook draws it. The editor only holds the panes.
         center = ttk.Frame(body)
@@ -523,8 +524,9 @@ class Editor:
 
     def _refresh_list(self):
         self.pages.delete(0, "end")
+        from author.document import page_label
         for p in self.book.get("pages") or []:
-            self.pages.insert("end", p.get("id") or "?")
+            self.pages.insert("end", page_label(p))
         if self.book.get("pages"):
             self.pages.selection_set(self.current)
             self._show(self.current)
@@ -630,8 +632,9 @@ class Editor:
         set_id(p, self.pid.get())
         set_text(p, text_from_editor(self.text.get("1.0", "end")))
         set_nav(p, self.next.get(), self.back.get())
+        from author.document import page_label
         self.pages.delete(self.current)
-        self.pages.insert(self.current, p["id"])
+        self.pages.insert(self.current, page_label(p))
         self.pages.selection_set(self.current)
         self._preview()
 
@@ -653,6 +656,13 @@ class Editor:
         self._apply_script()
         from author import commands
         self.current = getattr(commands, command)(self.book, self.current)
+        self._refresh_list()
+
+    def _add_background(self):
+        self._apply()
+        from author.document import add_background
+        add_background(self.book)
+        self.current = len(self.book["pages"]) - 1
         self._refresh_list()
 
     def _del_page(self):

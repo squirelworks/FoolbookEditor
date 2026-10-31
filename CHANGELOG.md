@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- New background adds an empty shared background at the end of the book (`Background`, `Background 2`, ...). The page list marks each one `(background)`, and the Background list on every page offers all of them. Test: `author/test_backgrounds.py` `SeveralBackgrounds`.
 - Publish also writes `books.json` in the folder: each book's title, file, and page count. Publishing another book into the same folder adds its line and keeps the rest.
 - Publish writes a folder: the book as `.fbk`, every picture or clip a shape links by a relative `src`, and a one-line `README.txt` that says to open it with Foolbook. A linked file that is not found is named in the status line. No installer.
 - Pattern steps the selected rectangle through 8 by 8 fills (checks, horizontal, vertical, diagonal, dots) and back to none. It is stored as `tile`. A `.tbk` export keeps the plain fill colour.
