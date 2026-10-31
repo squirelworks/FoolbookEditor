@@ -234,6 +234,9 @@ class Editor:
             swatch.grid(row=0, column=at, padx=1)
             swatch.bind("<Button-1>", lambda _e, c=color: self._pick_color("fill", c))
             swatch.bind("<Button-3>", lambda _e, c=color: self._pick_color("outline", c))
+        ttk.Button(well, text="No fill", width=7, command=lambda: self._pick_color("fill", "")).grid(
+            row=0, column=len(WELL), padx=(4, 0)
+        )
 
     def _pick_color(self, key: str, color: str):
         self._prop_vars[key].set(color)

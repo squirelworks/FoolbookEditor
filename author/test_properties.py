@@ -97,6 +97,44 @@ class ColourWellTests(unittest.TestCase):
         self.assertTrue(write(shape, "fill", "#123abc"))
         self.assertEqual(shape["fill"], "#123abc")
 
+class NoFillTests(unittest.TestCase):
+    def test_an_empty_fill_is_no_fill(self):
+        button = {"kind": "button", "name": "Next", "fill": "#c0c0c0", "outline": "#000000"}
+        self.assertTrue(write(button, "fill", ""))
+        self.assertEqual(button["fill"], "")
+        self.assertEqual(read(button, "fill"), "")
+
+    def test_an_outline_still_needs_a_colour(self):
+        shape = {"kind": "rect", "outline": "#071428"}
+        self.assertFalse(write(shape, "outline", ""))
+        self.assertEqual(shape["outline"], "#071428")
+
+    def test_a_button_with_no_fill_survives_a_save_and_is_drawn_empty(self):
+        from foolbookeditor.core import pack, unpack
+        button = {"kind": "button", "name": "Next", "x": 10, "y": 10, "w": 90, "h": 28,
+                  "text": "Next", "fill": "#c0c0c0", "outline": "#000000"}
+        write(button, "fill", "")
+        book = {"id": "nofill", "title": "No fill", "pages": [{"id": "P0", "shapes": [button]}]}
+        back = unpack(pack(book, "fbk", compress=False))
+        loaded = back["pages"][0]["shapes"][0]
+        self.assertEqual(loaded["fill"], "")
+
+        from engine import graphics
+
+        class Canvas:
+            calls = []
+
+            def __getattr__(self, name):
+                return lambda *a, **k: self.calls.append((name, k))
+
+            def find_all(self):
+                return ()
+
+        canvas = Canvas()
+        graphics.draw(canvas, [loaded])
+        boxes = [k for name, k in canvas.calls if name == "create_rectangle"]
+        self.assertEqual(boxes[0]["fill"], "")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -16,6 +16,7 @@
 - A Properties pane sets the selected object's name, text, fill, outline, and line width (`stroke`, default 1). Bad input keeps the old value. Foolbook draws `stroke` from Foolbook#25 on.
 - The Properties pane sets font face, size, bold, italic, underline, and alignment (left, center, right). Foolbook reads underline and named alignment from Foolbook#32 and #35 on.
 - A colour well of eight plain colours sits under the Properties pane. A click sets the fill and a right-click sets the outline. Typed `#rrggbb` still works.
+- No fill, or an empty Fill box, stores `fill: ""` and the object is drawn with nothing inside. A button with no fill saves and draws that way.
 ## 2026-10-31
 
 - The page form has a Background list. It names the shared backgrounds in the book (pages with `"background": true`) and `(none)`. Picking one sets the page's `uses`, and the stage draws that background under the page. `(none)` clears it. The model refuses a name that is not a background. Test: `author/test_backgrounds.py`.
