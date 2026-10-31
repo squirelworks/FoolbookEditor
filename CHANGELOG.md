@@ -18,6 +18,7 @@
 - A colour well of eight plain colours sits under the Properties pane. A click sets the fill and a right-click sets the outline. Typed `#rrggbb` still works.
 - No fill, or an empty Fill box, stores `fill: ""` and the object is drawn with nothing inside. A button with no fill saves and draws that way.
 - A Visible check box in the Properties pane. An object with `visible: false` is drawn ghosted on the stage, its colours washed toward white, and Foolbook still skips it.
+- Left, Top, Width, and Height in the Properties pane move and size the object by number, points included. Bad input keeps the old value.
 
 ## 0.4.0 — 2026-10-24
 
