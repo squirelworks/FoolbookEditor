@@ -23,6 +23,43 @@ _WIDGET = {
 }
 
 
+PAGE_SIZE = (640, 480)
+PAGE_MIN = 64
+_HEX = "0123456789abcdef"
+
+
+def new_book(size: tuple[int, int] = PAGE_SIZE, color: str = "#ffffff") -> dict:
+    """A one-page book of that size on paper of that colour.
+
+    The paper is a page-sized rect on the background layer, the same
+    shape the reader already paints first and does not treat as a control.
+    The reader draws page text only when a page has no shapes, so the
+    new page carries no placeholder words.
+    """
+    w, h = int(size[0]), int(size[1])
+    if w < PAGE_MIN or h < PAGE_MIN:
+        raise ValueError(f"A page is at least {PAGE_MIN} by {PAGE_MIN}, not {w} by {h}.")
+    color = color.strip().lower()
+    if len(color) != 7 or color[0] != "#" or any(c not in _HEX for c in color[1:]):
+        raise ValueError(f"The background colour is #rrggbb, not {color!r}.")
+    book = blank_book()
+    page = book["pages"][0]
+    page["size"] = [w, h]
+    page["text"] = []
+    page["shapes"] = [{
+        "kind": "rect",
+        "name": "paper",
+        "x": 0,
+        "y": 0,
+        "w": w,
+        "h": h,
+        "fill": color,
+        "outline": "",
+        "layer": "background",
+    }]
+    return book
+
+
 def blank_book() -> dict:
     return {
         "id": "new",
