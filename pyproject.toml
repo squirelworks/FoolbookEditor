@@ -21,3 +21,4 @@ include = ["foolbookeditor*", "author*"]
 
 [tool.setuptools.package-data]
 author = ["words.txt"]
+foolbookeditor = ["demo/*.fbk"]

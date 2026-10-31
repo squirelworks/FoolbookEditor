@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- A Small Garden ships with the editor. The start window offers it, and it opens as an unsaved copy, so Save asks where to put it and the shipped file is never written. Three pages sit on one shared background, with a picture, a quiz, and a Next button. `examples/demo.py` makes it with the editor's own model calls. A test regenerates the file, and another opens it in Foolbook with no window: Next, a wrong answer, a right answer, the last page. Tests: `author/test_demo.py`, `author/test_clickthrough.py`.
 - Apply script checks the page script as it checks an object script: the first error, with its line, or else the first word Foolbook does not run, shows in the status line. Before, a page script was saved with no check. It is still saved whatever the check finds. Test: `author/test_page_script_check.py`.
 - A question bank is `name.bank.json` beside the book: `{"bank": 1, "questions": [...]}`, the quiz schema as an array. `author/bank.py` loads, checks, and saves it, refuses a newer bank version and names it, and `pick` puts one question on a page. Tested in `author/test_bank.py`, with questions written for the test.
 - `author.quiz.insert_quiz` puts a quiz on the page as shapes: the question, one button per choice with its `choice` index, and the right and wrong feedback hidden. Foolbook grades the saved page by that index. Tested in `author/test_quiz_insert.py`.
