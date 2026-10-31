@@ -79,6 +79,25 @@ def payload(book: dict) -> dict:
     return out
 
 
+class EmptyBook(ValueError):
+    """An envelope with no book in it."""
+
+
+def empty_payload(path: str | Path) -> None:
+    """Refuse an FBK1 or FSK1 file whose payload is only zero bytes, and say why.
+
+    The web editor's Download wrote the magic and the flags byte and then
+    zeros where the book should be, until the site fixed it. That file has
+    nothing to recover.
+    """
+    blob = Path(path).read_bytes()
+    if blob[:4] in (b"FBK1", b"FSK1") and not blob[5:].strip(b"\x00"):
+        raise EmptyBook(
+            f"{Path(path).name} has the {blob[:4].decode()} header and no book after it. "
+            "A web editor download from before the fix writes this. Download it again."
+        )
+
+
 FOOLBOOK_MAGIC = (b"FBK1", b"FSK1", b"FSC1")
 
 
@@ -104,6 +123,7 @@ def open_book(path: str | Path) -> dict:
     """Open whatever the bytes are, as the book dict the editor holds."""
     kind = sniff(path)
     if kind == "foolbook":
+        empty_payload(path)
         return load(path)
     if kind == "toolbook":
         return read(path)
