@@ -145,5 +145,26 @@ class ResizeTests(unittest.TestCase):
         self.assertEqual(poly["points"], [[0, 0], [20, 0], [20, 30]])
 
 
+class ConstrainTests(unittest.TestCase):
+    def test_shift_makes_a_box_a_square_in_the_drag_direction(self):
+        self.assertEqual(geometry.constrain_box(10, 10, 50, 30), (50, 50))
+        self.assertEqual(geometry.constrain_box(10, 10, -20, 0), (-20, -20))
+        self.assertEqual(geometry.constrain_box(10, 10, 15, 60), (60, 60))
+
+    def test_shift_snaps_a_line_to_flat(self):
+        self.assertEqual(geometry.constrain_line(0, 0, 100, 10), (100, 0))
+        self.assertEqual(geometry.constrain_line(0, 0, -100, 10), (-100, 0))
+
+    def test_shift_snaps_a_line_to_upright(self):
+        self.assertEqual(geometry.constrain_line(0, 0, 5, -80), (0, -80))
+
+    def test_shift_snaps_a_line_to_45_degrees(self):
+        self.assertEqual(geometry.constrain_line(0, 0, 60, 50), (60, 60))
+        self.assertEqual(geometry.constrain_line(0, 0, -40, 50), (-50, 50))
+
+    def test_a_click_is_left_alone(self):
+        self.assertEqual(geometry.constrain_line(3, 3, 3, 3), (3, 3))
+
+
 if __name__ == "__main__":
     unittest.main()

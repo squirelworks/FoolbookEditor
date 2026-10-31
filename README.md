@@ -34,6 +34,8 @@ Arrow keys move the selection 1 page pixel; Shift+arrow moves it 8 (`geometry.NU
 
 A selected object has eight handles: four corners and the middle of each side. A side handle pulls only that side; a corner keeps the opposite corner. A line's handles are its two ends. Nothing resizes below 4 by 4 page pixels (`geometry.MIN_SIZE`).
 
+Hold Shift while drawing: a box, ellipse, button, or field comes out square, and a line snaps to horizontal, vertical, or 45 degrees.
+
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash

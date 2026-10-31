@@ -619,6 +619,10 @@ class Editor:
         from author.tools import new_shape, page_point
         x0, y0 = page_point(view, down[0], down[1])
         x1, y1 = page_point(view, evt.x, evt.y)
+        if evt.state & 0x0001:
+            # Shift: a square box, or a line at 0, 45, or 90 degrees.
+            from author.geometry import constrain_box, constrain_line
+            x1, y1 = (constrain_line if tool == "line" else constrain_box)(x0, y0, x1, y1)
         pages = self.book.get("pages") or []
         if not (0 <= self.current < len(pages)):
             return
