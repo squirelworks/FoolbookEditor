@@ -902,28 +902,28 @@ class Editor:
             self._save_as()
             return
         try:
-            save_book(self.path, self.book)
+            self.path = save_book(self.path, self.book)
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
-        self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
+        self.status.config(text=f"Saved {self.path.name}")
 
     def _save_as(self):
         self._apply()
         p = filedialog.asksaveasfilename(
             title="Save book",
             defaultextension=".fbk",
-            filetypes=[("Foolbook book", "*.fbk"), ("JSON", "*.json")],
+            filetypes=[("Foolbook book", "*.fbk"), ("System book", "*.fsk"), ("JSON", "*.json")],
         )
         if not p:
             return
         self.path = Path(p)
         try:
-            save_book(self.path, self.book)
+            self.path = save_book(self.path, self.book)
         except FutureBook as exc:
             messagebox.showerror("Foolbook Editor", str(exc))
             return
-        self.status.config(text=f"Saved {self.path.with_suffix('.json').name} and .fbk")
+        self.status.config(text=f"Saved {self.path.name}")
 
 
     def _publish(self):
@@ -942,7 +942,7 @@ class Editor:
         self.status.config(text=note)
 
     def _export(self):
-        """Save as a book, a TBX folder, a ToolBook shell, or an office file."""
+        """Export. Not Save. Writes a TBX folder, a ToolBook shell, or an office file."""
         self._apply()
         p = filedialog.asksaveasfilename(
             title="Export",
@@ -1225,7 +1225,12 @@ class Editor:
             set_page_script(pages[self.current], self.oscript.get("1.0", "end"))
             return
         from author.catalog import set_object_script
-        set_object_script(pages[self.current], self._rows[self._object]["index"], self.oscript.get("1.0", "end"))
+        source = self.oscript.get("1.0", "end")
+        set_object_script(pages[self.current], self._rows[self._object]["index"], source)
+        from author.scripts import warning
+        note = warning(source)
+        if note:
+            self.status.config(text=note)
         self._rows[self._object]["script"] = pages[self.current]["shapes"][self._rows[self._object]["index"]].get("script") or ""
         self._show_actions()
 
