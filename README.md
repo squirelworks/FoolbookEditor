@@ -76,6 +76,46 @@ Undo (Ctrl+Z) and Redo (Ctrl+Y or Ctrl+Shift+Z) step through up to 50 changes to
 
 Cut (Ctrl+X), Copy (Ctrl+C) and Paste (Ctrl+V) use the editor's own clipboard; the system clipboard is a later change. On the stage they act on the selected objects. A pasted object lands 8 right and 8 down, and each further paste 8 more; a name already on the page gets a number. With the page list focused, Copy and Paste act on the whole page, and a pasted page whose id is taken gets a new one. In a text box the keys edit the text as usual.
 
+## Tools
+
+Help in the editor opens the section below for the tool in use.
+
+### Select
+
+The pointer. Click an object to select it, drag it to move it, or drag one of its corner squares to resize it. The opposite corner stays where it was. Only objects on the layer chosen with Page and Background can be picked.
+
+### Button
+
+Drag to place a button, or click to place one at 90 by 28. It starts out labelled with its name. Its script is edited in the object pane.
+
+### Field
+
+Drag to place a text field, or click to place one at 160 by 36. The words come from the object's text.
+
+### Rectangle
+
+Drag to place a rectangle, or click to place one at 100 by 60. Fill and Line set its colours.
+
+### Line
+
+Drag from one end to the other.
+
+### Ellipse
+
+Drag the box the ellipse fits in, or click to place one at 80 by 60.
+
+### Polygon
+
+Drag to place a polygon in the box you drag.
+
+### Arc
+
+Drag the box the arc's ellipse fits in.
+
+### Picture
+
+Drag the box, then choose a PNG, GIF, BMP, or JPEG. The picture is stored in the book, so the book stays one file.
+
 Export writes `.fbk`, `.fsk`, `.fsc`, a `.tbx` folder, a `.tbk` or `.sbk` shell, or `.pdf`, `.doc`, `.docx`, `.ppt`, `.pptx`, and `.odt`. A `.tbx` folder is `Book.xml` with `Book.Pages` in reading order, then one folder per page. Fields and buttons are written with bounds. The ToolBook shells are what Foolbook can open. ToolBook itself has not been shown to open one.
 
 ```bash

@@ -23,6 +23,7 @@
 
 ## 2026-10-31
 
+- The README has a Tools section with one `###` heading per tool (Select, Button, Field, Rectangle, Line, Ellipse, Polygon, Arc, Picture), so Help can open the local section for the tool in use. Test: `author/test_help.py`.
 - A picture is stored as PNG. GIF, BMP, and JPEG are converted when Pillow is installed. The picture's size in pixels shows when it comes in and when it is selected, and a click without a drag places it at that size. A file that is not a picture is refused.
 - Book sets the book's title, author, default page size (`pageSize`), and first page (`firstPage`). A bad size or a page that does not exist is refused and changes nothing. Foolbook opens the book at its first page.
 
