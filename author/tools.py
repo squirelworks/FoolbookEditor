@@ -11,6 +11,10 @@ from __future__ import annotations
 # The tool Author starts with, and the one Escape returns to.
 DEFAULT_TOOL = "select"
 
+# A new rectangle is paper with an ink outline until the property pane says otherwise.
+PAPER = "#f7f4ee"
+INK = "#071428"
+
 _SIZE = {
     "button": (90, 28),
     "text": (160, 36),
@@ -103,6 +107,9 @@ def new_shape(tool: str, x0: float, y0: float, x1: float, y1: float, names: set[
             shape["points"] = [[int(left), int(top)], [int(left + width), int(top + height)]]
         else:
             shape["points"] = [[int(x0), int(y0)], [int(x1), int(y1)]]
+    elif tool == "box":
+        shape["fill"] = PAPER
+        shape["outline"] = INK
     elif tool == "polygon":
         shape["points"] = [
             [int(left), int(top)],

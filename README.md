@@ -38,7 +38,7 @@ python3 -m foolbookeditor --browser path/to/book.fbk
 python3 -m foolbookeditor --fbk path/to/book.tbk    # write book.fbk beside it
 ```
 
-The desktop window is Author. Select is the tool it starts with, and Escape goes back to it. Select moves an object and pulls its corners. Button, Field, Rectangle, Line, Ellipse, Polygon, Arc, and Picture place one where you drag. Page and Background choose the layer. Fill and Line colour the selected object. Front and Back reorder it on that layer. `--browser` is the older window.
+The desktop window is Author. Select is the tool it starts with, and Escape goes back to it. Select moves an object and pulls its corners. Button, Field, Rectangle, Line, Ellipse, Polygon, Arc, and Picture place one where you drag. A new rectangle is filled `#f7f4ee` with a `#071428` outline. Page and Background choose the layer. Fill and Line colour the selected object. Front and Back reorder it on that layer. `--browser` is the older window.
 
 Pages: Add (Ctrl+M) puts a blank page right after the current page. Duplicate (Ctrl+Shift+D) copies the current page, shapes and scripts included, under a new id, and the copy is the next page. Delete (Ctrl+Shift+Delete) asks first, naming the page and how many objects go with it. The last page cannot be deleted. Up and Down (Ctrl+Shift+Up, Ctrl+Shift+Down) move the current page one place; page order is reading order.
 

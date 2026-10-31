@@ -68,6 +68,13 @@ class SelectTests(unittest.TestCase):
         for tool in ("button", "text", "box", "line", "ellipse", "polygon", "arc", "picture", "select"):
             self.assertEqual(after_escape(tool), "select")
 
+class RectangleTests(unittest.TestCase):
+    def test_a_new_rectangle_is_paper_with_an_ink_outline(self):
+        shape = new_shape("box", 0, 0, 100, 60, set())
+        self.assertEqual(shape["kind"], "rect")
+        self.assertEqual(shape["fill"], "#f7f4ee")
+        self.assertEqual(shape["outline"], "#071428")
+
 
 if __name__ == "__main__":
     unittest.main()
