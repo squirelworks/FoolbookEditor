@@ -55,6 +55,37 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(restack(page, 0, "front"), 0)
         self.assertEqual(page["shapes"][0]["name"], "paper")
 
+    def _names(self, page):
+        return [shape["name"] for shape in page["shapes"]]
+
+    def _page(self):
+        return {"shapes": [
+            {"name": "paper", "layer": "background"},
+            {"name": "A"}, {"name": "B"},
+            {"name": "sky", "layer": "background"},
+            {"name": "C"}, {"name": "D"},
+        ]}
+
+    def test_forward_and_backward_step_one_place_on_the_layer(self):
+        page = self._page()
+        self.assertEqual(restack(page, 2, "forward"), 4)
+        self.assertEqual(self._names(page), ["paper", "A", "C", "sky", "B", "D"])
+        self.assertEqual(restack(page, 4, "backward"), 2)
+        self.assertEqual(self._names(page), ["paper", "A", "B", "sky", "C", "D"])
+
+    def test_front_and_back_go_all_the_way_on_the_layer(self):
+        page = self._page()
+        self.assertEqual(restack(page, 1, "front"), 5)
+        self.assertEqual(self._names(page), ["paper", "B", "C", "sky", "D", "A"])
+        self.assertEqual(restack(page, 5, "back"), 1)
+        self.assertEqual(self._names(page), ["paper", "A", "B", "sky", "C", "D"])
+
+    def test_the_front_object_cannot_go_further_forward(self):
+        page = self._page()
+        self.assertEqual(restack(page, 5, "forward"), 5)
+        self.assertEqual(restack(page, 5, "front"), 5)
+        self.assertEqual(self._names(page), ["paper", "A", "B", "sky", "C", "D"])
+
 
 if __name__ == "__main__":
     unittest.main()
