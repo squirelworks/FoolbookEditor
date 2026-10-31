@@ -14,7 +14,7 @@ python3 -m pip install -e .
 python3 -m foolbookeditor
 ```
 
-`pip install -e .` brings Foolbook with it. The window needs Tk. On Debian and Ubuntu that is `sudo apt install python3-tk`.
+`pip install -e .` brings Foolbook with it, at the commit `pyproject.toml` pins. A pull request that needs a newer reader function bumps that pin and says which function. The window needs Tk. On Debian and Ubuntu that is `sudo apt install python3-tk`.
 
 ## Use
 
