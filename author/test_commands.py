@@ -90,5 +90,25 @@ class DeletePageTests(unittest.TestCase):
         self.assertEqual([p["id"] for p in book["pages"]], ["P0", "P200"])
 
 
+class ReorderTests(unittest.TestCase):
+    def test_up_and_down_move_the_current_page_and_follow_it(self):
+        book = _book("P0", "P100", "P200")
+        self.assertEqual(commands.page_up(book, 2), 1)
+        self.assertEqual([p["id"] for p in book["pages"]], ["P0", "P200", "P100"])
+        self.assertEqual(commands.page_down(book, 0), 1)
+        self.assertEqual([p["id"] for p in book["pages"]], ["P200", "P0", "P100"])
+
+    def test_the_ends_do_not_move_past_the_book(self):
+        book = _book("P0", "P100")
+        self.assertEqual(commands.page_up(book, 0), 0)
+        self.assertEqual(commands.page_down(book, 1), 1)
+        self.assertEqual([p["id"] for p in book["pages"]], ["P0", "P100"])
+
+    def test_a_one_page_book_stays(self):
+        book = _book("P0")
+        self.assertEqual(commands.page_up(book, 0), 0)
+        self.assertEqual(commands.page_down(book, 0), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

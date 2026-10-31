@@ -14,6 +14,8 @@ SHORTCUTS = {
     "add_page": ("Ctrl+M", "<Control-m>"),
     "duplicate_page": ("Ctrl+Shift+D", "<Control-D>"),
     "delete_page": ("Ctrl+Shift+Delete", "<Control-Shift-Delete>"),
+    "page_up": ("Ctrl+Shift+Up", "<Control-Shift-Up>"),
+    "page_down": ("Ctrl+Shift+Down", "<Control-Shift-Down>"),
 }
 
 
@@ -46,3 +48,13 @@ def delete_question(book: dict, current: int) -> str | None:
 def delete_page(book: dict, current: int) -> int:
     """Remove the current page without asking. Returns the page to show."""
     return document.delete_page(book, current)
+
+
+def page_up(book: dict, current: int) -> int:
+    """Swap the current page with the one before it. The first page stays."""
+    return document.move_page(book, current, -1)
+
+
+def page_down(book: dict, current: int) -> int:
+    """Swap the current page with the one after it. The last page stays."""
+    return document.move_page(book, current, 1)
