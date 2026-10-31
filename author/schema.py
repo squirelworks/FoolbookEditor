@@ -22,3 +22,4 @@ PAGE_FIELDS = (
 # says the magic, and the reader does not read this key, so it is not
 # written into the payload.
 NOT_WRITTEN = ("_magic",)
+

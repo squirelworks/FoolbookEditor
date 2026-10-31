@@ -27,3 +27,4 @@ The reader stamps `format`, `format_version`, `fbk` (the book version, now 1), a
 - `transition`: the transition's name. Foolbook ignores it for now; it is kept so a later reader can honour it. Missing means none.
 - `quiz`: the quiz on the page, as the Quiz tool writes it. Missing means no quiz.
 - `records`: a record page's `{"fields", "rows", "at"}`. Missing means not a record page.
+
