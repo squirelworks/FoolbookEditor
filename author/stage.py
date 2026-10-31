@@ -2,6 +2,7 @@
 
 Foolbook draws it. The editor only chooses the page and the scale.
 An object Reader hides is still drawn, so Author can select it.
+A hotspot is drawn as its outline for the same reason.
 """
 
 from __future__ import annotations
@@ -24,14 +25,33 @@ def shown(page: dict, book: dict | None = None) -> list[dict]:
     for shape in page.get("shapes") or []:
         if not isinstance(shape, dict):
             continue
+        if (shape.get("kind") or "") == "hotspot":
+            # Reader does not draw a hotspot. Author draws its outline so it can be found.
+            shape = dict(shape, kind="rect", fill="", outline=shape.get("outline") or "#071428")
         if shape.get("visible") is False:
+            # Ghosted: the same object, its colours washed toward white.
             item = dict(shape)
             item["visible"] = True
-            item["outline"] = item.get("outline") or "#606060"
+            item["outline"] = ghost(item.get("outline") or "#606060")
+            if item.get("fill"):
+                item["fill"] = ghost(item["fill"])
+            item["ghost"] = True
             rows.append(item)
         else:
             rows.append(shape)
     return rows
+
+
+def ghost(color: str, amount: float = 0.7) -> str:
+    """A ``#rrggbb`` colour moved most of the way to white. Anything else is a light grey."""
+    text = str(color or "")
+    if len(text) != 7 or not text.startswith("#"):
+        return "#c8c8c8"
+    try:
+        parts = [int(text[at:at + 2], 16) for at in (1, 3, 5)]
+    except ValueError:
+        return "#c8c8c8"
+    return "#" + "".join(f"{int(round(part + (255 - part) * amount)):02x}" for part in parts)
 
 
 def hit(shapes: list[dict], x: float, y: float, layer: str | None = None) -> int | None:
