@@ -68,6 +68,10 @@ def write(shape: dict, key: str, raw: str, page: dict | None = None) -> bool:
     elif kind == "text":
         shape["text"] = raw
     elif kind == "color":
+        if key == "fill" and raw == "":
+            # No fill. The reader draws nothing inside the outline.
+            shape["fill"] = ""
+            return True
         if not _HEX.match(raw):
             return False
         shape[key] = raw.lower()
