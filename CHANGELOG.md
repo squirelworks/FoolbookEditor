@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0 — 2026-11-04
+
+This release is every section below, down to 0.4.0.
+
 ## 2026-10-31
 
 - A Small Garden ships with the editor. The start window offers it, and it opens as an unsaved copy, so Save asks where to put it and the shipped file is never written. Three pages sit on one shared background, with a picture, a quiz, and a Next button. `examples/demo.py` makes it with the editor's own model calls. A test regenerates the file, and another opens it in Foolbook with no window: Next, a wrong answer, a right answer, the last page. Tests: `author/test_demo.py`, `author/test_clickthrough.py`.
